@@ -6,10 +6,10 @@ from flask_cors import CORS
 import requests, re, os, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "YOUR_GROQ_KEY_HERE")
 ALERT_THRESHOLD = 500_000
 _pool = ThreadPoolExecutor(max_workers=8)
 
@@ -42,7 +42,11 @@ def sma(d, p):
     return sum(d[-p:])/p if len(d) >= p else None
 
 @app.route("/")
-def index(): return send_from_directory("static", "index.html")
+def index():
+    import os
+    # Works both locally and on Render
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+    return send_from_directory(static_dir, "index.html")
 
 @app.route("/api/test")
 def test():
@@ -642,6 +646,9 @@ def watchlist_verdict(symbol):
 
 
 if __name__ == "__main__":
+    os.makedirs("static", exist_ok=True)
     port = int(os.environ.get("PORT", 5000))
-   app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), threaded=True)
-
+    print(f"\n  Kevin Kataria Stock Intelligence")
+    print(f"  Open: http://localhost:{port}")
+    print(f"  Test: http://localhost:{port}/api/test\n")
+    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), threaded=True)
