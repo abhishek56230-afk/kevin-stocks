@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>Kevin Kataria — Stock Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#060910;--card:#0f1923;--border:#1c2c3e;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#10b981;--red:#ef4444;
+  --yellow:#f59e0b;--text:#f0f4f8;--muted:#64748b;--dim:#374151;
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
+.app{max-width:520px;margin:0 auto;padding-bottom:84px}
+
+/* Header */
+.hdr{padding:18px 16px 0;display:flex;justify-content:space-between;align-items:center}
+.brand-name{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+.brand-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;background:linear-gradient(135deg,#3b82f6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1}
+.live{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);font-weight:600}
+.pulse{width:7px;height:7px;background:var(--green);border-radius:50%;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* Search */
+.search{padding:14px 16px}
+.sbox{display:flex;gap:8px;background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:4px 4px 4px 14px}
+.sbox:focus-within{border-color:var(--blue)}
+.sinp{flex:1;background:none;border:none;color:var(--text);font-family:'Syne',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;outline:none;padding:8px 0}
+.sinp::placeholder{text-transform:none;font-family:'Inter',sans-serif;font-weight:400;font-size:13px;letter-spacing:0;color:var(--muted)}
+.sbtn{background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;border:none;border-radius:9px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+.sbtn:active{opacity:.8}
+
+/* Chips */
+.chips{display:flex;gap:6px;padding:0 16px 12px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:11px;font-family:'Syne',sans-serif;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;letter-spacing:.5px;transition:all .15s}
+.chip:active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;padding:0 16px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;font-family:'Syne',sans-serif;cursor:pointer;white-space:nowrap;color:var(--muted);border:none;background:none;transition:all .15s;letter-spacing:.3px}
+.tab.on{background:var(--blue);color:#fff}
+
+/* Layout */
+.sec{padding:0 16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:10px}
+.clbl{font-size:10px;font-family:'Syne',sans-serif;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+
+/* Price hero */
+.phero{background:linear-gradient(135deg,#0a1628,#060910);border:1px solid rgba(59,130,246,.3);border-radius:var(--r);padding:18px;margin-bottom:10px}
+.psym{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:2px;margin-bottom:2px}
+.pname{font-size:13px;color:var(--muted);margin-bottom:6px}
+.pprice{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;line-height:1}
+.pchg{font-size:13px;font-weight:600;margin-top:5px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:12px}
+.pcell{background:rgba(255,255,255,.04);border-radius:8px;padding:8px;text-align:center}
+.pcell-l{font-size:10px;color:var(--muted);margin-bottom:3px;font-family:'Syne',sans-serif;letter-spacing:.3px}
+.pcell-v{font-family:'Syne',sans-serif;font-size:13px;font-weight:700}
+
+/* Verdict badge */
+.vhero{border-radius:var(--r);padding:18px;margin-bottom:10px;text-align:center}
+.vbuy{background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(6,182,212,.07));border:1px solid rgba(16,185,129,.3)}
+.vsell{background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(239,68,68,.05));border:1px solid rgba(239,68,68,.3)}
+.vhold{background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.05));border:1px solid rgba(245,158,11,.3)}
+.vbadge{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;letter-spacing:2px;margin-bottom:5px}
+.vconf{font-size:12px;color:var(--muted);margin-bottom:12px}
+.vtgts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+.vtgt{background:rgba(0,0,0,.25);border-radius:9px;padding:9px}
+.vtgt-l{font-size:10px;color:var(--muted);margin-bottom:3px;font-family:'Syne',sans-serif}
+.vtgt-v{font-family:'Syne',sans-serif;font-size:13px;font-weight:800}
+
+/* How to act */
+.howbox{background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.15);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.how-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;line-height:1.5}
+.how-row:last-child{border:none}
+.hi{font-size:15px;width:22px;flex-shrink:0}
+
+/* Reasoning */
+.ritem{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--muted)}
+.ritem:last-child{border:none}
+
+/* Score bar */
+.sbar-wrap{margin:8px 0}
+.sbar-top{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.sbar{height:5px;background:rgba(239,68,68,.2);border-radius:3px;overflow:hidden}
+.sfill{height:100%;background:linear-gradient(90deg,#10b981,#3b82f6);border-radius:3px;transition:width .6s ease}
+.spill{display:inline-block;padding:3px 12px;border-radius:20px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;margin-top:7px}
+
+/* Indicators */
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.ibox{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:10px;padding:11px}
+.ilbl{font-size:10px;color:var(--muted);font-family:'Syne',sans-serif;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.ival{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;line-height:1}
+.isig{font-size:11px;margin-top:2px;font-weight:500}
+
+/* Principal-first explain box */
+.explain{background:rgba(255,255,255,.02);border-left:2px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 12px;margin-top:8px;font-size:13px;line-height:1.6}
+.explain .principal{font-size:14px;font-weight:600;color:var(--text);margin-bottom:5px}
+.explain .detail{color:var(--muted);font-size:12px}
+.explain .action{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'Syne',sans-serif}
+
+/* MA rows */
+.marow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.marow:last-child{border:none}
+
+/* Fund rows */
+.frow{display:flex;justify-content:space-between;align-items:flex-start;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.frow:last-child{border:none}
+.fkey{font-size:13px;font-weight:500}
+.fkey small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px;max-width:200px;line-height:1.4}
+.fval{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;text-align:right}
+.fsig{font-size:10px;font-weight:600;margin-top:2px}
+.fsec{font-size:11px;font-family:'Syne',sans-serif;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+
+/* Holding bars */
+.hbar-item{margin-bottom:11px}
+.hbar-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.hbar-wrap{height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.hbar{height:100%;border-radius:3px;transition:width .5s ease}
+
+/* Sentiment */
+.si{padding:12px 0;border-bottom:1px solid var(--border)}
+.si:last-child{border:none}
+.si-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.si-bar-wrap{height:4px;background:rgba(239,68,68,.2);border-radius:2px;overflow:hidden}
+.si-bar{height:100%;border-radius:2px}
+.si-overall{background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:9px;padding:12px;margin-top:10px;display:flex;justify-content:space-between;align-items:center}
+
+/* News */
+.ni{padding:11px 0;border-bottom:1px solid var(--border)}
+.ni:last-child{border:none}
+.ni a{color:var(--text);text-decoration:none;font-size:14px;line-height:1.4;display:block;margin-bottom:3px}
+.ni a:hover{color:var(--blue)}
+
+/* Trade items */
+.ti{padding:10px 0;border-bottom:1px solid var(--border)}
+.ti:last-child{border:none}
+.ti-sym{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--blue)}
+.tbuy{background:rgba(16,185,129,.12);color:var(--green)}
+.tsell{background:rgba(239,68,68,.12);color:var(--red)}
+.tother{background:rgba(245,158,11,.12);color:var(--yellow)}
+
+/* RSI gauge */
+.rsi-gauge{margin:10px 0 4px;height:6px;border-radius:3px;position:relative;background:linear-gradient(90deg,#10b981 0%,#10b981 30%,#f59e0b 40%,#f59e0b 60%,#ef4444 70%,#ef4444 100%)}
+.rsi-marker{position:absolute;top:-4px;transform:translateX(-50%);width:14px;height:14px;background:#fff;border-radius:50%;border:3px solid #3b82f6}
+
+/* Bottom nav */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:rgba(6,9,16,.97);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0;max-width:520px;margin:0 auto}
+.bni{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 14px;cursor:pointer}
+.bni-icon{font-size:20px}
+.bni-lbl{font-size:10px;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.5px}
+
+/* Loader */
+.loader{display:flex;align-items:center;justify-content:center;padding:40px;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--blue);animation:pulse .9s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.15s}.dot:nth-child(3){animation-delay:.3s}
+@keyframes pulse{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1)}}
+
+/* Error */
+.err{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:9px;padding:14px;color:var(--red);font-size:13px;text-align:center;margin:0 16px}
+
+/* Fib table */
+.fibrow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.fibrow:last-child{border:none}
+
+.up{color:var(--green)}.down{color:var(--red)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div>
+    <div class="brand-name">Kevin Kataria</div>
+    <div class="brand-title">Stock Intelligence</div>
+  </div>
+  <div class="live"><div class="pulse"></div>LIVE</div>
+</div>
+
+<!-- SEARCH -->
+<div class="search">
+  <div class="sbox">
+    <input class="sinp" id="inp" type="text" placeholder="Enter NSE symbol — RELIANCE, HCLTECH…" maxlength="20"/>
+    <button class="sbtn" onclick="analyse()">Analyse</button>
+  </div>
+</div>
+
+<!-- QUICK CHIPS -->
+<div class="chips">
+  <div class="chip" onclick="qs('HCLTECH')">HCLTECH</div>
+  <div class="chip" onclick="qs('RELIANCE')">RELIANCE</div>
+  <div class="chip" onclick="qs('ATGL')">ATGL</div>
+  <div class="chip" onclick="qs('INFY')">INFY</div>
+  <div class="chip" onclick="qs('TCS')">TCS</div>
+  <div class="chip" onclick="qs('ADANIENT')">ADANIENT</div>
+  <div class="chip" onclick="qs('ADANIPOWER')">ADANIPOWER</div>
+  <div class="chip" onclick="qs('WIPRO')">WIPRO</div>
+  <div class="chip" onclick="qs('HINDUNILVR')">HINDUNILVR</div>
+</div>
+
+<!-- TABS (hidden until search) -->
+<div class="tabs" id="tabsRow" style="display:none">
+  <button class="tab on" onclick="showTab('verdict',this)">🤖 Verdict</button>
+  <button class="tab" onclick="showTab('technical',this)">📐 Technical</button>
+  <button class="tab" onclick="showTab('fundamental',this)">📊 Fundamental</button>
+  <button class="tab" onclick="showTab('sentiment',this)">💬 Sentiment</button>
+  <button class="tab" onclick="showTab('news',this)">📰 News</button>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="main">
+  <div class="sec" id="homeSection">
+
+    <!-- Dashboard tiles -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div onclick="showSection('insider')" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:20px;margin-bottom:6px">🔔</div>
+        <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700">Insider Trades</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Who is buying/selling</div>
+      </div>
+      <div onclick="showSection('promoter')" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:20px;margin-bottom:6px">👔</div>
+        <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700">Promoter Activity</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Management buying/selling</div>
+      </div>
+      <div onclick="showSection('fii')" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:20px;margin-bottom:6px">🏦</div>
+        <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700">FII / DII Activity</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Foreign & domestic flows</div>
+      </div>
+      <div onclick="showSection('geo')" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--yellow)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:20px;margin-bottom:6px">🌍</div>
+        <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700">Geopolitical Impact</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Macro news + AI analysis</div>
+      </div>
+    </div>
+
+    <!-- Watchlist tile - full width -->
+    <div onclick="showSection('watchlist')" style="background:linear-gradient(135deg,#0a1628,#0f1923);border:1.5px solid var(--blue);border-radius:var(--r);padding:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">&#128203;</div>
+      <div style="flex:1">
+        <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--blue)">My Watchlist &#8212; 16 Stocks</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Live BUY/HOLD/SELL signals for your Excel stock list</div>
+      </div>
+      <div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700;color:var(--blue)">TAP &#8250;</div>
+    </div>
+
+    <!-- Default: Insider Trades -->
+    <div class="card" id="insiderCard">
+      <div class="clbl">🚨 NSE Insider Trades — Today (sorted by value)</div>
+      <div id="tradesEl"><div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+    </div>
+
+  </div>
+</div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bnav">
+  <div class="bni" onclick="goHome()"><div class="bni-icon">🏠</div><div class="bni-lbl">Home</div></div>
+  <div class="bni" onclick="focusSearch()"><div class="bni-icon">🔍</div><div class="bni-lbl">Search</div></div>
+  <div class="bni" onclick="loadTrades()"><div class="bni-icon">🔔</div><div class="bni-lbl">Alerts</div></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// GLOBALS
+// ═══════════════════════════════════════════════════
+let SYM = '', TECH = null, FUND = null;
+
+// Color shortcuts
+const G = 'var(--green)', R = 'var(--red)', Y = 'var(--yellow)', B = 'var(--blue)', M = 'var(--muted)';
+
+const rsiCol = v => v >= 70 ? R : v <= 30 ? G : v >= 55 ? G : v <= 45 ? R : Y;
+const fmt = v => (!v || v === 'N/A' || v === 'undefined' || v === 'null') ? '—' : v;
+const numCol = v => { const n = parseFloat(String(v).replace(/[^0-9.-]/g,'')); return isNaN(n) ? '#fff' : n > 0 ? G : n < 0 ? R : Y; };
+
+function verdictStyle(v) {
+  if (!v) return { cls: 'vhold', col: Y };
+  const u = v.toUpperCase();
+  if (u.includes('BUY'))  return { cls: 'vbuy',  col: G };
+  if (u.includes('SELL')) return { cls: 'vsell', col: R };
+  return { cls: 'vhold', col: Y };
+}
+
+// ═══════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  loadTrades();
+  document.getElementById('inp').addEventListener('keydown', e => { if (e.key === 'Enter') analyse(); });
+});
+
+// ═══════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════
+function qs(s) { document.getElementById('inp').value = s; analyse(); }
+function focusSearch() { document.getElementById('inp').focus(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+function analyse() {
+  const raw = document.getElementById('inp').value.trim().toUpperCase();
+  const s = raw.replace(/\s+/g, '').replace(/[^A-Z0-9&]/g, '');
+  if (!s) return;
+  document.getElementById('inp').value = s;
+  SYM = s; TECH = null; FUND = null;
+  // Show tabs, clear home content
+  document.getElementById('tabsRow').style.display = 'flex';
+  document.getElementById('main').innerHTML = '<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  // Set first tab active
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('on', i===0));
+  loadVerdict();
+}
+
+// ═══════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════
+function showTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  if (el) el.classList.add('on');
+  const m = document.getElementById('main');
+  m.innerHTML = '<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  const loaders = { verdict: loadVerdict, technical: loadTechnical, fundamental: loadFundamental, sentiment: loadSentiment, news: loadNews };
+  (loaders[tab] || loadVerdict)();
+}
+
+// ═══════════════════════════════════════════════════
+// VERDICT TAB
+// ═══════════════════════════════════════════════════
+async function loadVerdict() {
+  const m = document.getElementById('main');
+  try {
+    const d = await fetch('/api/verdict/' + SYM).then(r => r.json());
+    if (!d.success) throw new Error(d.error);
+    TECH = d.tech; FUND = d.fundamental;
+    const t = d.tech, f = d.fundamental || {}, vs = verdictStyle(d.verdict);
+
+    m.innerHTML = `
+    <div class="sec">
+
+      <!-- ── LIVE PRICE ── -->
+      <div class="phero">
+        <div class="psym">${d.symbol}</div>
+        <div class="pprice">&#8377;${d.price.toLocaleString('en-IN')}</div>
+        <div class="pgrid">
+          <div class="pcell"><div class="pcell-l">Support</div><div class="pcell-v" style="color:${G}">&#8377;${t.support}</div></div>
+          <div class="pcell"><div class="pcell-l">Target 3M</div><div class="pcell-v" style="color:${B}">&#8377;${d.target_3m}</div></div>
+          <div class="pcell"><div class="pcell-l">Stop Loss</div><div class="pcell-v" style="color:${R}">&#8377;${d.stop_loss}</div></div>
+        </div>
+      </div>
+
+      <!-- ── AI VERDICT ── -->
+      <div class="vhero ${vs.cls}">
+        <div class="vbadge" style="color:${vs.col}">${d.verdict}</div>
+        <div class="vconf">${d.confidence} Confidence &nbsp;·&nbsp; Risk: ${d.risk} &nbsp;·&nbsp; ${d.best_for}</div>
+        <div class="vtgts">
+          <div class="vtgt"><div class="vtgt-l">TARGET 3M</div><div class="vtgt-v" style="color:${G}">&#8377;${d.target_3m}</div></div>
+          <div class="vtgt"><div class="vtgt-l">TARGET 12M</div><div class="vtgt-v" style="color:${B}">&#8377;${d.target_12m}</div></div>
+          <div class="vtgt"><div class="vtgt-l">STOP LOSS</div><div class="vtgt-v" style="color:${R}">&#8377;${d.stop_loss}</div></div>
+        </div>
+      </div>
+
+      <!-- ── HOW TO ACT (Principal First — most important info first) ── -->
+      <div class="howbox">
+        <div class="clbl" style="margin-bottom:10px">&#128214; What to Do — Step by Step</div>
+        <div class="how-row"><div class="hi">&#9989;</div><div><b>Entry Zone:</b> Buy near &#8377;${t.support} (Support level). Buying at support gives you the best risk-reward ratio.</div></div>
+        <div class="how-row"><div class="hi">&#127919;</div><div><b>Take Profit 1 (3 months):</b> &#8377;${d.target_3m} — Sell 50% of your position here to lock in gains.</div></div>
+        <div class="how-row"><div class="hi">&#128640;</div><div><b>Take Profit 2 (12 months):</b> &#8377;${d.target_12m} — Hold the rest for this bigger target.</div></div>
+        <div class="how-row"><div class="hi">&#128721;</div><div><b>Stop Loss:</b> &#8377;${d.stop_loss} — If price falls HERE, exit immediately. No exceptions. This protects your capital.</div></div>
+        <div style="margin-top:8px;padding:8px;background:rgba(239,68,68,.07);border-radius:8px;font-size:11px;color:${R}">&#9888;&#65039; This is AI analysis, not financial advice. Always research before investing real money.</div>
+      </div>
+
+      <!-- ── AI REASONING ── -->
+      <div class="card">
+        <div class="clbl">&#129504; AI Analysis — Why This Verdict</div>
+        ${d.reasoning.map(r => `<div class="ritem"><span style="color:${B};font-weight:700;margin-right:8px">&#8250;</span><span>${r}</span></div>`).join('')}
+      </div>
+
+      <!-- ── TECHNICAL SUMMARY ── -->
+      <div class="card">
+        <div class="clbl">&#128208; Technical Score</div>
+        <div class="sbar-wrap">
+          <div class="sbar-top"><span>Bullish Signals</span><span style="font-weight:700">${t.bull_score}% Bullish</span></div>
+          <div class="sbar"><div class="sfill" style="width:${t.bull_score}%"></div></div>
+          <div class="spill" style="background:${t.bull_score>=57?'rgba(16,185,129,.12)':t.bull_score>=43?'rgba(245,158,11,.12)':'rgba(239,68,68,.12)'};color:${t.bull_score>=57?G:t.bull_score>=43?Y:R}">${t.signal}</div>
+        </div>
+        <div class="igrid" style="margin-top:12px">
+          <div class="ibox">
+            <div class="ilbl">RSI (14)</div>
+            <div class="ival" style="color:${rsiCol(t.rsi)}">${t.rsi}</div>
+            <div class="isig" style="color:${rsiCol(t.rsi)}">${t.rsi>=70?'Overbought':t.rsi<=30?'Oversold':t.rsi>=55?'Bullish':'Neutral'}</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">MACD</div>
+            <div class="ival" style="color:${t.macd_hist>0?G:R}">${t.macd_hist>0?'Bullish':'Bearish'}</div>
+            <div class="isig" style="color:${M}">Hist: ${t.macd_hist}</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">vs MA50</div>
+            <div class="ival" style="color:${t.price>t.ma50?G:R}">${t.price>t.ma50?'Above':'Below'}</div>
+            <div class="isig" style="color:${M}">&#8377;${t.ma50}</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">Cross</div>
+            <div class="ival" style="color:${t.golden_cross?G:R}">${t.golden_cross?'Golden':'Death'}</div>
+            <div class="isig" style="color:${M}">${t.golden_cross?'Long Bullish':'Long Bearish'}</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;padding:10px;background:rgba(255,255,255,.025);border-radius:8px;font-size:12px">
+          <div><div style="font-size:10px;color:${M}">SUPPORT</div><div style="font-family:Syne,sans-serif;font-weight:700;color:${G}">&#8377;${t.support}</div></div>
+          <div style="color:${M};align-self:center">Now &#8377;${t.price}</div>
+          <div style="text-align:right"><div style="font-size:10px;color:${M}">RESISTANCE</div><div style="font-family:Syne,sans-serif;font-weight:700;color:${R}">&#8377;${t.resistance}</div></div>
+        </div>
+      </div>
+
+      <!-- ── FUNDAMENTALS SNAPSHOT ── -->
+      ${f.pe && f.pe !== '—' ? `<div class="card">
+        <div class="clbl">&#128202; Fundamentals Snapshot</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+          ${[['P/E Ratio',f.pe,'Valuation'],['ROE',f.roe,'Efficiency'],['Promoter',f.promoter,'Trust']].map(([l,v,s])=>`
+          <div class="pcell"><div class="pcell-l">${l}</div><div class="pcell-v" style="font-size:13px">${fmt(v)}</div><div style="font-size:9px;color:${M};margin-top:2px">${s}</div></div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- ── SENTIMENT ── -->
+      <div class="card">
+        <div class="clbl">&#128172; Market Sentiment</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="flex:1"><div class="sbar" style="height:7px"><div class="sfill" style="width:${d.sentiment}%"></div></div></div>
+          <div style="font-family:Syne,sans-serif;font-weight:800;font-size:18px;color:${d.sentiment>60?G:d.sentiment<40?R:Y}">${d.sentiment}% Bull</div>
+        </div>
+        <div style="font-size:12px;color:${M};margin-top:5px">${d.sentiment>60?'News and social media are broadly bullish on this stock — positive momentum in market perception.':d.sentiment<40?'Negative media coverage — market is cautious. Could be a contrarian opportunity or a real risk.':'Mixed signals from media — use technical data as your primary decision tool.'}</div>
+      </div>
+
+    </div>`;
+  } catch(e) {
+    m.innerHTML = `<div class="err">&#9888;&#65039; ${e.message || 'Could not load. Check: 1) Groq API key in app.py, 2) Symbol is correct (e.g. RELIANCE not Reliance Industries)'}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// TECHNICAL TAB — Principal First Explanations
+// ═══════════════════════════════════════════════════
+async function loadTechnical() {
+  const m = document.getElementById('main');
+  try {
+    const t = TECH || await fetch('/api/technical/' + SYM).then(r => r.json());
+    if (!t.success) throw new Error(t.error);
+    TECH = t;
+
+    m.innerHTML = `
+    <div class="sec">
+
+      <!-- PRICE + SCORE -->
+      <div class="phero">
+        <div class="psym">${t.symbol}</div>
+        <div class="pprice">&#8377;${t.price.toLocaleString('en-IN')}</div>
+        <div class="sbar-wrap" style="margin-top:12px">
+          <div class="sbar-top"><span>Overall Technical Score</span><span style="font-weight:700">${t.bull_score}% Bullish</span></div>
+          <div class="sbar"><div class="sfill" style="width:${t.bull_score}%"></div></div>
+          <div class="spill" style="background:${t.bull_score>=57?'rgba(16,185,129,.12)':t.bull_score>=43?'rgba(245,158,11,.12)':'rgba(239,68,68,.12)'};color:${t.bull_score>=57?G:t.bull_score>=43?Y:R}">${t.signal}</div>
+        </div>
+      </div>
+
+      <!-- ════ 1. MOVING AVERAGES ════
+           PRINCIPAL: Is the stock in a long-term uptrend or downtrend?
+           Moving averages smooth out daily noise and show the underlying direction. -->
+      <div class="card">
+        <div class="clbl">1. Moving Averages — Trend Direction</div>
+        <div class="explain">
+          <div class="principal">&#127919; The big picture: Is this stock rising or falling overall?</div>
+          <div class="detail">Moving averages calculate the average price over a set number of days. If today's price is above the average, the stock is trending up. Below means downtrend.</div>
+        </div>
+        <div style="margin-top:10px">
+          ${[[20,t.ma20,'Short-term trend (1 month)'],[50,t.ma50,'Medium-term trend (2.5 months)'],[200,t.ma200,'Long-term trend (10 months)']].filter(x=>x[1]).map(([n,v,desc])=>`
+          <div class="marow">
+            <div><div style="font-size:13px;font-weight:500">MA${n}</div><div style="font-size:11px;color:${M}">${desc}</div></div>
+            <div style="text-align:right">
+              <div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700">&#8377;${v}</div>
+              <div style="font-size:11px;font-weight:600;color:${t.price>v?G:R}">${t.price>v?'&#9650; Price Above (Bullish)':'&#9660; Price Below (Bearish)'}</div>
+            </div>
+          </div>`).join('')}
+        </div>
+        ${t.golden_cross !== undefined ? `
+        <div style="margin-top:10px;padding:10px;background:${t.golden_cross?'rgba(16,185,129,.07)':'rgba(239,68,68,.07)'};border-radius:8px">
+          <div style="font-size:13px;font-weight:700;color:${t.golden_cross?G:R}">${t.golden_cross?'&#11088; Golden Cross Active':'&#128128; Death Cross Active'}</div>
+          <div style="font-size:12px;color:${M};margin-top:4px">${t.golden_cross?'MA50 crossed above MA200. This is one of the most powerful bullish signals in technical analysis. Big institutions use this to start buying.':'MA50 crossed below MA200. This is a major warning sign. Institutional investors often start selling when this happens.'}</div>
+        </div>` : ''}
+      </div>
+
+      <!-- ════ 2. RSI ════
+           PRINCIPAL: Is the stock oversold (potential bounce) or overbought (potential fall)?
+           RSI tells you if a stock has moved too far, too fast in one direction. -->
+      <div class="card">
+        <div class="clbl">2. RSI — Overbought or Oversold?</div>
+        <div class="explain">
+          <div class="principal">&#127919; Most important question: Has this stock fallen too much, or risen too fast?</div>
+          <div class="detail">RSI (0-100) measures buying vs selling momentum. Below 30 = panic selling, stock is likely to bounce. Above 70 = excessive buying, pullback likely.</div>
+          <div class="action" style="background:${t.rsi<=30?'rgba(16,185,129,.15)':t.rsi>=70?'rgba(239,68,68,.15)':'rgba(245,158,11,.15)'};color:${rsiCol(t.rsi)}">${t.rsi<=30?'&#9989; High probability bounce zone':t.rsi>=70?'&#9888;&#65039; Pullback risk — consider waiting':'Normal zone — not extreme'}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+          <div>
+            <div style="font-family:Syne,sans-serif;font-size:36px;font-weight:800;color:${rsiCol(t.rsi)}">${t.rsi}</div>
+            <div style="font-size:13px;font-weight:600;color:${rsiCol(t.rsi)}">${t.rsi>=80?'EXTREMELY OVERBOUGHT':t.rsi>=70?'Overbought — Caution':t.rsi<=20?'EXTREMELY OVERSOLD':t.rsi<=30?'Oversold — Buy Zone':t.rsi>=55?'Bullish Momentum':t.rsi<=45?'Bearish Momentum':'Neutral (45-55)'}</div>
+          </div>
+          <div style="width:52px;height:52px;border-radius:50%;border:3px solid ${rsiCol(t.rsi)};display:flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-size:11px;font-weight:800;color:${rsiCol(t.rsi)}">${t.rsi<30?'BUY':t.rsi>70?'SELL':'HOLD'}</div>
+        </div>
+        <div class="rsi-gauge"><div class="rsi-marker" style="left:${t.rsi}%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:${M};margin-bottom:8px"><span>0 — Extreme Oversold</span><span>50 Neutral</span><span>100 Extreme Overbought</span></div>
+        <div style="padding:8px;background:rgba(255,255,255,.025);border-radius:8px;font-size:12px;color:${M};line-height:1.5">${t.rsi<=30?`<span style="color:${G}">RSI ${t.rsi} = stock has fallen too aggressively. Statistically, stocks at this level tend to bounce within days-weeks. This is often an excellent short-term entry point.</span>`:t.rsi>=70?`<span style="color:${R}">RSI ${t.rsi} = stock has risen very quickly. Markets often overcorrect. A pullback to RSI 50-60 is common before the next leg up. Wait for RSI to cool down for better entry.</span>`:`RSI ${t.rsi} — no extreme signal. Watch for RSI crossing above 55 (go bullish) or below 45 (go bearish).`}</div>
+      </div>
+
+      <!-- ════ 3. MACD ════
+           PRINCIPAL: Is momentum shifting towards buyers or sellers?
+           MACD shows when a trend is accelerating or decelerating. -->
+      <div class="card">
+        <div class="clbl">3. MACD — Momentum Direction</div>
+        <div class="explain">
+          <div class="principal">&#127919; Key question: Are buyers getting stronger or sellers taking control?</div>
+          <div class="detail">MACD compares two moving averages to detect momentum shifts. A positive histogram means buyers are stronger. Negative means sellers dominate. The crossover point is often a buy/sell signal.</div>
+          <div class="action" style="background:${t.macd_hist>0?'rgba(16,185,129,.12)':'rgba(239,68,68,.12)'};color:${t.macd_hist>0?G:R}">${t.macd_hist>0?'&#128200; Buying momentum active':'&#128201; Selling pressure dominant'}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:10px">
+          <div class="pcell"><div class="pcell-l">MACD Line</div><div class="pcell-v" style="font-size:13px">${t.macd}</div></div>
+          <div class="pcell"><div class="pcell-l">Signal</div><div class="pcell-v" style="font-size:13px">${t.macd_signal}</div></div>
+          <div class="pcell"><div class="pcell-l">Histogram</div><div class="pcell-v" style="font-size:13px;color:${t.macd_hist>0?G:R}">${t.macd_hist}</div></div>
+        </div>
+        <div style="margin-top:8px;padding:8px;background:rgba(255,255,255,.025);border-radius:8px;font-size:12px;color:${M};line-height:1.5">${t.macd_hist>0?'Positive histogram = upward momentum is building. Buyers are stronger than sellers. A growing histogram (getting more positive each day) is a strong confirmation to buy.':'Negative histogram = selling pressure continues. Sellers are stronger. Wait for histogram to turn positive before buying — this is often a key reversal signal.'}</div>
+      </div>
+
+      <!-- ════ 4. BOLLINGER BANDS ════
+           PRINCIPAL: Is the stock near a buy zone (lower band) or sell zone (upper band)?
+           Bollinger Bands define what's "normal" for a stock's price range. -->
+      <div class="card">
+        <div class="clbl">4. Bollinger Bands — Price Range</div>
+        <div class="explain">
+          <div class="principal">&#127919; Key question: Is the stock at an extreme price level or in the middle?</div>
+          <div class="detail">Bollinger Bands create a channel around the average price (±2 standard deviations). 95% of the time, price stays inside. When it breaks out, it's a signal.</div>
+          <div class="action" style="background:${t.price<t.bb_lower?'rgba(16,185,129,.12)':t.price>t.bb_upper?'rgba(239,68,68,.12)':'rgba(245,158,11,.12)'};color:${t.price<t.bb_lower?G:t.price>t.bb_upper?R:Y}">${t.price<t.bb_lower?'&#9989; Below lower band — Oversold bounce zone':t.price>t.bb_upper?'&#9888;&#65039; Above upper band — Overbought pullback zone':'Price inside normal range'}</div>
+        </div>
+        <div style="position:relative;height:48px;margin:12px 0 4px">
+          <div style="position:absolute;left:0;right:0;top:8px;bottom:8px;background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.15);border-radius:6px"></div>
+          ${(()=>{const range=t.bb_upper-t.bb_lower;const pos=Math.min(Math.max((t.price-t.bb_lower)/range,0),1)*100;return`<div style="position:absolute;left:${pos}%;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:var(--blue);border-radius:50%;border:2px solid var(--bg)"></div>`;})()}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:${M};margin-bottom:8px"><span>Lower &#8377;${t.bb_lower} (Buy)</span><span style="color:${B}">Mid &#8377;${t.bb_mid}</span><span>Upper &#8377;${t.bb_upper} (Sell)</span></div>
+        <div style="padding:8px;background:rgba(255,255,255,.025);border-radius:8px;font-size:12px;color:${M};line-height:1.5">${t.price<t.bb_lower?`Price &#8377;${t.price} broke below the lower band (&#8377;${t.bb_lower}). This is rare and means panic selling. Price almost always bounces back inside the band. Strong buy signal when combined with RSI oversold.`:t.price>t.bb_upper?`Price &#8377;${t.price} broke above the upper band (&#8377;${t.bb_upper}). Overextended move. Expect pullback toward middle band &#8377;${t.bb_mid}. Not a good entry point.`:`Price &#8377;${t.price} is ${t.price>t.bb_mid?'in the upper half — mild bullish':'in the lower half — mild bearish'} of the normal range.`}</div>
+      </div>
+
+      <!-- ════ 5. KEY INDICATORS GRID ════ -->
+      <div class="card">
+        <div class="clbl">5. Supporting Indicators</div>
+        <div class="igrid">
+          <div class="ibox">
+            <div class="ilbl">ADX — Trend Strength</div>
+            <div class="ival" style="color:${t.adx>=25?G:M}">${t.adx}</div>
+            <div class="isig" style="color:${t.adx>=25?G:M}">${t.adx>=40?'Very Strong':t.adx>=25?'Strong':t.adx>=20?'Moderate':'Weak/Choppy'}</div>
+            <div style="font-size:10px;color:${M};margin-top:3px">${t.adx>=25?'Trend will likely continue':'Wait — no clear trend yet'}</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">Stochastic %K</div>
+            <div class="ival" style="color:${t.stoch_k>=80?R:t.stoch_k<=20?G:Y}">${t.stoch_k}%</div>
+            <div class="isig">${t.stoch_k>=80?'Overbought':t.stoch_k<=20?'Oversold — Buy?':'Neutral'}</div>
+            <div style="font-size:10px;color:${M};margin-top:3px">${t.stoch_k<=20?'Confirms RSI buy signal':t.stoch_k>=80?'Confirms overbought':'No extreme signal'}</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">Williams %R</div>
+            <div class="ival" style="color:${t.williams>=-20?R:t.williams<=-80?G:Y}">${t.williams}%</div>
+            <div class="isig">${t.williams>=-20?'Overbought':t.williams<=-80?'Oversold':'Neutral'}</div>
+            <div style="font-size:10px;color:${M};margin-top:3px">Second RSI confirmation</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">Parabolic SAR</div>
+            <div class="ival" style="color:${t.price>t.sar?G:R}">${t.price>t.sar?'BUY':'SELL'}</div>
+            <div class="isig" style="color:${M}">Stop: &#8377;${t.sar}</div>
+            <div style="font-size:10px;color:${M};margin-top:3px">${t.price>t.sar?'Price above SAR = uptrend':'Price below SAR = downtrend'}</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">OBV — Money Flow</div>
+            <div class="ival" style="color:${t.obv_rising?G:R}">${t.obv_rising?'In':'Out'}</div>
+            <div class="isig">${t.obv_rising?'Buyers active':'Sellers active'}</div>
+            <div style="font-size:10px;color:${M};margin-top:3px">${t.obv_rising?'Smart money flowing in':'Smart money flowing out'}</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">Volume (Today)</div>
+            <div class="ival" style="color:${t.vol_ratio>=2?G:t.vol_ratio>=1.3?B:M}">${t.vol_ratio}x</div>
+            <div class="isig">${t.vol_ratio>=2?'Very High!':t.vol_ratio>=1.3?'Above Avg':'Normal'}</div>
+            <div style="font-size:10px;color:${M};margin-top:3px">vs 20-day average</div>
+          </div>
+        </div>
+        <div class="explain">
+          <div class="detail">ADX measures HOW STRONG a trend is (not direction). Above 25 = trade with the trend confidently. Below 20 = choppy market, avoid trading. OBV (On Balance Volume) shows if big money is flowing into or out of the stock.</div>
+        </div>
+      </div>
+
+      <!-- ════ 6. ATR — STOP LOSS SIZING ════
+           PRINCIPAL: How much can this stock move in a day? Use this to set your stop loss. -->
+      <div class="card">
+        <div class="clbl">6. ATR — Volatility & Stop Loss Sizing</div>
+        <div class="explain">
+          <div class="principal">&#127919; Most important use: Set your stop loss correctly based on the stock's natural movement.</div>
+          <div class="detail">ATR = Average True Range. It tells you how much a stock typically moves per day. A stop loss set too tight will stop you out on normal fluctuations. Use 2x ATR as your stop loss.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:10px">
+          <div class="pcell"><div class="pcell-l">Daily ATR</div><div class="pcell-v">&#8377;${t.atr}</div><div style="font-size:9px;color:${M};margin-top:2px">Typical daily move</div></div>
+          <div class="pcell"><div class="pcell-l">Stop Loss</div><div class="pcell-v" style="color:${R}">&#8377;${t.stop_loss}</div><div style="font-size:9px;color:${M};margin-top:2px">2x ATR below price</div></div>
+          <div class="pcell"><div class="pcell-l">Risk %</div><div class="pcell-v" style="color:${Y}">${Math.abs(((t.stop_loss-t.price)/t.price)*100).toFixed(1)}%</div><div style="font-size:9px;color:${M};margin-top:2px">Max downside</div></div>
+        </div>
+      </div>
+
+      <!-- ════ 7. CANDLESTICK PATTERNS ════
+           PRINCIPAL: What happened in the last 1-2 trading sessions? -->
+      <div class="card">
+        <div class="clbl">7. Candlestick Patterns — Recent Session</div>
+        <div class="explain">
+          <div class="principal">&#127919; Key question: What story did today's and yesterday's trading tell us?</div>
+          <div class="detail">Candlestick patterns reveal buyer/seller psychology in the last 1-2 sessions. They're short-term signals — most powerful when they confirm what RSI and MACD are already showing.</div>
+        </div>
+        <div style="margin-top:8px">
+          ${t.patterns.map(p => `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">&#8250; ${p}</div>`).join('')}
+        </div>
+      </div>
+
+      <!-- ════ 8. FIBONACCI + KEY LEVELS ════
+           PRINCIPAL: Where will traders try to buy or sell based on historical price levels? -->
+      <div class="card">
+        <div class="clbl">8. Key Price Levels — Where to Buy & Sell</div>
+        <div class="explain">
+          <div class="principal">&#127919; Most important: Know where other traders will be watching to buy or sell.</div>
+          <div class="detail">Fibonacci levels are based on price retracements from recent highs to lows. The 61.8% level (Golden Ratio) is watched by most professional traders as the strongest support.</div>
+        </div>
+        <div style="margin-top:10px">
+          ${[
+            ['&#128308; Resistance (20-day)', t.resistance, R, 'Sell/take profit zone — many sell orders here'],
+            ['52-Week High', t.week52_high, R, 'Major ceiling — hard to break above'],
+            ['&#128310; 38.2% Fibonacci', t.fib_382, Y, 'First support — mild bounce expected'],
+            ['&#11088; 50.0% Fibonacci', t.fib_500, Y, 'Most watched level — major bounce zone'],
+            ['&#128994; 61.8% Fibonacci (Golden Ratio)', t.fib_618, G, 'Strongest support — aggressive buyers here'],
+            ['&#128994; Support (20-day)', t.support, G, 'Recent floor — high probability bounce'],
+            ['52-Week Low', t.week52_low, G, 'Major floor — extreme panic price'],
+          ].map(([l,v,c,s]) => `
+          <div class="fibrow">
+            <div><div style="font-size:12px;font-weight:500">${l}</div><div style="font-size:10px;color:${M};margin-top:1px">${s}</div></div>
+            <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:${c}">&#8377;${v}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- ════ 9. ATR-BASED PRICE TARGETS ════ -->
+      <div class="card">
+        <div class="clbl">9. Suggested Price Targets</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+          <div class="pcell"><div class="pcell-l">Target 1</div><div class="pcell-v" style="color:${G}">&#8377;${t.target1}</div><div style="font-size:9px;color:${M};margin-top:2px">+${Math.abs(((t.target1-t.price)/t.price)*100).toFixed(1)}%</div></div>
+          <div class="pcell"><div class="pcell-l">Target 2</div><div class="pcell-v" style="color:${B}">&#8377;${t.target2}</div><div style="font-size:9px;color:${M};margin-top:2px">+${Math.abs(((t.target2-t.price)/t.price)*100).toFixed(1)}%</div></div>
+          <div class="pcell"><div class="pcell-l">Stop Loss</div><div class="pcell-v" style="color:${R}">&#8377;${t.stop_loss}</div><div style="font-size:9px;color:${M};margin-top:2px">-${Math.abs(((t.stop_loss-t.price)/t.price)*100).toFixed(1)}%</div></div>
+        </div>
+        <div class="explain" style="margin-top:8px"><div class="detail">Targets based on 3x and 6x the Average True Range (ATR). These are statistical targets, not guarantees. Always use the stop loss — it's calculated to be outside normal price fluctuation.</div></div>
+      </div>
+
+    </div>`;
+  } catch(e) {
+    m.innerHTML = `<div class="err">&#9888;&#65039; ${e.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// FUNDAMENTAL TAB — Principal First Explanations
+// ═══════════════════════════════════════════════════
+async function loadFundamental() {
+  const m = document.getElementById('main');
+  try {
+    const [pr, fr] = await Promise.all([
+      fetch('/api/price/' + SYM).then(r => r.json()),
+      FUND ? Promise.resolve(FUND) : fetch('/api/fundamental/' + SYM).then(r => r.json()),
+    ]);
+    if (!fr.success) throw new Error(fr.error);
+    FUND = fr;
+
+    const pe_n = parseFloat(fr.pe) || 0;
+    const pe_s = pe_n < 15 ? {t:'Undervalued',c:G} : pe_n < 30 ? {t:'Fair Value',c:Y} : pe_n > 0 ? {t:'Expensive',c:R} : {t:'—',c:M};
+    const roe_n = parseFloat(fr.roe) || 0;
+    const roe_s = roe_n > 20 ? {t:'Excellent',c:G} : roe_n > 12 ? {t:'Good',c:Y} : roe_n > 0 ? {t:'Weak',c:R} : {t:'—',c:M};
+    const de_n = parseFloat(fr.debt_equity) || 0;
+    const de_s = de_n < 0.5 ? {t:'Very Safe',c:G} : de_n < 1 ? {t:'Safe',c:G} : de_n < 2 ? {t:'Moderate',c:Y} : de_n > 0 ? {t:'High Debt',c:R} : {t:'—',c:M};
+
+    let html = '<div class="sec">';
+
+    // Price header
+    if (pr.success) html += `
+      <div class="phero">
+        <div class="psym">${pr.symbol}</div>
+        <div class="pname">${pr.name}</div>
+        <div class="pprice">&#8377;${pr.price.toLocaleString('en-IN')}</div>
+        <div class="pchg ${pr.pct>=0?'up':'down'}">${pr.pct>=0?'&#9650;':'&#9660;'} ${Math.abs(pr.pct)}% today</div>
+        <div class="pgrid" style="margin-top:10px">
+          <div class="pcell"><div class="pcell-l">Market Cap</div><div class="pcell-v" style="font-size:11px">${fmt(fr.mcap)}</div></div>
+          <div class="pcell"><div class="pcell-l">52W High</div><div class="pcell-v" style="font-size:11px">&#8377;${pr.week52_high}</div></div>
+          <div class="pcell"><div class="pcell-l">52W Low</div><div class="pcell-v" style="font-size:11px">&#8377;${pr.week52_low}</div></div>
+        </div>
+      </div>`;
+
+    // ════ VALUATION ════
+    // PRINCIPAL: Is the stock cheap or expensive relative to its earnings?
+    html += `
+      <div class="card">
+        <div class="fsec">Is This Stock Cheap or Expensive?</div>
+        <div class="explain" style="margin-bottom:10px">
+          <div class="principal">&#127919; The most important question in investing: Are you paying a fair price?</div>
+          <div class="detail">Valuation tells you how much you're paying for each rupee of earnings. A cheap stock isn't always a bargain — context matters. Compare these numbers to the industry average for the best insight.</div>
+        </div>
+
+        <div class="frow">
+          <div class="fkey">P/E Ratio (Trailing)<small>How many rupees you pay for &#8377;1 of annual earnings. Lower = cheaper.</small></div>
+          <div><div class="fval">${fmt(fr.pe)}</div><div class="fsig" style="color:${pe_s.c}">${pe_s.t}</div></div>
+        </div>
+        <div style="padding:8px;background:rgba(255,255,255,.025);border-radius:8px;margin-bottom:8px;font-size:12px;color:${M};line-height:1.5">
+          ${pe_n < 15 ? `P/E of ${fr.pe} is below 15 — potentially undervalued. The market may not be fully pricing in future growth. Could be an opportunity.` : pe_n < 30 ? `P/E of ${fr.pe} is fair. You're paying a reasonable price for the earnings.` : pe_n > 0 ? `P/E of ${fr.pe} is above 30 — expensive. The stock needs strong future growth to justify this price.` : 'P/E data not available from this source.'}
+        </div>
+
+        <div class="frow">
+          <div class="fkey">Forward P/E<small>Based on next year's estimated earnings. Lower forward P/E = market expects growth.</small></div>
+          <div class="fval">${fmt(fr.fwd_pe)}</div>
+        </div>
+        <div class="frow">
+          <div class="fkey">PEG Ratio<small>P/E divided by growth rate. Below 1.0 = good value. The best valuation metric.</small></div>
+          <div class="fval">${fmt(fr.peg)}</div>
+        </div>
+        <div class="frow">
+          <div class="fkey">Price/Book (P/B)<small>Price vs net assets. Below 1 = stock trading below its liquidation value.</small></div>
+          <div class="fval">${fmt(fr.pb)}</div>
+        </div>
+        <div class="frow">
+          <div class="fkey">EPS (Earnings Per Share)<small>Rupees of profit generated per share. Higher = better.</small></div>
+          <div class="fval">${fr.eps && fr.eps!='—' ? '&#8377;'+fr.eps : '—'}</div>
+        </div>
+        <div class="frow">
+          <div class="fkey">Dividend Yield<small>Annual dividend income as % of current price. Free income while you hold.</small></div>
+          <div class="fval" style="color:${G}">${fmt(fr.dividend)}</div>
+        </div>
+      </div>
+
+      <!-- ════ GROWTH ════
+           PRINCIPAL: Is this business growing fast enough to justify buying? -->
+      <div class="card">
+        <div class="fsec">Is the Business Growing?</div>
+        <div class="explain" style="margin-bottom:10px">
+          <div class="principal">&#127919; A growing business is worth more tomorrow than today. This section tells you how fast.</div>
+          <div class="detail">Revenue growth shows if the company is winning more customers. Profit growth shows if it's converting sales into real money. CAGR (Compound Annual Growth Rate) shows the sustained growth rate.</div>
+        </div>
+        ${fr.sales_cagr && fr.sales_cagr!='N/A' ? `
+        <div class="frow">
+          <div class="fkey">Sales CAGR (5 Years)<small>Average annual revenue growth over 5 years. Above 15% = strong growth company.</small></div>
+          <div><div class="fval" style="color:${G}">${fr.sales_cagr}</div><div class="fsig" style="color:${G}">per year</div></div>
+        </div>` : ''}
+        ${fr.profit_cagr && fr.profit_cagr!='N/A' ? `
+        <div class="frow">
+          <div class="fkey">Profit CAGR (5 Years)<small>Average annual profit growth. Should ideally grow faster than sales.</small></div>
+          <div><div class="fval" style="color:${G}">${fr.profit_cagr}</div><div class="fsig" style="color:${G}">per year</div></div>
+        </div>` : ''}
+        <div class="frow">
+          <div class="fkey">Total Revenue<small>Total money the business earned this year.</small></div>
+          <div class="fval">${fmt(fr.revenue)}</div>
+        </div>
+        <div class="frow">
+          <div class="fkey">Revenue Growth (YoY)<small>How much more revenue than last year. Above 10% = healthy.</small></div>
+          <div class="fval" style="color:${numCol(fr.rev_growth)}">${fmt(fr.rev_growth)}</div>
+        </div>
+        <div class="frow">
+          <div class="fkey">Profit Margin<small>% of every &#8377;100 in sales that becomes profit. Higher margin = stronger business.</small></div>
+          <div class="fval">${fmt(fr.profit_margin)}</div>
+        </div>
+      </div>
+
+      <!-- ════ QUALITY ════
+           PRINCIPAL: Is management running this company efficiently? -->
+      <div class="card">
+        <div class="fsec">Management Quality & Risk</div>
+        <div class="explain" style="margin-bottom:10px">
+          <div class="principal">&#127919; Key question: Is management generating strong returns from the money invested in this company?</div>
+          <div class="detail">ROE and ROCE are the most important quality metrics. They tell you how efficiently management is using shareholders' money.</div>
+        </div>
+
+        <div class="frow">
+          <div class="fkey">ROE — Return on Equity<small>Profit earned per &#8377;100 of shareholder money. Above 20% = excellent management.</small></div>
+          <div><div class="fval" style="color:${roe_s.c}">${fmt(fr.roe)}</div><div class="fsig" style="color:${roe_s.c}">${roe_s.t}</div></div>
+        </div>
+        <div style="padding:8px;background:rgba(255,255,255,.025);border-radius:8px;margin-bottom:8px;font-size:12px;color:${M};line-height:1.5">
+          ${roe_n > 20 ? `ROE ${fr.roe} = excellent. Management is generating strong returns. For every &#8377;100 invested, shareholders earn &#8377;${Math.round(roe_n)} per year.` : roe_n > 12 ? `ROE ${fr.roe} = decent. Business is profitable but could be more efficient.` : roe_n > 0 ? `ROE ${fr.roe} is below average. Management should focus on improving how they deploy capital.` : 'ROE data unavailable.'}
+        </div>
+
+        ${fr.roce && fr.roce!='N/A' ? `
+        <div class="frow">
+          <div class="fkey">ROCE — Return on Capital Employed<small>Profit vs total capital (equity + debt). Above 15% = business earns more than cost of capital.</small></div>
+          <div><div class="fval" style="color:${parseFloat(fr.roce)>15?G:Y}">${fmt(fr.roce)}</div></div>
+        </div>` : ''}
+
+        <div class="frow">
+          <div class="fkey">Debt / Equity Ratio<small>How much debt vs equity. Below 0.5 = very safe. Above 2.0 = risky in downturns.</small></div>
+          <div><div class="fval" style="color:${de_s.c}">${fmt(fr.debt_equity)}</div><div class="fsig" style="color:${de_s.c}">${de_s.t}</div></div>
+        </div>
+        <div class="frow">
+          <div class="fkey">Current Ratio<small>Current assets vs current liabilities. Above 1.5 = company can easily pay short-term bills.</small></div>
+          <div class="fval" style="color:${parseFloat(fr.current_ratio)>=1.5?G:parseFloat(fr.current_ratio)>=1?Y:R}">${fmt(fr.current_ratio)}</div>
+        </div>
+      </div>`;
+
+    // ════ SHAREHOLDING ════
+    // PRINCIPAL: Who owns this stock and are insiders buying or selling?
+    const holdData = [
+      ['Promoter / Insider Holding', fr.promoter, G, 'Founders & management stake. Above 50% = strong conviction.'],
+      ['Public / Retail Holding', fr.public, Y, 'Retail investor ownership.'],
+      ['FII — Foreign Investors', fr.fii, B, 'Foreign institutional investors (Goldman Sachs, BlackRock etc.)'],
+      ['DII — Domestic Funds', fr.dii, '#8b5cf6', 'Indian funds like LIC, Mutual Funds, NPS.'],
+    ].filter(x => x[1] && x[1] !== 'N/A' && x[1] !== '—');
+
+    if (holdData.length) {
+      html += `
+        <div class="card">
+          <div class="fsec">Shareholding Pattern</div>
+          <div class="explain" style="margin-bottom:12px">
+            <div class="principal">&#127919; Most important signal: Are promoters (insiders) increasing or decreasing their stake?</div>
+            <div class="detail">High promoter holding means management has skin in the game — they win when shareholders win. FII buying signals foreign confidence in the company. Watch for quarterly changes: rising promoter % is bullish, declining is a red flag.</div>
+          </div>
+          ${holdData.map(([l,v,c,s]) => `
+          <div class="hbar-item">
+            <div class="hbar-hdr"><span style="font-size:13px;font-weight:500">${l}</span><span style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;color:${c}">${v}</span></div>
+            <div class="hbar-wrap"><div class="hbar" style="width:${Math.min(parseFloat(v)||0,100)}%;background:${c}"></div></div>
+            <div style="font-size:10px;color:${M};margin-top:2px">${s}</div>
+          </div>`).join('')}
+        </div>`;
+    }
+
+    html += `<div style="padding:4px 0 8px;text-align:right;font-size:10px;color:${M}">Source: ${fr.source || 'Yahoo Finance'}</div>`;
+    html += '</div>';
+    m.innerHTML = html;
+
+  } catch(e) {
+    m.innerHTML = `<div class="err">&#9888;&#65039; ${e.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// SENTIMENT TAB
+// ═══════════════════════════════════════════════════
+async function loadSentiment() {
+  const m = document.getElementById('main');
+  try {
+    const d = await fetch('/api/sentiment/' + SYM).then(r => r.json());
+    if (!d.success) throw new Error(d.error);
+    m.innerHTML = `
+    <div class="sec">
+      <div class="card">
+        <div class="clbl">Market Sentiment: ${d.symbol}</div>
+        <div class="explain" style="margin-bottom:14px">
+          <div class="principal">&#127919; Key question: What is the general mood of news media and retail traders about this stock?</div>
+          <div class="detail">We scan headlines from 4 sources and count bullish words (buy, surge, rally, strong) vs bearish words (sell, crash, weak, decline). This shows the current market narrative.</div>
+        </div>
+        ${d.sources.map(s => `
+        <div class="si">
+          <div class="si-hdr">
+            <span style="font-size:13px;font-weight:500">${s.source}</span>
+            <span style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:${s.score==='Bullish'?G:s.score==='Bearish'?R:Y}">${s.score}</span>
+          </div>
+          ${s.bull+s.bear>0?`
+          <div class="si-bar-wrap"><div class="si-bar" style="width:${s.bull}%;background:${G}"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:${M};margin-top:3px"><span>&#128994; ${s.bull}% Bull (${s.count} items)</span><span>&#128308; ${s.bear}% Bear</span></div>`
+          :`<div style="font-size:12px;color:${M}">${s.count} items scanned — no strong signal words found</div>`}
+        </div>`).join('')}
+        <div class="si-overall">
+          <div>
+            <div style="font-size:12px;color:${M}">Overall Sentiment</div>
+            <div style="font-size:11px;color:${M};margin-top:1px">${d.sources.filter(s=>s.bull+s.bear>0).length} of 4 sources returned data</div>
+          </div>
+          <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:${d.overall==='Bullish'?G:d.overall==='Bearish'?R:Y}">${d.overall} (${d.avg_bull}%)</div>
+        </div>
+        <div class="explain" style="margin-top:10px">
+          <div class="detail">${d.avg_bull>65?'&#128200; Bullish media momentum often precedes price moves. Use this as confirmation alongside your technical analysis.':d.avg_bull<40?'&#128201; Negative coverage can be a contrarian opportunity — markets often overreact to bad news. But be cautious.':'Neutral/mixed sentiment. Let technical indicators guide your decision.'}</div>
+        </div>
+      </div>
+    </div>`;
+  } catch(e) { m.innerHTML = `<div class="err">&#9888;&#65039; ${e.message}</div>`; }
+}
+
+// ═══════════════════════════════════════════════════
+// NEWS TAB
+// ═══════════════════════════════════════════════════
+async function loadNews() {
+  const m = document.getElementById('main');
+  try {
+    const d = await fetch('/api/news/' + SYM).then(r => r.json());
+    if (!d.success) throw new Error(d.error);
+    m.innerHTML = `
+    <div class="sec"><div class="card">
+      <div class="clbl">Latest News: ${SYM}</div>
+      ${d.news.length ? d.news.map(n => `
+      <div class="ni">
+        <a href="${n.link}" target="_blank">${n.title}</a>
+        <div style="font-size:11px;color:${M}">${n.date}</div>
+      </div>`).join('') : '<div style="text-align:center;padding:20px;color:'+M+'">No recent news found</div>'}
+    </div></div>`;
+  } catch(e) { m.innerHTML = `<div class="err">&#9888;&#65039; ${e.message}</div>`; }
+}
+
+// ═══════════════════════════════════════════════════
+// INSIDER TRADES
+// ═══════════════════════════════════════════════════
+async function loadTrades() {
+  const el = document.getElementById('tradesEl');
+  if (!el) return;
+  try {
+    const resp = await fetch('/api/insider-trades');
+    const txt = await resp.text();
+    let d;
+    try { d = JSON.parse(txt); } catch(e) { throw new Error('Server error: ' + txt.substring(0,150)); }
+    if (!d.success) throw new Error(d.error);
+    const alerts = d.trades.filter(t => t.alert);
+    let html = '';
+    if (alerts.length) html += `<div style="padding:8px 10px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:10px;font-size:12px;color:${Y}">&#128680; ${alerts.length} large trades today (over &#8377;5 Lakh)</div>`;
+    html += d.trades.slice(0,20).map(t => {
+      const tc = t.transaction.toLowerCase();
+      const cls = tc.includes('buy') ? 'tbuy' : tc.includes('sell') ? 'tsell' : 'tother';
+      const vc = tc.includes('buy') ? G : tc.includes('sell') ? R : Y;
+      return `<div class="ti">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="ti-sym">${t.symbol}${t.alert?'<span style="font-size:10px;color:'+Y+';margin-left:4px">&#128680;</span>':''}</span>
+          <span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px" class="${cls}">${t.transaction}</span>
+        </div>
+        <div style="font-size:12px;color:${M};margin-top:2px">${t.name}</div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:${vc}">&#8377;${t.value.toLocaleString('en-IN')}</div>
+          <div style="font-size:11px;color:${M};align-self:center">${t.date}</div>
+        </div>
+      </div>`;
+    }).join('');
+    el.innerHTML = html || `<div style="text-align:center;padding:16px;color:${M}">No trades loaded</div>`;
+  } catch(e) {
+    if (el) el.innerHTML = `<div style="font-size:12px;color:${M};text-align:center;padding:16px">${e.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════════════
+function goHome() {
+  document.getElementById('tabsRow').style.display = 'none';
+  document.getElementById('main').innerHTML = `
+  <div class="sec" id="homeSection">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div onclick="showSection('insider')" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer">
+        <div style="font-size:20px;margin-bottom:6px">&#128276;</div>
+        <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700">Insider Trades</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Who is buying/selling</div>
+      </div>
+      <div onclick="showSection('promoter')" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer">
+        <div style="font-size:20px;margin-bottom:6px">&#128084;</div>
+        <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700">Promoter Activity</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Management buying/selling</div>
+      </div>
+      <div onclick="showSection('fii')" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer">
+        <div style="font-size:20px;margin-bottom:6px">&#127970;</div>
+        <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700">FII / DII Activity</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Foreign & domestic flows</div>
+      </div>
+      <div onclick="showSection('geo')" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer">
+        <div style="font-size:20px;margin-bottom:6px">&#127758;</div>
+        <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700">Geopolitical Impact</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Macro news + AI analysis</div>
+      </div>
+    </div>
+    <div onclick="showSection('watchlist')" style="background:var(--card);border:1.5px solid var(--blue);border-radius:var(--r);padding:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">&#128203;</div>
+      <div>
+        <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--blue)">My Watchlist — 16 Stocks</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Live analysis of your Excel stock list · Click for BUY/HOLD/SELL signals</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    </div>
+    <div class="card" id="insiderCard">
+      <div class="clbl">&#128680; NSE Insider Trades — Today</div>
+      <div id="tradesEl"><div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+    </div>
+  </div>`;
+  loadTrades();
+}
+
+// ═══════════════════════════════════════════════════
+// HOME SECTION SWITCHER
+// ═══════════════════════════════════════════════════
+async function showSection(type) {
+  const card = document.getElementById('insiderCard');
+  if (!card) return;
+  if (type === 'insider') {
+    card.innerHTML = '<div class="clbl">&#128680; NSE Insider Trades — Today (sorted by value)</div><div id="tradesEl"><div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>';
+    loadTrades();
+    return;
+  }
+  if (type === 'promoter') {
+    card.innerHTML = '<div class="clbl">&#128084; Promoter Activity — Management Buying/Selling</div><div id="tradesEl"><div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>';
+    loadPromoterActivity();
+    return;
+  }
+  if (type === 'fii') {
+    card.innerHTML = '<div class="clbl">&#127970; FII / DII Daily Flow</div><div id="tradesEl"><div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>';
+    loadFiiDii();
+    return;
+  }
+  if (type === 'geo') {
+    card.innerHTML = '<div class="clbl">&#127758; Geopolitical & Macro Impact Analysis</div><div id="tradesEl"><div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>';
+    loadGeopolitical();
+    return;
+  }
+  if (type === 'watchlist') {
+    card.innerHTML = '<div class="clbl">&#128203; My Watchlist — 16 Stocks Analysis</div><div id="tradesEl"><div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>';
+    loadWatchlist();
+  }
+}
+
+async function loadPromoterActivity() {
+  const el = document.getElementById('tradesEl');
+  if (!el) return;
+  try {
+    const resp = await fetch('/api/promoter-activity');
+    const txt = await resp.text();
+    let d;
+    try { d = JSON.parse(txt); } catch(e) { throw new Error('Server error: ' + txt.substring(0,200)); }
+    if (!d.success) throw new Error(d.error);
+    if (!d.trades.length) { el.innerHTML = '<div style="padding:16px;text-align:center;color:'+M+'">No promoter trades found today</div>'; return; }
+    const buys  = d.trades.filter(t => t.transaction.toLowerCase().includes('buy'));
+    const sells = d.trades.filter(t => t.transaction.toLowerCase().includes('sell'));
+    let html = `<div style="font-size:12px;color:${M};margin-bottom:12px">${d.total} promoter/director trades found today. When insiders buy, it often signals confidence in the company's future.</div>`;
+    if (buys.length) {
+      html += `<div style="font-size:11px;font-family:Syne,sans-serif;font-weight:700;color:${G};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">&#9650; Promoters Buying (${buys.length})</div>`;
+      html += buys.slice(0,10).map(t => `
+        <div class="ti">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="ti-sym">${t.symbol}</span>
+            <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:rgba(16,185,129,.12);color:${G};font-weight:700">BUY</span>
+          </div>
+          <div style="font-size:12px;color:${M};margin-top:2px">${t.name} · ${t.category}</div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:${G}">&#8377;${t.value.toLocaleString('en-IN')}</div>
+            <div style="font-size:11px;color:${M}">${t.date}</div>
+          </div>
+        </div>`).join('');
+    }
+    if (sells.length) {
+      html += `<div style="font-size:11px;font-family:Syne,sans-serif;font-weight:700;color:${R};text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px">&#9660; Promoters Selling (${sells.length})</div>`;
+      html += sells.slice(0,10).map(t => `
+        <div class="ti">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="ti-sym">${t.symbol}</span>
+            <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:rgba(239,68,68,.12);color:${R};font-weight:700">SELL</span>
+          </div>
+          <div style="font-size:12px;color:${M};margin-top:2px">${t.name} · ${t.category}</div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:${R}">&#8377;${t.value.toLocaleString('en-IN')}</div>
+            <div style="font-size:11px;color:${M}">${t.date}</div>
+          </div>
+        </div>`).join('');
+    }
+    el.innerHTML = html;
+  } catch(e) {
+    if (el) el.innerHTML = `<div style="font-size:12px;color:${M};text-align:center;padding:16px">${e.message}</div>`;
+  }
+}
+
+async function loadFiiDii() {
+  const el = document.getElementById('tradesEl');
+  if (!el) return;
+  try {
+    const resp = await fetch('/api/fii-dii');
+    const txt = await resp.text();
+    let d;
+    try { d = JSON.parse(txt); } catch(e) { throw new Error('Server error: ' + txt.substring(0,200)); }
+    if (!d.success) {
+      el.innerHTML = `<div style="font-size:12px;color:${M};padding:12px;line-height:1.6">
+        <div style="font-weight:600;color:var(--text);margin-bottom:8px">&#127970; What is FII/DII?</div>
+        <div style="margin-bottom:8px"><b style="color:${G}">FII (Foreign Institutional Investors)</b> — Goldman Sachs, BlackRock, JP Morgan. When they buy India, it means global confidence is high.</div>
+        <div style="margin-bottom:8px"><b style="color:${B}">DII (Domestic Institutional Investors)</b> — LIC, SBI MF, HDFC MF. Indian funds buying is very bullish for local market.</div>
+        <div style="padding:10px;background:rgba(239,68,68,.07);border-radius:8px;color:${R}">NSE is blocking automated FII/DII data. Check live at:<br>&#128279; <a href="https://www.nseindia.com/market-data/fii-dii-activity" target="_blank" style="color:${B}">nseindia.com/market-data/fii-dii-activity</a></div>
+        <div style="margin-top:8px;padding:10px;background:rgba(59,130,246,.06);border-radius:8px">Also check: <a href="https://www.moneycontrol.com/markets/fii-dii-activity/" target="_blank" style="color:${B}">moneycontrol.com/markets/fii-dii-activity</a></div>
+      </div>`;
+      return;
+    }
+    let html = `<div style="font-size:12px;color:${M};margin-bottom:12px">Net = Buy minus Sell. Green = net buyers (bullish for market). Red = net sellers (bearish signal).</div>`;
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="padding:10px;background:rgba(255,255,255,.03);border-radius:8px;text-align:center">
+        <div style="font-size:10px;color:${M};font-family:Syne,sans-serif;margin-bottom:4px">FII NET TODAY</div>
+        <div style="font-family:Syne,sans-serif;font-size:16px;font-weight:800;color:${d.data[0].fii_net>=0?G:R}">&#8377;${d.data[0].fii_net.toFixed(0)} Cr</div>
+        <div style="font-size:10px;color:${d.data[0].fii_net>=0?G:R};margin-top:2px">${d.data[0].fii_net>=0?'NET BUYER':'NET SELLER'}</div>
+      </div>
+      <div style="padding:10px;background:rgba(255,255,255,.03);border-radius:8px;text-align:center">
+        <div style="font-size:10px;color:${M};font-family:Syne,sans-serif;margin-bottom:4px">DII NET TODAY</div>
+        <div style="font-family:Syne,sans-serif;font-size:16px;font-weight:800;color:${d.data[0].dii_net>=0?G:R}">&#8377;${d.data[0].dii_net.toFixed(0)} Cr</div>
+        <div style="font-size:10px;color:${d.data[0].dii_net>=0?G:R};margin-top:2px">${d.data[0].dii_net>=0?'NET BUYER':'NET SELLER'}</div>
+      </div>
+    </div>`;
+    html += `<div style="font-size:11px;font-family:Syne,sans-serif;font-weight:700;color:${M};letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">Last 10 Days</div>`;
+    html += d.data.map(row => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:12px;color:${M};width:80px">${row.date}</div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:10px;color:${M}">FII</div>
+          <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:${row.fii_net>=0?G:R}">&#8377;${row.fii_net.toFixed(0)}Cr</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:10px;color:${M}">DII</div>
+          <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:${row.dii_net>=0?G:R}">&#8377;${row.dii_net.toFixed(0)}Cr</div>
+        </div>
+        <div style="font-size:10px;color:${(row.fii_net+row.dii_net)>=0?G:R};width:60px;text-align:right">${(row.fii_net+row.dii_net)>=0?'Net IN':'Net OUT'}</div>
+      </div>`).join('');
+    el.innerHTML = html;
+  } catch(e) {
+    if (el) el.innerHTML = `<div style="font-size:12px;color:${M};text-align:center;padding:16px">${e.message}</div>`;
+  }
+}
+
+async function loadGeopolitical() {
+  const el = document.getElementById('tradesEl');
+  if (!el) return;
+  el.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:16px">&#127758; Fetching latest geopolitical news & running AI analysis...<br><small>This takes 10-15 seconds</small></div>';
+  try {
+    const resp = await fetch('/api/geopolitical');
+    const txt = await resp.text();
+    let d;
+    try { d = JSON.parse(txt); } catch(e) { throw new Error('Server error: ' + txt.substring(0,200)); }
+    if (!d.success) throw new Error(d.error);
+    let html = '';
+
+    // AI Analysis first (principal first!)
+    if (d.ai_analysis) {
+      html += `<div style="padding:12px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:10px;margin-bottom:12px">
+        <div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700;color:${B};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">&#129504; AI Market Impact Analysis</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-line">${d.ai_analysis}</div>
+      </div>`;
+    }
+
+    // Sectors impacted
+    if (Object.keys(d.sectors_impacted).length) {
+      html += `<div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700;color:${Y};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">&#127919; Sectors in the News</div>`;
+      for (const [sector, news] of Object.entries(d.sectors_impacted)) {
+        html += `<div style="padding:8px;background:rgba(255,255,255,.025);border-radius:8px;margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text)">${sector}</div>
+          ${news.map(n => `<div style="font-size:11px;color:${M};margin-top:3px">&#8250; ${n}</div>`).join('')}
+        </div>`;
+      }
+    }
+
+    // Latest news
+    html += `<div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700;color:${M};text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px">&#128240; Latest Headlines</div>`;
+    html += d.news.map(n => `
+      <div class="ni">
+        <a href="${n.link}" target="_blank">${n.title}</a>
+        <div style="font-size:11px;color:${M}">${n.date} · ${n.query || ''}</div>
+      </div>`).join('');
+
+    el.innerHTML = html;
+  } catch(e) {
+    if (el) el.innerHTML = `<div style="font-size:12px;color:${M};padding:16px">${e.message}</div>`;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════
+// WATCHLIST — 16 stocks from Excel
+// ═══════════════════════════════════════════════════
+async function loadWatchlist() {
+  const el = document.getElementById('tradesEl');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">&#8987; Loading live data for 16 stocks... (takes ~15 seconds)</div>';
+  try {
+    const resp = await fetch('/api/watchlist');
+    const txt  = await resp.text();
+    let d;
+    try { d = JSON.parse(txt); } catch(e) { throw new Error('Server error: ' + txt.substring(0,150)); }
+    if (!d.success) throw new Error(d.error);
+
+    const s = d.summary;
+    const signalCol = {"STRONG BUY":"var(--green)","BUY":"var(--green)","HOLD":"var(--yellow)","SELL":"var(--red)","STRONG SELL":"var(--red)","N/A":"var(--muted)"};
+
+    let html = `
+      <!-- Summary bar -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--green)">${s.strong_buy+s.buy}</div>
+          <div style="font-size:10px;color:var(--muted)">BUY signals</div>
+        </div>
+        <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--yellow)">${s.hold}</div>
+          <div style="font-size:10px;color:var(--muted)">HOLD</div>
+        </div>
+        <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--red)">${s.sell}</div>
+          <div style="font-size:10px;color:var(--muted)">SELL signals</div>
+        </div>
+        <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--blue)">${s.gainers}/${s.losers}</div>
+          <div style="font-size:10px;color:var(--muted)">Up / Down</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Tap any stock for full AI verdict (BUY MORE / HOLD / REDUCE / EXIT)</div>`;
+
+    html += d.stocks.map(stock => {
+      const pnl     = stock.pnl_pct;
+      const pnlCol  = pnl > 0 ? 'var(--green)' : pnl < 0 ? 'var(--red)' : 'var(--muted)';
+      const sigCol  = signalCol[stock.signal] || 'var(--muted)';
+      const hasData = stock.live_price !== null;
+      return `
+        <div onclick="loadWatchlistVerdict('${stock.symbol}')" style="padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <span style="font-family:Syne,sans-serif;font-size:13px;font-weight:800;color:var(--blue)">${stock.symbol}</span>
+              <span style="font-size:11px;color:var(--muted);margin-left:6px">${stock.name}</span>
+            </div>
+            <span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;background:${sigCol}22;color:${sigCol}">${stock.signal}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px">
+            <div>
+              <div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700">${hasData ? '&#8377;'+stock.live_price.toLocaleString('en-IN') : 'Loading...'}</div>
+              <div style="font-size:10px;color:var(--muted)">Ref: &#8377;${stock.ref_price} &nbsp;|&nbsp; Promoter: ${stock.promoter}%</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:${pnlCol}">${pnl !== null ? (pnl > 0 ? '+' : '')+pnl+'%' : '—'}</div>
+              <div style="font-size:10px;color:var(--muted)">${stock.rsi ? 'RSI: '+stock.rsi : ''} ${stock.bull_score ? '| Score: '+stock.bull_score+'%' : ''}</div>
+            </div>
+          </div>
+          ${stock.error ? `<div style="font-size:10px;color:var(--red);margin-top:3px">Error: ${stock.error}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    el.innerHTML = html;
+  } catch(e) {
+    if (el) el.innerHTML = `<div style="font-size:12px;color:var(--red);padding:16px;text-align:center">${e.message}</div>`;
+  }
+}
+
+async function loadWatchlistVerdict(symbol) {
+  const m = document.getElementById('main');
+  // Switch to verdict-like view
+  document.getElementById('tabsRow').style.display = 'flex';
+  document.getElementById('inp').value = symbol;
+  SYM = symbol;
+  m.innerHTML = '<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+
+  try {
+    const resp = await fetch('/api/watchlist/verdict/' + symbol);
+    const txt  = await resp.text();
+    let d;
+    try { d = JSON.parse(txt); } catch(e) { throw new Error('Server error: ' + txt.substring(0,150)); }
+    if (!d.success) throw new Error(d.error);
+
+    const pnlCol = d.pnl_pct > 0 ? 'var(--green)' : d.pnl_pct < 0 ? 'var(--red)' : 'var(--muted)';
+    const actCol = d.action.includes('BUY') ? 'var(--green)' : d.action.includes('EXIT') || d.action.includes('REDUCE') ? 'var(--red)' : 'var(--yellow)';
+    const t = d.tech;
+
+    m.innerHTML = `<div class="sec">
+
+      <!-- Stock header -->
+      <div class="phero">
+        <div class="psym">${d.symbol}</div>
+        <div class="pname">${d.name}</div>
+        <div class="pprice">&#8377;${d.live_price.toLocaleString('en-IN')}</div>
+        <div class="pchg" style="color:${pnlCol}">${d.pnl_pct > 0 ? '+' : ''}${d.pnl_pct}% vs your reference price (&#8377;${d.ref_price})</div>
+        <div class="pgrid" style="margin-top:10px">
+          <div class="pcell"><div class="pcell-l">Your Ref Price</div><div class="pcell-v" style="font-size:12px">&#8377;${d.ref_price}</div></div>
+          <div class="pcell"><div class="pcell-l">Target</div><div class="pcell-v" style="color:var(--green);font-size:12px">&#8377;${d.target}</div></div>
+          <div class="pcell"><div class="pcell-l">Stop Loss</div><div class="pcell-v" style="color:var(--red);font-size:12px">&#8377;${d.stop_loss}</div></div>
+        </div>
+      </div>
+
+      <!-- Action verdict -->
+      <div style="background:${actCol}15;border:1px solid ${actCol}44;border-radius:var(--r);padding:16px;margin-bottom:10px;text-align:center">
+        <div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:${actCol};margin-bottom:6px">${d.action}</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6;text-align:left">${d.reasoning.replace(/\n/g,'<br>')}</div>
+      </div>
+
+      <!-- Technical snapshot -->
+      <div class="card">
+        <div class="clbl">Technical Snapshot</div>
+        <div class="sbar-wrap">
+          <div class="sbar-top"><span>Bullish Score</span><span style="font-weight:700">${t.bull_score}%</span></div>
+          <div class="sbar"><div class="sfill" style="width:${t.bull_score}%"></div></div>
+          <div class="spill" style="background:${t.bull_score>=57?'rgba(16,185,129,.12)':t.bull_score>=43?'rgba(245,158,11,.12)':'rgba(239,68,68,.12)'};color:${t.bull_score>=57?'var(--green)':t.bull_score>=43?'var(--yellow)':'var(--red)'}">${t.signal}</div>
+        </div>
+        <div class="igrid" style="margin-top:10px">
+          <div class="ibox"><div class="ilbl">RSI</div><div class="ival" style="color:${t.rsi>=70?'var(--red)':t.rsi<=30?'var(--green)':'var(--yellow)'}">${t.rsi}</div><div class="isig">${t.rsi<=30?'Oversold':t.rsi>=70?'Overbought':'Neutral'}</div></div>
+          <div class="ibox"><div class="ilbl">MACD</div><div class="ival" style="color:${t.macd_hist>0?'var(--green)':'var(--red)'}">${t.macd_hist>0?'Bull':'Bear'}</div><div class="isig">${t.macd_hist}</div></div>
+          <div class="ibox"><div class="ilbl">ADX</div><div class="ival" style="color:${t.adx>=25?'var(--green)':'var(--muted)'}">${t.adx}</div><div class="isig">${t.adx>=25?'Strong':'Weak'}</div></div>
+          <div class="ibox"><div class="ilbl">SAR</div><div class="ival" style="color:${t.price>t.sar?'var(--green)':'var(--red)'}">${t.price>t.sar?'BUY':'SELL'}</div><div class="isig">&#8377;${t.sar}</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px;background:rgba(255,255,255,.025);border-radius:8px;margin-top:8px;font-size:12px">
+          <div><div style="font-size:10px;color:var(--muted)">SUPPORT</div><div style="font-family:Syne,sans-serif;font-weight:700;color:var(--green)">&#8377;${t.support}</div></div>
+          <div style="color:var(--muted)">Now &#8377;${t.price}</div>
+          <div style="text-align:right"><div style="font-size:10px;color:var(--muted)">RESISTANCE</div><div style="font-family:Syne,sans-serif;font-weight:700;color:var(--red)">&#8377;${t.resistance}</div></div>
+        </div>
+      </div>
+
+      <button onclick="goHome()" style="width:100%;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:Syne,sans-serif;font-weight:700;cursor:pointer;font-size:13px">&#8592; Back to Watchlist</button>
+
+    </div>`;
+  } catch(e) {
+    m.innerHTML = `<div class="err">&#9888;&#65039; ${e.message}</div>`;
+  }
+}
+
+</script>
+</body>
+</html>
