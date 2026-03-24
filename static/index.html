@@ -168,6 +168,59 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 .fibrow:last-child{border:none}
 
 .up{color:var(--green)}.down{color:var(--red)}
+
+/* ── Portfolio & Screener styles ── */
+.page{padding:0 16px}
+.page-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-top:4px}
+.page-hdr-title{font-family:Syne,sans-serif;font-size:18px;font-weight:800}
+.back-btn{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:12px;cursor:pointer;font-family:Syne,sans-serif;font-weight:700}
+
+/* Portfolio cards */
+.pf-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.pf-sum-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.pf-sum-lbl{font-size:10px;color:var(--muted);font-family:Syne,sans-serif;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.pf-sum-val{font-family:Syne,sans-serif;font-size:20px;font-weight:800}
+.holding-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:8px}
+.hc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.hc-sym{font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:var(--blue)}
+.hc-pnl{font-family:Syne,sans-serif;font-size:14px;font-weight:800}
+.hc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.hc-cell{text-align:center}
+.hc-cell-l{font-size:10px;color:var(--muted);margin-bottom:2px}
+.hc-cell-v{font-family:Syne,sans-serif;font-size:12px;font-weight:700}
+.delete-btn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:4px 10px;color:var(--red);font-size:11px;cursor:pointer;font-family:Syne,sans-serif}
+
+/* Add holding form */
+.add-form{background:var(--card);border:1px solid rgba(59,130,246,.3);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.form-inp{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;width:100%;font-family:Syne,sans-serif;font-weight:600;text-transform:uppercase;outline:none}
+.form-inp::placeholder{text-transform:none;font-family:Inter,sans-serif;font-weight:400;font-size:12px}
+.form-inp:focus{border-color:var(--blue)}
+.form-lbl{font-size:10px;color:var(--muted);font-family:Syne,sans-serif;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.submit-btn{background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;border:none;border-radius:9px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;width:100%;font-family:Syne,sans-serif}
+
+/* Screener */
+.filter-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:12px}
+.filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.filter-item label{font-size:10px;color:var(--muted);font-family:Syne,sans-serif;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px}
+.filter-item input{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:13px;width:100%;outline:none;font-family:Syne,sans-serif;font-weight:700}
+.filter-item input:focus{border-color:var(--blue)}
+.screen-run-btn{width:100%;background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;border:none;border-radius:9px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;margin-top:8px;font-family:Syne,sans-serif}
+.screen-table{overflow-x:auto}
+.screen-row{display:grid;grid-template-columns:90px 70px 50px 50px 60px 70px;gap:4px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center;font-size:12px}
+.screen-hdr{font-size:10px;color:var(--muted);font-family:Syne,sans-serif;font-weight:700;text-transform:uppercase}
+.screen-sym{font-family:Syne,sans-serif;font-weight:800;color:var(--blue);cursor:pointer}
+
+/* Alert cards */
+.alert-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:8px}
+.alert-triggered{border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.05)}
+.alert-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.alert-sym{font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:var(--blue)}
+.alert-status{font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px}
+.alert-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.alert-item{text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:8px}
+.alert-item-l{font-size:10px;color:var(--muted);margin-bottom:2px}
+.alert-item-v{font-family:Syne,sans-serif;font-size:13px;font-weight:700}
 </style>
 </head>
 <body>
@@ -263,9 +316,11 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 
 <!-- BOTTOM NAV -->
 <div class="bnav">
-  <div class="bni" onclick="goHome()"><div class="bni-icon">🏠</div><div class="bni-lbl">Home</div></div>
-  <div class="bni" onclick="focusSearch()"><div class="bni-icon">🔍</div><div class="bni-lbl">Search</div></div>
-  <div class="bni" onclick="loadTrades()"><div class="bni-icon">🔔</div><div class="bni-lbl">Alerts</div></div>
+  <div class="bni" id="bn-home" onclick="goHome()"><div class="bni-icon">&#127968;</div><div class="bni-lbl">Home</div></div>
+  <div class="bni" id="bn-search" onclick="focusSearch()"><div class="bni-icon">&#128269;</div><div class="bni-lbl">Search</div></div>
+  <div class="bni" id="bn-portfolio" onclick="showPortfolioPage()"><div class="bni-icon">&#128200;</div><div class="bni-lbl">Portfolio</div></div>
+  <div class="bni" id="bn-screener" onclick="showScreenerPage()"><div class="bni-icon">&#128202;</div><div class="bni-lbl">Screener</div></div>
+  <div class="bni" id="bn-palerts" onclick="showAlertsPage()"><div class="bni-icon">&#128276;</div><div class="bni-lbl">Alerts</div></div>
 </div>
 
 <script>
@@ -1306,6 +1361,257 @@ async function loadWatchlistVerdict(symbol) {
   } catch(e) {
     m.innerHTML = `<div class="err">&#9888;&#65039; ${e.message}</div>`;
   }
+}
+
+
+// ═══════════════════════════════════════════════════
+// PORTFOLIO PAGE
+// ═══════════════════════════════════════════════════
+function setActiveBn(id){
+  document.querySelectorAll('.bni').forEach(b=>b.style.opacity='0.5');
+  const el=document.getElementById(id);
+  if(el)el.style.opacity='1';
+}
+
+async function showPortfolioPage(){
+  setActiveBn('bn-portfolio');
+  document.getElementById('tabsRow').style.display='none';
+  const m=document.getElementById('main');
+  m.innerHTML=`<div class="page">
+    <div class="page-hdr">
+      <button class="back-btn" onclick="goHome()">&#8592; Home</button>
+      <div class="page-hdr-title">&#128200; My Portfolio</div>
+    </div>
+    <!-- Add holding form -->
+    <div class="add-form">
+      <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px">+ Add / Update Holding</div>
+      <div class="form-row">
+        <div><div class="form-lbl">Symbol</div><input class="form-inp" id="pf-sym" placeholder="e.g. RELIANCE" /></div>
+        <div><div class="form-lbl">Company Name</div><input class="form-inp" id="pf-name" placeholder="e.g. Reliance Industries" style="text-transform:none" /></div>
+      </div>
+      <div class="form-row">
+        <div><div class="form-lbl">Quantity (shares)</div><input class="form-inp" id="pf-qty" type="number" placeholder="e.g. 10" style="text-transform:none" /></div>
+        <div><div class="form-lbl">Buy Price (&#8377;)</div><input class="form-inp" id="pf-price" type="number" placeholder="e.g. 2500" style="text-transform:none" /></div>
+      </div>
+      <button class="submit-btn" onclick="addHolding()">Add to Portfolio</button>
+    </div>
+    <div id="pf-content"><div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+  </div>`;
+  loadPortfolio();
+}
+
+async function loadPortfolio(){
+  const el=document.getElementById('pf-content');
+  if(!el)return;
+  try{
+    const resp=await fetch('/api/portfolio');
+    const d=await resp.json();
+    if(!d.success)throw new Error(d.error);
+    if(!d.holdings.length){
+      el.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">No holdings yet. Add your first stock above!</div>';
+      return;
+    }
+    const pnlCol=d.total_pnl>=0?'var(--green)':'var(--red)';
+    let html=`<div class="pf-summary">
+      <div class="pf-sum-card"><div class="pf-sum-lbl">Total Invested</div><div class="pf-sum-val">&#8377;${d.total_invested.toLocaleString('en-IN')}</div></div>
+      <div class="pf-sum-card"><div class="pf-sum-lbl">Current Value</div><div class="pf-sum-val">&#8377;${d.total_current.toLocaleString('en-IN')}</div></div>
+      <div class="pf-sum-card"><div class="pf-sum-lbl">Total P&L</div><div class="pf-sum-val" style="color:${pnlCol}">${d.total_pnl>=0?'+':''}&#8377;${d.total_pnl.toLocaleString('en-IN')}</div></div>
+      <div class="pf-sum-card"><div class="pf-sum-lbl">Returns</div><div class="pf-sum-val" style="color:${pnlCol}">${d.total_pnl_pct>=0?'+':''}${d.total_pnl_pct}%</div></div>
+    </div>`;
+    html+=d.holdings.map(h=>{
+      const pc=h.pnl_pct;
+      const pc2=(h.pnl||0)>=0?'var(--green)':'var(--red)';
+      return `<div class="holding-card">
+        <div class="hc-top">
+          <div><span class="hc-sym" onclick="qs('${h.symbol}')">${h.symbol}</span><span style="font-size:11px;color:var(--muted);margin-left:6px">${h.name||''}</span></div>
+          <div class="hc-pnl" style="color:${pc2}">${pc>=0?'+':''}${pc}%</div>
+        </div>
+        <div class="hc-grid">
+          <div class="hc-cell"><div class="hc-cell-l">Qty</div><div class="hc-cell-v">${h.qty}</div></div>
+          <div class="hc-cell"><div class="hc-cell-l">Buy Price</div><div class="hc-cell-v">&#8377;${h.buy_price}</div></div>
+          <div class="hc-cell"><div class="hc-cell-l">Live Price</div><div class="hc-cell-v" style="color:${pc2}">${h.live_price?'&#8377;'+h.live_price:'...'}</div></div>
+          <div class="hc-cell"><div class="hc-cell-l">Invested</div><div class="hc-cell-v">&#8377;${(h.invested||0).toLocaleString('en-IN')}</div></div>
+          <div class="hc-cell"><div class="hc-cell-l">Current</div><div class="hc-cell-v">&#8377;${(h.current||0).toLocaleString('en-IN')}</div></div>
+          <div class="hc-cell"><div class="hc-cell-l">P&L</div><div class="hc-cell-v" style="color:${pc2}">${(h.pnl||0)>=0?'+':''}&#8377;${(h.pnl||0).toLocaleString('en-IN')}</div></div>
+        </div>
+        <div style="text-align:right;margin-top:8px">
+          <button class="delete-btn" onclick="removeHolding('${h.symbol}')">&#128465; Remove</button>
+        </div>
+      </div>`;
+    }).join('');
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div class="err">&#9888; ${e.message}</div>`;}
+}
+
+async function addHolding(){
+  const sym=document.getElementById('pf-sym').value.trim().toUpperCase();
+  const name=document.getElementById('pf-name').value.trim();
+  const qty=parseFloat(document.getElementById('pf-qty').value);
+  const price=parseFloat(document.getElementById('pf-price').value);
+  if(!sym||!qty||!price){alert('Please fill all fields');return;}
+  try{
+    const r=await fetch('/api/portfolio/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:sym,name,qty,buy_price:price})});
+    const d=await r.json();
+    if(d.success){
+      document.getElementById('pf-sym').value='';
+      document.getElementById('pf-name').value='';
+      document.getElementById('pf-qty').value='';
+      document.getElementById('pf-price').value='';
+      loadPortfolio();
+    }
+  }catch(e){alert(e.message);}
+}
+
+async function removeHolding(sym){
+  if(!confirm(`Remove ${sym} from portfolio?`))return;
+  await fetch(`/api/portfolio/remove/${sym}`,{method:'DELETE'});
+  loadPortfolio();
+}
+
+// ═══════════════════════════════════════════════════
+// SCREENER PAGE
+// ═══════════════════════════════════════════════════
+async function showScreenerPage(){
+  setActiveBn('bn-screener');
+  document.getElementById('tabsRow').style.display='none';
+  const m=document.getElementById('main');
+  m.innerHTML=`<div class="page">
+    <div class="page-hdr">
+      <button class="back-btn" onclick="goHome()">&#8592; Home</button>
+      <div class="page-hdr-title">&#128202; Stock Screener</div>
+    </div>
+    <div class="filter-bar">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Filter NSE stocks by fundamental criteria. Leave blank to skip a filter.</div>
+      <div class="filter-grid">
+        <div class="filter-item"><label>Max P/E Ratio</label><input id="f-pe" type="number" placeholder="e.g. 25" /></div>
+        <div class="filter-item"><label>Min ROE (%)</label><input id="f-roe" type="number" placeholder="e.g. 15" /></div>
+        <div class="filter-item"><label>Max Debt/Equity</label><input id="f-debt" type="number" placeholder="e.g. 1" /></div>
+        <div class="filter-item"><label>Min Profit Margin (%)</label><input id="f-margin" type="number" placeholder="e.g. 10" /></div>
+      </div>
+      <button class="screen-run-btn" onclick="runScreener()">&#128269; Run Screener</button>
+    </div>
+    <div id="screen-results"></div>
+  </div>`;
+}
+
+async function runScreener(){
+  const el=document.getElementById('screen-results');
+  el.innerHTML='<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div style="text-align:center;font-size:12px;color:var(--muted);margin-top:-20px">Scanning 60+ stocks... ~20 seconds</div>';
+  const pe=document.getElementById('f-pe').value||9999;
+  const roe=document.getElementById('f-roe').value||0;
+  const debt=document.getElementById('f-debt').value||9999;
+  try{
+    const resp=await fetch(`/api/screener?max_pe=${pe}&min_roe=${roe}&max_debt=${debt}`);
+    const d=await resp.json();
+    if(!d.success)throw new Error(d.error);
+    if(!d.stocks.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">No stocks match your filters. Try relaxing the criteria.</div>';return;}
+    let html=`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${d.total} stocks match your filters</div>`;
+    html+=`<div class="screen-table">
+      <div class="screen-row screen-hdr">
+        <div>Symbol</div><div>Price</div><div>P/E</div><div>ROE</div><div>D/E</div><div>Rev Growth</div>
+      </div>`;
+    html+=d.stocks.map(s=>`
+      <div class="screen-row" onclick="qs('${s.symbol}')" style="cursor:pointer">
+        <div class="screen-sym">${s.symbol}</div>
+        <div style="font-family:Syne,sans-serif;font-weight:700">&#8377;${s.price||'—'}</div>
+        <div style="color:${!s.pe?'var(--muted)':s.pe<15?'var(--green)':s.pe<30?'var(--yellow)':'var(--red)'}">${s.pe||'—'}</div>
+        <div style="color:${!s.roe?'var(--muted)':s.roe>20?'var(--green)':s.roe>12?'var(--yellow)':'var(--red)'}">${s.roe?s.roe+'%':'—'}</div>
+        <div style="color:${!s.debt_equity?'var(--muted)':s.debt_equity<1?'var(--green)':s.debt_equity<2?'var(--yellow)':'var(--red)'}">${s.debt_equity||'—'}</div>
+        <div style="color:${(s.rev_growth||0)>0?'var(--green)':'var(--red)'}">${s.rev_growth?s.rev_growth+'%':'—'}</div>
+      </div>`).join('');
+    html+='</div><div style="font-size:11px;color:var(--muted);padding:8px 0">Tap any stock to analyse it. Data from Yahoo Finance.</div>';
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div class="err">&#9888; ${e.message}</div>`;}
+}
+
+// ═══════════════════════════════════════════════════
+// ALERTS PAGE
+// ═══════════════════════════════════════════════════
+async function showAlertsPage(){
+  setActiveBn('bn-palerts');
+  document.getElementById('tabsRow').style.display='none';
+  const m=document.getElementById('main');
+  m.innerHTML=`<div class="page">
+    <div class="page-hdr">
+      <button class="back-btn" onclick="goHome()">&#8592; Home</button>
+      <div class="page-hdr-title">&#128276; Price Alerts</div>
+    </div>
+    <!-- Set alert form -->
+    <div class="add-form">
+      <div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--blue);margin-bottom:10px">+ Set New Alert</div>
+      <div class="form-row">
+        <div><div class="form-lbl">Symbol</div><input class="form-inp" id="al-sym" placeholder="e.g. RELIANCE" /></div>
+        <div><div class="form-lbl">Target Price (&#8377;)</div><input class="form-inp" id="al-target" type="number" placeholder="e.g. 3000" style="text-transform:none" /></div>
+      </div>
+      <div class="form-row">
+        <div><div class="form-lbl">Stop Loss (&#8377;)</div><input class="form-inp" id="al-sl" type="number" placeholder="e.g. 2200" style="text-transform:none" /></div>
+        <div style="display:flex;align-items:flex-end"><button class="submit-btn" onclick="addAlertItem()" style="margin-bottom:0">Set Alert</button></div>
+      </div>
+    </div>
+    <div id="alerts-content"><div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+  </div>`;
+  loadAlertsPage();
+}
+
+async function loadAlertsPage(){
+  const el=document.getElementById('alerts-content');
+  if(!el)return;
+  try{
+    const d=await fetch('/api/alerts').then(r=>r.json());
+    if(!d.success)throw new Error(d.error);
+    if(!d.alerts.length){el.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">No alerts set yet. Add your first alert above!</div>';return;}
+    if(d.triggered.length){
+      let t=`<div style="padding:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;margin-bottom:12px">
+        <div style="font-family:Syne,sans-serif;font-weight:700;color:var(--yellow);margin-bottom:6px">&#128680; ${d.triggered.length} Alert(s) Triggered!</div>`;
+      t+=d.triggered.map(a=>`<div style="font-size:13px;padding:4px 0">&#8250; <b>${a.symbol}</b> — ${a.status} at &#8377;${a.current_price}</div>`).join('');
+      t+='</div>';
+      el.innerHTML=t;
+    }
+    let html=d.alerts.map(a=>{
+      const triggered=a.triggered;
+      const pToT=a.current_price&&a.target?Math.round(((a.target-a.current_price)/a.current_price)*100)+'%':null;
+      return `<div class="alert-card ${triggered?'alert-triggered':''}">
+        <div class="alert-top">
+          <span class="alert-sym" onclick="qs('${a.symbol}')">${a.symbol}</span>
+          <span class="alert-status" style="background:${triggered?'rgba(245,158,11,.15)':'rgba(59,130,246,.1)'};color:${triggered?'var(--yellow)':'var(--muted)'}">${a.status||'Watching'}</span>
+        </div>
+        <div class="alert-grid">
+          <div class="alert-item"><div class="alert-item-l">Current</div><div class="alert-item-v">${a.current_price?'&#8377;'+a.current_price:'...'}</div></div>
+          <div class="alert-item"><div class="alert-item-l">Target</div><div class="alert-item-v" style="color:var(--green)">${a.target?'&#8377;'+a.target:'—'}</div></div>
+          <div class="alert-item"><div class="alert-item-l">Stop Loss</div><div class="alert-item-v" style="color:var(--red)">${a.stop_loss?'&#8377;'+a.stop_loss:'—'}</div></div>
+        </div>
+        ${pToT?`<div style="font-size:11px;color:var(--muted);margin-top:6px">${pToT} to target</div>`:''}
+        <div style="text-align:right;margin-top:8px">
+          <button class="delete-btn" onclick="removeAlertItem('${a.symbol}')">&#128465; Remove</button>
+        </div>
+      </div>`;
+    }).join('');
+    el.innerHTML=(el.innerHTML||'')+html;
+  }catch(e){if(el)el.innerHTML+=`<div class="err">&#9888; ${e.message}</div>`;}
+}
+
+async function addAlertItem(){
+  const sym=document.getElementById('al-sym').value.trim().toUpperCase();
+  const target=document.getElementById('al-target').value;
+  const sl=document.getElementById('al-sl').value;
+  if(!sym){alert('Enter a symbol');return;}
+  try{
+    const r=await fetch('/api/alerts/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:sym,target:target||null,stop_loss:sl||null})});
+    const d=await r.json();
+    if(d.success){
+      document.getElementById('al-sym').value='';
+      document.getElementById('al-target').value='';
+      document.getElementById('al-sl').value='';
+      document.getElementById('alerts-content').innerHTML='<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+      loadAlertsPage();
+    }
+  }catch(e){alert(e.message);}
+}
+
+async function removeAlertItem(sym){
+  await fetch(`/api/alerts/remove/${sym}`,{method:'DELETE'});
+  document.getElementById('alerts-content').innerHTML='<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  loadAlertsPage();
 }
 
 </script>
