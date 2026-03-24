@@ -588,7 +588,33 @@ def insider_trades():
     cached = cache_get("insider_trades")
     if cached: return jsonify(cached)
 
-    # Try NSE first (works on home WiFi, sometimes on cloud)
+    # Method 1: nsefin package (best NSE session handling)
+    try:
+        import nsefin
+        nse_client = nsefin.NSEClient()
+        df = nse_client.get_insider_trading()
+        if df is not None and len(df) > 0:
+            trades = []
+            for _, row in df.head(50).iterrows():
+                val = safe_float(str(row.get("secVal", row.get("value", 0))).replace(",",""))
+                trades.append({
+                    "symbol":      str(row.get("symbol", "")),
+                    "name":        str(row.get("acqName", row.get("name", "Unknown"))),
+                    "transaction": str(row.get("tdpTransactionType", row.get("transaction", "Unknown"))),
+                    "value":       val,
+                    "date":        str(row.get("date", ""))[:16],
+                    "category":    str(row.get("personCategory", row.get("category", ""))),
+                    "source":      "NSE via nsefin",
+                    "alert":       val >= ALERT_THRESHOLD
+                })
+            trades.sort(key=lambda x: x["value"], reverse=True)
+            result = {"success": True, "trades": trades, "source": "NSE", "note": ""}
+            cache_set("insider_trades", result, ttl=1800)
+            return jsonify(result)
+    except Exception as e:
+        print(f"nsefin insider trades failed: {e}")
+
+    # Method 2: Direct NSE session
     try:
         s = requests.Session()
         s.headers.update({"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
@@ -599,41 +625,43 @@ def insider_trades():
                           "Referer": "https://www.nseindia.com"})
         r = s.get("https://www.nseindia.com/api/corporates-pit?index=equities&from_date=&to_date=&symbol=&xbrl_flag=&period=", timeout=10)
         if r.status_code == 200 and r.text and r.text[0] == '{':
-            data = r.json().get("data",[])
+            data = r.json().get("data", [])
             if data:
                 trades = [{"symbol":t.get("symbol",""),"name":t.get("acqName","Unknown"),
                            "transaction":t.get("tdpTransactionType","Unknown"),
                            "value":safe_float(t.get("secVal")),"date":str(t.get("date",""))[:16],
                            "category":t.get("personCategory",""),"source":"NSE",
                            "alert":safe_float(t.get("secVal"))>=ALERT_THRESHOLD} for t in data[:50]]
-                trades.sort(key=lambda x:x["value"],reverse=True)
+                trades.sort(key=lambda x: x["value"], reverse=True)
                 result = {"success":True,"trades":trades,"source":"NSE","note":""}
                 cache_set("insider_trades", result, ttl=1800)
                 return jsonify(result)
     except: pass
 
-    # Fallback to Moneycontrol + ET in parallel
-    mc_trades, et_trades = [], []
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        mc_f = pool.submit(fetch_insider_from_moneycontrol)
-        et_f = pool.submit(fetch_insider_from_et)
-        try: mc_trades = mc_f.result(timeout=12)
-        except: pass
-        try: et_trades = et_f.result(timeout=12)
-        except: pass
+    # Method 3: Scrape from Trendlyne (works on cloud)
+    try:
+        r = requests.get("https://trendlyne.com/equity/insider-trading/latest/",
+                        headers={**SCH, "Referer": "https://trendlyne.com"}, timeout=10)
+        if r.status_code == 200:
+            rows = re.findall(r'<tr[^>]*>(.*?)</tr>', r.text, re.DOTALL)
+            trades = []
+            for row in rows[1:31]:
+                cells = [re.sub(r'<.*?>','',c).strip() for c in re.findall(r'<td[^>]*>(.*?)</td>',row,re.DOTALL)]
+                if len(cells) >= 4 and cells[0]:
+                    trades.append({"symbol":cells[0].upper(),"name":cells[1] if len(cells)>1 else "Unknown",
+                                   "transaction":cells[3] if len(cells)>3 else "Unknown",
+                                   "value":safe_float(cells[4].replace(",","")) if len(cells)>4 else 0,
+                                   "date":cells[5][:16] if len(cells)>5 else "","category":"Insider",
+                                   "alert":False,"source":"Trendlyne"})
+            if trades:
+                result = {"success":True,"trades":trades,"source":"Trendlyne","note":""}
+                cache_set("insider_trades", result, ttl=1800)
+                return jsonify(result)
+    except: pass
 
-    all_trades = mc_trades + et_trades
-    if all_trades:
-        all_trades.sort(key=lambda x:x["value"],reverse=True)
-        result = {"success":True,"trades":all_trades[:40],"source":"Moneycontrol/ET",
-                  "note":"NSE is currently blocked on cloud server. Showing bulk deals from Moneycontrol & Economic Times instead."}
-        cache_set("insider_trades", result, ttl=1800)
-        return jsonify(result)
-
-    # Last resort - return empty with clear message
     return jsonify({"success":False,
-                    "error":"Insider trade data temporarily unavailable. NSE blocks cloud servers outside India. Check nseindia.com directly.",
-                    "trades":[]})
+                    "error":"Insider trade data temporarily unavailable. NSE blocks cloud servers outside India.",
+                    "trades":[], "link":"https://www.nseindia.com/companies-listing/corporate-filings-insider-trading"})
 
 # ============================================================
 # PROMOTER ACTIVITY
@@ -699,7 +727,30 @@ def fii_dii():
     cached = cache_get("fii_dii")
     if cached: return jsonify(cached)
 
-    # Try NSE
+    # Method 1: nsefin package
+    try:
+        import nsefin
+        nse_client = nsefin.NSEClient()
+        df = nse_client.get_fii_dii_activity()
+        if df is not None and len(df) > 0:
+            rows = []
+            for _, row in df.head(10).iterrows():
+                rows.append({
+                    "date":     str(row.get("date", row.get("Date", ""))),
+                    "fii_buy":  safe_float(str(row.get("fiiBuy", row.get("FII Buy", 0))).replace(",","")),
+                    "fii_sell": safe_float(str(row.get("fiiSell", row.get("FII Sell", 0))).replace(",","")),
+                    "fii_net":  safe_float(str(row.get("fiiBuy", row.get("FII Buy", 0))).replace(",","")) - safe_float(str(row.get("fiiSell", row.get("FII Sell", 0))).replace(",","")),
+                    "dii_buy":  safe_float(str(row.get("diiBuy", row.get("DII Buy", 0))).replace(",","")),
+                    "dii_sell": safe_float(str(row.get("diiSell", row.get("DII Sell", 0))).replace(",","")),
+                    "dii_net":  safe_float(str(row.get("diiBuy", row.get("DII Buy", 0))).replace(",","")) - safe_float(str(row.get("diiSell", row.get("DII Sell", 0))).replace(",","")),
+                })
+            result = {"success":True,"data":rows,"source":"NSE via nsefin"}
+            cache_set("fii_dii", result, ttl=1800)
+            return jsonify(result)
+    except Exception as e:
+        print(f"nsefin fii_dii failed: {e}")
+
+    # Method 2: Direct NSE session
     try:
         s = requests.Session()
         s.headers.update({"User-Agent": UA})
@@ -719,34 +770,34 @@ def fii_dii():
                 return jsonify(result)
     except: pass
 
-    # Fallback: scrape FII/DII from Moneycontrol
+    # Method 3: Scrape from 5paisa (works on cloud)
     try:
-        r = requests.get("https://www.moneycontrol.com/markets/fii-dii-activity/",
-                        headers=MCH, timeout=10)
+        r = requests.get("https://www.5paisa.com/share-market-today/fii-dii",
+                        headers={**SCH, "Referer": "https://www.5paisa.com"}, timeout=10)
         if r.status_code == 200:
-            # Extract numbers from page
-            fii_buy  = re.findall(r'FII[^<]*Buy[^<]*?(\d[\d,\.]+)', r.text)
-            fii_sell = re.findall(r'FII[^<]*Sell[^<]*?(\d[\d,\.]+)', r.text)
-            dii_buy  = re.findall(r'DII[^<]*Buy[^<]*?(\d[\d,\.]+)', r.text)
-            dii_sell = re.findall(r'DII[^<]*Sell[^<]*?(\d[\d,\.]+)', r.text)
-            if fii_buy or dii_buy:
-                fb = safe_float(fii_buy[0].replace(",","")) if fii_buy else 0
-                fs = safe_float(fii_sell[0].replace(",","")) if fii_sell else 0
-                db = safe_float(dii_buy[0].replace(",","")) if dii_buy else 0
-                ds = safe_float(dii_sell[0].replace(",","")) if dii_sell else 0
-                result = {"success":True,"source":"Moneycontrol",
-                          "data":[{"date":"Today","fii_buy":fb,"fii_sell":fs,"fii_net":fb-fs,
-                                   "dii_buy":db,"dii_sell":ds,"dii_net":db-ds}],
-                          "note":"NSE blocked. Showing from Moneycontrol.",
-                          "mc_url":"https://www.moneycontrol.com/markets/fii-dii-activity/"}
+            fii_buy  = re.findall(r'"fiiBuy"[:\s]+([\d.]+)', r.text)
+            fii_sell = re.findall(r'"fiiSell"[:\s]+([\d.]+)', r.text)
+            dii_buy  = re.findall(r'"diiBuy"[:\s]+([\d.]+)', r.text)
+            dii_sell = re.findall(r'"diiSell"[:\s]+([\d.]+)', r.text)
+            if fii_buy:
+                rows = []
+                for i in range(min(10, len(fii_buy))):
+                    fb=safe_float(fii_buy[i]); fs=safe_float(fii_sell[i]) if i<len(fii_sell) else 0
+                    db=safe_float(dii_buy[i]) if i<len(dii_buy) else 0; ds=safe_float(dii_sell[i]) if i<len(dii_sell) else 0
+                    rows.append({"date":"","fii_buy":fb,"fii_sell":fs,"fii_net":fb-fs,
+                                 "dii_buy":db,"dii_sell":ds,"dii_net":db-ds})
+                result = {"success":True,"data":rows,"source":"5paisa","note":""}
                 cache_set("fii_dii", result, ttl=1800)
                 return jsonify(result)
     except: pass
 
     return jsonify({"success":False,
-                    "error":"FII/DII data temporarily unavailable on cloud server.",
-                    "mc_url":"https://www.moneycontrol.com/markets/fii-dii-activity/",
-                    "nse_url":"https://www.nseindia.com/market-data/fii-dii-activity"})
+                    "error":"FII/DII data temporarily unavailable.",
+                    "links":[
+                        {"label":"NSE FII/DII","url":"https://www.nseindia.com/market-data/fii-dii-activity"},
+                        {"label":"Moneycontrol","url":"https://www.moneycontrol.com/markets/fii-dii-activity/"},
+                        {"label":"5paisa","url":"https://www.5paisa.com/share-market-today/fii-dii"}
+                    ]})
 
 # ============================================================
 # GEOPOLITICAL NEWS + AI ANALYSIS
