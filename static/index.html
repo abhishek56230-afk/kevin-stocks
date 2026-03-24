@@ -391,7 +391,15 @@ async function loadVerdict() {
   const m = document.getElementById('main');
   try {
     const d = await fetch('/api/verdict/' + SYM).then(r => r.json());
-    if (!d.success) throw new Error(d.error);
+    if (!d.success) {
+      if (el) el.innerHTML = `<div style="padding:14px;line-height:1.6">
+        <div style="font-size:13px;color:var(--yellow);font-weight:600;margin-bottom:10px">&#9888; NSE blocks cloud servers outside India</div>
+        <div style="font-size:12px;color:${M};margin-bottom:12px">Insider trades data is only available on NSE's website directly. This is a known limitation of cloud-hosted apps.</div>
+        <a href="https://www.nseindia.com/companies-listing/corporate-filings-insider-trading" target="_blank" style="display:block;padding:10px 12px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:8px;color:var(--blue);text-decoration:none;font-weight:600;font-size:13px;margin-bottom:6px">&#128279; NSE Insider Trading Page</a>
+        <a href="https://trendlyne.com/equity/insider-trading/latest/" target="_blank" style="display:block;padding:10px 12px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:8px;color:var(--blue);text-decoration:none;font-weight:600;font-size:13px">&#128279; Trendlyne Insider Trading</a>
+      </div>`;
+      return;
+    }
     TECH = d.tech; FUND = d.fundamental;
     const t = d.tech, f = d.fundamental || {}, vs = verdictStyle(d.verdict);
 
@@ -1133,12 +1141,17 @@ async function loadFiiDii() {
     let d;
     try { d = JSON.parse(txt); } catch(e) { throw new Error('Server error: ' + txt.substring(0,200)); }
     if (!d.success) {
-      el.innerHTML = `<div style="font-size:12px;color:${M};padding:12px;line-height:1.6">
-        <div style="font-weight:600;color:var(--text);margin-bottom:8px">&#127970; What is FII/DII?</div>
-        <div style="margin-bottom:8px"><b style="color:${G}">FII (Foreign Institutional Investors)</b> — Goldman Sachs, BlackRock, JP Morgan. When they buy India, it means global confidence is high.</div>
-        <div style="margin-bottom:8px"><b style="color:${B}">DII (Domestic Institutional Investors)</b> — LIC, SBI MF, HDFC MF. Indian funds buying is very bullish for local market.</div>
-        <div style="padding:10px;background:rgba(239,68,68,.07);border-radius:8px;color:${R}">NSE is blocking automated FII/DII data. Check live at:<br>&#128279; <a href="https://www.nseindia.com/market-data/fii-dii-activity" target="_blank" style="color:${B}">nseindia.com/market-data/fii-dii-activity</a></div>
-        <div style="margin-top:8px;padding:10px;background:rgba(59,130,246,.06);border-radius:8px">Also check: <a href="https://www.moneycontrol.com/markets/fii-dii-activity/" target="_blank" style="color:${B}">moneycontrol.com/markets/fii-dii-activity</a></div>
+      const links = d.links || [
+        {label:"NSE FII/DII", url:"https://www.nseindia.com/market-data/fii-dii-activity"},
+        {label:"Moneycontrol", url:"https://www.moneycontrol.com/markets/fii-dii-activity/"},
+        {label:"5paisa", url:"https://www.5paisa.com/share-market-today/fii-dii"}
+      ];
+      el.innerHTML = `<div style="font-size:13px;padding:12px;line-height:1.6">
+        <div style="font-weight:600;color:var(--text);margin-bottom:10px">&#127970; What is FII/DII?</div>
+        <div style="margin-bottom:8px"><b style="color:${G}">FII</b> — Foreign funds (Goldman Sachs, BlackRock). Heavy FII buying = global confidence in India.</div>
+        <div style="margin-bottom:12px"><b style="color:${B}">DII</b> — Indian funds (LIC, SBI MF). DII buying = domestic confidence, often counters FII selling.</div>
+        <div style="padding:10px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-bottom:8px;color:var(--yellow);font-size:12px">&#9888; NSE blocks cloud servers outside India. View live data at:</div>
+        ${links.map(l => `<a href="${l.url}" target="_blank" style="display:block;padding:10px 12px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:8px;color:var(--blue);text-decoration:none;font-weight:600;margin-bottom:6px;font-size:13px">&#128279; ${l.label}</a>`).join('')}
       </div>`;
       return;
     }
