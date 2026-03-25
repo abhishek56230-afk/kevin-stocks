@@ -488,8 +488,8 @@
           </div>
           <div class="metric">
             <div class="section-title">Signal</div>
-            <div class="metric-value ${clsForSignal(tech.signal) === 'buy' ? 'up' : clsForSignal(tech.signal) === 'sell' ? 'down' : ''}">${tech.signal}</div>
-            <div class="metric-note">Bull score ${tech.bull_score}% · RSI ${tech.rsi} · ADX ${tech.adx} · MACD hist ${tech.macd_hist}</div>
+            <div class="metric-value ${clsForSignal(tech.signal) === 'buy' ? 'up' : clsForSignal(tech.signal) === 'sell' ? 'down' : ''}">${tech.signal || 'N/A'}</div>
+            <div class="metric-note">Bull score ${tech.bull_score ?? '—'}% · RSI ${tech.rsi ?? '—'} · ADX ${tech.adx ?? '—'} · MACD hist ${tech.macd_hist ?? '—'}</div>
             <div class="bar"><span style="width:${Math.max(0, Math.min(100, tech.bull_score || 0))}%"></span></div>
           </div>
         </div>
@@ -731,21 +731,31 @@
         if (data.results && data.results.length) {
           chooseSuggestion(data.results[0].symbol);
         } else {
-          openStock(val.toUpperCase());
+          qs('#searchDrop').innerHTML = `<div class="suggestion"><div><strong>No stock found</strong><span>Please choose from the suggestions. Example: ADANIENT or ADANIPORTS</span></div></div>`;
+          qs('#searchDrop').classList.add('open');
+          qs('.analysis-body').innerHTML = `<div class="analysis-empty">No valid NSE stock matched <strong>${val.toUpperCase()}</strong>. Please select a suggestion from the dropdown.</div>`;
         }
       } catch {
-        openStock(val.toUpperCase());
+        qs('.analysis-body').innerHTML = `<div class="analysis-empty">Search is temporarily unavailable. Please try again in a moment.</div>`;
       }
     });
 
     qs('#searchInput').addEventListener('input', (e) => {
       const value = e.target.value;
       clearTimeout(state.searchTimer);
+      state.activeSuggestion = -1;
       if (!value.trim()) {
         closeSearch();
         return;
       }
-      state.searchTimer = setTimeout(() => searchStocks(value), 120);
+      qs('#searchDrop').innerHTML = `<div class="suggestion"><div><strong>Searching…</strong><span>Looking for matching NSE stocks</span></div></div>`;
+      qs('#searchDrop').classList.add('open');
+      state.searchTimer = setTimeout(() => searchStocks(value), 100);
+    });
+
+    qs('#searchInput').addEventListener('focus', (e) => {
+      const value = e.target.value.trim();
+      if (value) searchStocks(value);
     });
 
     qs('#searchInput').addEventListener('keydown', (e) => {
