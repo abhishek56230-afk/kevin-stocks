@@ -994,6 +994,41 @@ SCREEN_STOCKS = ["RELIANCE","TCS","HDFCBANK","ICICIBANK","INFY","HINDUNILVR","IT
     "FINEOTEX","HBLENGINE","JSWENERGY","JSWINFRA","KEC","KPITTECH","LODHA",
     "PARADEEP","SHILPAMED","UNIVCABLES"]
 
+
+
+@app.route("/api/search")
+def search_stocks():
+    q = freq.args.get("q", "").strip().upper()
+    if not q:
+        return jsonify({"success": True, "results": []})
+
+    stock_map = {}
+    for s in WATCHLIST:
+        stock_map[s["symbol"]] = {
+            "symbol": s["symbol"],
+            "name": s["name"],
+            "source": "watchlist"
+        }
+    for sym in SCREEN_STOCKS:
+        stock_map.setdefault(sym, {
+            "symbol": sym,
+            "name": sym,
+            "source": "screener"
+        })
+
+    results = list(stock_map.values())
+    ranked = [
+        s for s in results
+        if q in s["symbol"].upper() or q in s["name"].upper()
+    ]
+    ranked.sort(key=lambda x: (
+        not x["symbol"].upper().startswith(q),
+        not x["name"].upper().startswith(q),
+        len(x["symbol"]),
+        x["symbol"]
+    ))
+    return jsonify({"success": True, "results": ranked[:12]})
+
 @app.route("/api/screener")
 def screener():
     max_pe   = float(freq.args.get("max_pe",9999))
