@@ -39,7 +39,7 @@
 
     .hero{display:grid;grid-template-columns:1.4fr .9fr;gap:18px;margin-bottom:18px}
     .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-    .hero-main{padding:26px;position:relative;overflow:hidden}
+    .hero-main{padding:26px;position:relative;overflow:visible}
     .hero-main:before{content:"";position:absolute;right:-80px;top:-90px;width:260px;height:260px;background:radial-gradient(circle,var(--brand) 0%,transparent 72%);opacity:.18}
     .eyebrow{font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--brand-2);margin-bottom:10px}
     .hero-title{font-size:44px;line-height:1.02;letter-spacing:-.05em;margin:0 0 12px;max-width:650px}
@@ -49,7 +49,7 @@
     .search-box input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:16px;font-weight:600;padding:8px 10px}
     .search-box input::placeholder{color:#6f86a9;font-weight:500}
     .primary-btn{border:none;border-radius:14px;padding:14px 20px;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#041322;font-weight:800;cursor:pointer;box-shadow:0 14px 30px rgba(93,168,255,.26)}
-    .search-drop{position:absolute;top:calc(100% + 10px);left:0;right:0;background:#0d1a2f;border:1px solid rgba(93,168,255,.28);border-radius:18px;overflow:hidden;display:none;z-index:8}
+    .search-drop{position:absolute;top:calc(100% + 10px);left:0;right:0;background:#0d1a2f;border:1px solid rgba(93,168,255,.28);border-radius:18px;overflow:hidden;display:none;z-index:999;max-height:320px;overflow-y:auto;box-shadow:0 22px 60px rgba(0,0,0,.45)}
     .search-drop.open{display:block}
     .suggestion{display:flex;justify-content:space-between;gap:16px;padding:14px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05)}
     .suggestion:last-child{border-bottom:none}
@@ -170,7 +170,7 @@
           <p class="hero-copy">Built to feel like a real product: instant search suggestions, cleaner cards, faster loading, better hierarchy, and analysis tabs that only fetch what is needed.</p>
           <div class="search-shell">
             <div class="search-box">
-              <input id="searchInput" type="text" placeholder="Search NSE symbol or company name — RELIANCE, INFY, HCLTECH" autocomplete="off" />
+              <input id="searchInput" type="text" placeholder="Type any letters — ad, he, rel... and get matching NSE stocks" autocomplete="off" />
               <button class="primary-btn" id="analyseBtn">Analyse Stock</button>
             </div>
             <div id="searchDrop" class="search-drop"></div>
@@ -285,6 +285,7 @@
       const r = await fetch(path, options);
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Request failed');
+      if (data && data.success === false) throw new Error(data.error || 'No data returned');
       return data;
     }
 
@@ -340,30 +341,48 @@
     }
 
     async function searchStocks(query) {
-      if (!query.trim()) return closeSearch();
+      const cleaned = (query || '').trim();
+      if (!cleaned) return closeSearch();
       try {
-        const data = await api(`/api/search?q=${encodeURIComponent(query)}`);
+        const data = await api(`/api/search?q=${encodeURIComponent(cleaned)}&limit=40`);
         state.searchResults = data.results || [];
-        renderSearchResults();
+        state.activeSuggestion = -1;
+        renderSearchResults(cleaned, data.count || state.searchResults.length || 0);
       } catch {
         closeSearch();
       }
     }
 
-    function renderSearchResults() {
+    function renderSearchResults(query = '', total = 0) {
       const drop = qs('#searchDrop');
       if (!state.searchResults.length) {
-        closeSearch();
+        drop.innerHTML = `<div class="suggestion"><div><strong>No match found</strong><span>Try another symbol or company name</span></div></div>`;
+        drop.classList.add('open');
         return;
       }
-      drop.innerHTML = state.searchResults.map((item, idx) => `
-        <div class="suggestion ${idx === state.activeSuggestion ? 'active' : ''}" onclick="chooseSuggestion('${item.symbol}')">
-          <div>
-            <strong>${item.symbol}</strong>
-            <span>${item.name || item.symbol}</span>
-          </div>
-          <span>${item.source || 'stock'}</span>
-        </div>`).join('');
+      const q = String(query || '').toUpperCase();
+      const items = state.searchResults.map((item, idx) => {
+        const sym = item.symbol || '';
+        const name = item.name || item.symbol || '';
+        const symDisplay = sym.toUpperCase().startsWith(q) && q
+          ? `<strong><span style="color:var(--brand-2)">${sym.slice(0, q.length)}</span>${sym.slice(q.length)}</strong>`
+          : `<strong>${sym}</strong>`;
+        return `
+          <div class="suggestion ${idx === state.activeSuggestion ? 'active' : ''}" onclick="chooseSuggestion('${sym}')">
+            <div>
+              ${symDisplay}
+              <span>${name}</span>
+            </div>
+            <span>${item.source || 'stock'}</span>
+          </div>`;
+      }).join('');
+
+      drop.innerHTML = `
+        <div class="suggestion" style="cursor:default;background:rgba(255,255,255,.03)">
+          <div><strong>${total} match${total === 1 ? '' : 'es'}</strong><span>Suggestions update as you type</span></div>
+          <span>Prefix first</span>
+        </div>
+        ${items}`;
       drop.classList.add('open');
     }
 
@@ -375,9 +394,10 @@
     }
 
     function chooseSuggestion(symbol) {
-      qs('#searchInput').value = symbol;
+      const picked = (symbol || '').toUpperCase();
+      qs('#searchInput').value = picked;
       closeSearch();
-      openStock(symbol);
+      openStock(picked);
     }
 
     async function openStock(symbol) {
@@ -454,6 +474,10 @@
     }
 
     function renderOverview(price, tech) {
+      if (!price || !tech) {
+        qs('.analysis-body').innerHTML = `<div class="analysis-empty">Analysis data is not available for this symbol.</div>`;
+        return;
+      }
       setHeadPrice(price.price, price.pct);
       qs('.analysis-body').innerHTML = `
         <div class="grid-2">
@@ -695,16 +719,33 @@
     qs('#resetScreenerBtn').addEventListener('click', () => {['#maxPe','#minRoe','#maxDebt'].forEach(id => qs(id).value=''); runScreener();});
     qs('#refreshAlerts').addEventListener('click', loadAlerts);
     qs('#addAlertBtn').addEventListener('click', addAlert);
-    qs('#analyseBtn').addEventListener('click', () => {
+    qs('#analyseBtn').addEventListener('click', async () => {
       const val = qs('#searchInput').value.trim();
       if (!val) return;
-      openStock(val.toUpperCase());
-      closeSearch();
+      if (state.searchResults.length) {
+        chooseSuggestion(state.searchResults[0].symbol);
+        return;
+      }
+      try {
+        const data = await api(`/api/search?q=${encodeURIComponent(val)}&limit=10`);
+        if (data.results && data.results.length) {
+          chooseSuggestion(data.results[0].symbol);
+        } else {
+          openStock(val.toUpperCase());
+        }
+      } catch {
+        openStock(val.toUpperCase());
+      }
     });
 
     qs('#searchInput').addEventListener('input', (e) => {
+      const value = e.target.value;
       clearTimeout(state.searchTimer);
-      state.searchTimer = setTimeout(() => searchStocks(e.target.value), 180);
+      if (!value.trim()) {
+        closeSearch();
+        return;
+      }
+      state.searchTimer = setTimeout(() => searchStocks(value), 120);
     });
 
     qs('#searchInput').addEventListener('keydown', (e) => {
@@ -725,6 +766,7 @@
       if (e.key === 'Enter') {
         e.preventDefault();
         if (state.activeSuggestion >= 0) chooseSuggestion(state.searchResults[state.activeSuggestion].symbol);
+        else if (state.searchResults.length) chooseSuggestion(state.searchResults[0].symbol);
         else qs('#analyseBtn').click();
       }
       if (e.key === 'Escape') closeSearch();
@@ -733,6 +775,9 @@
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.search-shell')) closeSearch();
     });
+
+    window.openStock = openStock;
+    window.chooseSuggestion = chooseSuggestion;
 
     loadWatchlist();
   </script>
