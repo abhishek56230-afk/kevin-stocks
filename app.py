@@ -18,7 +18,7 @@ Key features:
 """
 from flask import Flask, jsonify, send_from_directory, request as freq
 from flask_cors import CORS
-import requests, re, os, time, json, threading, datetime
+import requests, re, os, time, json, threading, datetime, difflib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__, static_folder="static", static_url_path="")
@@ -1632,6 +1632,32 @@ def search_stocks():
 
     ranked.sort(key=lambda x: (x["_rank"], x["_sym_len"], x["symbol"]))
     results = [{k: v for k, v in r.items() if not k.startswith("_")} for r in ranked[:limit]]
+
+    # If no direct prefix/contains matches, provide fuzzy fallbacks for common typos
+    if not results and q_norm:
+        choices = []
+        seen = set()
+        for item in stock_map.values():
+            sym = item["symbol"]
+            name = item["name"]
+            sym_norm = _norm_search_text(sym)
+            name_norm = _norm_search_text(name)
+            for label, norm in ((sym, sym_norm), (name, name_norm)):
+                if norm and norm not in seen:
+                    seen.add(norm)
+                    choices.append((norm, sym, name, item.get("source", "stock")))
+
+        scored = []
+        for norm, sym, name, source in choices:
+            ratio = difflib.SequenceMatcher(None, q_norm, norm[:max(len(q_norm), min(len(norm), len(q_norm)+4))]).ratio()
+            if ratio >= 0.55:
+                scored.append((ratio, sym, name, source))
+
+        scored.sort(key=lambda x: (-x[0], len(x[1]), x[1]))
+        results = [
+            {"symbol": sym, "name": name, "source": source}
+            for ratio, sym, name, source in scored[:limit]
+        ]
 
     return jsonify({
         "success": True,
