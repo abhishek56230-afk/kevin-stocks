@@ -16,22 +16,10 @@
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
 .app{max-width:520px;margin:0 auto;padding-bottom:84px}
 
-/* Header */
-.hdr{padding:18px 16px 0;display:flex;justify-content:space-between;align-items:center}
-.brand-name{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
-.brand-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;background:linear-gradient(135deg,#3b82f6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1}
+/* Live badge */
 .live{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);font-weight:600}
 .pulse{width:7px;height:7px;background:var(--green);border-radius:50%;animation:blink 1.5s infinite}
 @keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
-
-/* Search */
-.search{padding:14px 16px}
-.sbox{display:flex;gap:8px;background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:4px 4px 4px 14px}
-.sbox:focus-within{border-color:var(--blue)}
-.sinp{flex:1;background:none;border:none;color:var(--text);font-family:'Syne',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;outline:none;padding:8px 0}
-.sinp::placeholder{text-transform:none;font-family:'Inter',sans-serif;font-weight:400;font-size:13px;letter-spacing:0;color:var(--muted)}
-.sbtn{background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;border:none;border-radius:9px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;transition:opacity .15s;white-space:nowrap}
-.sbtn:active{opacity:.8}
 
 /* Chips */
 .chips{display:flex;gap:6px;padding:0 16px 12px;overflow-x:auto;scrollbar-width:none}
@@ -221,26 +209,73 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 .alert-item{text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:8px}
 .alert-item-l{font-size:10px;color:var(--muted);margin-bottom:2px}
 .alert-item-v{font-family:Syne,sans-serif;font-size:13px;font-weight:700}
+
+/* ── HERO HEADER ── */
+.hero{padding:20px 16px 8px;background:linear-gradient(180deg,rgba(59,130,246,.06) 0%,transparent 100%)}
+.hero-eyebrow{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:4px}
+.hero-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;background:linear-gradient(135deg,#3b82f6,#06b6d4 55%,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;margin-bottom:5px}
+.hero-sub{font-size:12px;color:var(--muted);line-height:1.5;max-width:340px}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start}
+
+/* ── AUTOCOMPLETE DROPDOWN ── */
+.search-wrap{position:relative;padding:12px 16px}
+.sbox{display:flex;gap:8px;background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:4px 4px 4px 14px;transition:border-color .2s,box-shadow .2s}
+.sbox:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.sinp{flex:1;background:none;border:none;color:var(--text);font-family:'Syne',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;outline:none;padding:8px 0}
+.sinp::placeholder{text-transform:none;font-family:'Inter',sans-serif;font-weight:400;font-size:13px;letter-spacing:0;color:var(--muted)}
+.sbtn{background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;border:none;border-radius:9px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;transition:opacity .15s,transform .1s;white-space:nowrap}
+.sbtn:active{opacity:.85;transform:scale(.97)}
+.ac-drop{position:absolute;top:calc(100% - 4px);left:16px;right:16px;background:#111c2d;border:1.5px solid var(--blue);border-radius:10px;overflow:hidden;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.5);display:none}
+.ac-drop.open{display:block}
+.ac-item{padding:11px 14px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;display:flex;justify-content:space-between;align-items:center;letter-spacing:.5px;transition:background .12s}
+.ac-item:hover,.ac-item.hi{background:rgba(59,130,246,.15)}
+.ac-item-sym{color:var(--cyan)}
+.ac-item-name{font-family:'Inter',sans-serif;font-size:11px;font-weight:400;color:var(--muted);letter-spacing:0}
+
+/* ── ENHANCED STOCK CARD ── */
+.wl-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color .2s,transform .15s,box-shadow .2s;position:relative;overflow:hidden}
+.wl-card:active{transform:scale(.99)}
+.wl-card:hover{border-color:rgba(59,130,246,.4);box-shadow:0 4px 20px rgba(59,130,246,.08)}
+.wl-card-accent{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+.wl-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.wl-card-sym{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--blue)}
+.wl-card-name{font-size:11px;color:var(--muted);margin-top:1px}
+.wl-badge{font-family:'Syne',sans-serif;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;letter-spacing:.5px}
+.wl-badge-buy{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3)}
+.wl-badge-sell{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.wl-badge-hold{background:rgba(245,158,11,.15);color:var(--yellow);border:1px solid rgba(245,158,11,.3)}
+.wl-badge-na{background:rgba(100,116,139,.15);color:var(--muted);border:1px solid rgba(100,116,139,.2)}
+.wl-card-mid{display:flex;justify-content:space-between;align-items:flex-end}
+.wl-price{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;line-height:1}
+.wl-chg{font-size:12px;font-weight:600;margin-top:3px}
+.wl-meta{font-size:10px;color:var(--muted);text-align:right}
+.wl-spark-btn{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:'Syne',sans-serif;font-weight:700;color:var(--blue);background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:6px;padding:3px 8px;cursor:pointer;margin-top:4px;transition:background .15s}
+.wl-spark-btn:hover{background:rgba(59,130,246,.16)}
 </style>
 </head>
 <body>
 <div class="app">
 
-<!-- HEADER -->
-<div class="hdr">
-  <div>
-    <div class="brand-name">Kevin Kataria</div>
-    <div class="brand-title">Stock Intelligence</div>
+<!-- HERO HEADER -->
+<div class="hero">
+  <div class="hero-top">
+    <div>
+      <div class="hero-eyebrow">Kevin Kataria</div>
+      <div class="hero-title">Stock Intelligence</div>
+      <div class="hero-sub">Live stock intelligence — technicals, fundamentals, sentiment &amp; AI verdicts</div>
+    </div>
+    <div class="live" style="margin-top:6px"><div class="pulse"></div>LIVE</div>
   </div>
-  <div class="live"><div class="pulse"></div>LIVE</div>
 </div>
 
-<!-- SEARCH -->
-<div class="search">
+<!-- SEARCH WITH AUTOCOMPLETE -->
+<div class="search-wrap">
   <div class="sbox">
-    <input class="sinp" id="inp" type="text" placeholder="Enter NSE symbol — RELIANCE, HCLTECH…" maxlength="20"/>
+    <input class="sinp" id="inp" type="text" placeholder="Search NSE symbol — RELIANCE, HCLTECH…" maxlength="20"
+      autocomplete="off" spellcheck="false"/>
     <button class="sbtn" onclick="analyse()">Analyse</button>
   </div>
+  <div class="ac-drop" id="acDrop"></div>
 </div>
 
 <!-- QUICK CHIPS -->
@@ -258,7 +293,8 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 
 <!-- TABS (hidden until search) -->
 <div class="tabs" id="tabsRow" style="display:none">
-  <button class="tab on" onclick="showTab('verdict',this)">🤖 Verdict</button>
+  <button class="tab on" onclick="showTab('verdict',this)">🤖 AI Verdict</button>
+  <button class="tab" onclick="showTab('overview',this)">📈 Overview</button>
   <button class="tab" onclick="showTab('technical',this)">📐 Technical</button>
   <button class="tab" onclick="showTab('fundamental',this)">📊 Fundamental</button>
   <button class="tab" onclick="showTab('sentiment',this)">💬 Sentiment</button>
@@ -345,12 +381,82 @@ function verdictStyle(v) {
 }
 
 // ═══════════════════════════════════════════════════
+// STOCK UNIVERSE FOR AUTOCOMPLETE
+// ═══════════════════════════════════════════════════
+const STOCK_LIST = [
+  {sym:'RELIANCE',name:'Reliance Industries'},{sym:'TCS',name:'Tata Consultancy Services'},
+  {sym:'HCLTECH',name:'HCL Technologies'},{sym:'INFY',name:'Infosys'},
+  {sym:'WIPRO',name:'Wipro'},{sym:'HINDUNILVR',name:'Hindustan Unilever'},
+  {sym:'ADANIENT',name:'Adani Enterprises'},{sym:'ADANIPOWER',name:'Adani Power'},
+  {sym:'ATGL',name:'Adani Total Gas'},{sym:'TATAMOTORS',name:'Tata Motors'},
+  {sym:'TATASTEEL',name:'Tata Steel'},{sym:'BAJFINANCE',name:'Bajaj Finance'},
+  {sym:'BAJAJFINSV',name:'Bajaj Finserv'},{sym:'ICICIBANK',name:'ICICI Bank'},
+  {sym:'HDFCBANK',name:'HDFC Bank'},{sym:'SBIN',name:'State Bank of India'},
+  {sym:'AXISBANK',name:'Axis Bank'},{sym:'KOTAKBANK',name:'Kotak Mahindra Bank'},
+  {sym:'MARUTI',name:'Maruti Suzuki'},{sym:'SUNPHARMA',name:'Sun Pharma'},
+  {sym:'DRREDDY',name:'Dr Reddys Labs'},{sym:'CIPLA',name:'Cipla'},
+  {sym:'ONGC',name:'ONGC'},{sym:'NTPC',name:'NTPC'},
+  {sym:'POWERGRID',name:'Power Grid Corporation'},{sym:'COALINDIA',name:'Coal India'},
+  {sym:'JSWSTEEL',name:'JSW Steel'},{sym:'HINDALCO',name:'Hindalco'},
+  {sym:'ULTRACEMCO',name:'UltraTech Cement'},{sym:'GRASIM',name:'Grasim Industries'},
+  {sym:'TITAN',name:'Titan Company'},{sym:'NESTLEIND',name:'Nestle India'},
+  {sym:'BRITANNIA',name:'Britannia Industries'},{sym:'DABUR',name:'Dabur India'},
+  {sym:'MARICO',name:'Marico'},{sym:'PIDILITIND',name:'Pidilite Industries'},
+  {sym:'ASIANPAINT',name:'Asian Paints'},{sym:'BERGEPAINT',name:'Berger Paints'},
+  {sym:'DMART',name:'Avenue Supermarts (D-Mart)'},{sym:'ZOMATO',name:'Zomato'},
+  {sym:'PAYTM',name:'One 97 Communications (Paytm)'},{sym:'NYKAA',name:'FSN E-Commerce (Nykaa)'},
+  {sym:'POLICYBZR',name:'PB Fintech (PolicyBazaar)'},{sym:'IRCTC',name:'IRCTC'},
+  {sym:'HAL',name:'Hindustan Aeronautics'},{sym:'BEL',name:'Bharat Electronics'},
+  {sym:'RECLTD',name:'REC Limited'},{sym:'PFC',name:'Power Finance Corporation'},
+  {sym:'REDINGTON',name:'Redington India'},{sym:'MPHASIS',name:'Mphasis'},
+  {sym:'LTIM',name:'LTIMindtree'},{sym:'TECHM',name:'Tech Mahindra'},
+  {sym:'LT',name:'Larsen & Toubro'},{sym:'SIEMENS',name:'Siemens India'},
+  {sym:'ABB',name:'ABB India'},{sym:'HAVELLS',name:'Havells India'},
+  {sym:'VOLTAS',name:'Voltas'},{sym:'BLUESTARCO',name:'Blue Star'},
+  {sym:'TATAPOWER',name:'Tata Power'},{sym:'ADANIGREEN',name:'Adani Green Energy'},
+  {sym:'INDIGO',name:'InterGlobe Aviation (IndiGo)'},{sym:'BANKBARODA',name:'Bank of Baroda'},
+  {sym:'CANBK',name:'Canara Bank'},{sym:'PNB',name:'Punjab National Bank'},
+  {sym:'IDEA',name:'Vodafone Idea'},{sym:'BHARTIARTL',name:'Bharti Airtel'},
+];
+
+// ═══════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════
 window.addEventListener('load', () => {
   loadTrades();
-  document.getElementById('inp').addEventListener('keydown', e => { if (e.key === 'Enter') analyse(); });
+  const inp = document.getElementById('inp');
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { closeAC(); analyse(); } });
+  inp.addEventListener('input', handleAC);
+  inp.addEventListener('blur', () => setTimeout(closeAC, 150));
 });
+
+// ═══════════════════════════════════════════════════
+// AUTOCOMPLETE
+// ═══════════════════════════════════════════════════
+let acIdx = -1;
+function handleAC() {
+  const q = document.getElementById('inp').value.trim().toUpperCase();
+  const drop = document.getElementById('acDrop');
+  if (!q || q.length < 1) { closeAC(); return; }
+  const matches = STOCK_LIST.filter(s => s.sym.startsWith(q) || s.sym.includes(q) || s.name.toUpperCase().includes(q)).slice(0, 7);
+  if (!matches.length) { closeAC(); return; }
+  acIdx = -1;
+  drop.innerHTML = matches.map((s, i) =>
+    `<div class="ac-item" data-sym="${s.sym}" onmousedown="acSelect('${s.sym}')">
+       <span class="ac-item-sym">${s.sym}</span>
+       <span class="ac-item-name">${s.name}</span>
+     </div>`).join('');
+  drop.classList.add('open');
+}
+function closeAC() {
+  document.getElementById('acDrop').classList.remove('open');
+  acIdx = -1;
+}
+function acSelect(sym) {
+  document.getElementById('inp').value = sym;
+  closeAC();
+  analyse();
+}
 
 // ═══════════════════════════════════════════════════
 // SEARCH
@@ -380,13 +486,114 @@ function showTab(tab, el) {
   if (el) el.classList.add('on');
   const m = document.getElementById('main');
   m.innerHTML = '<div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
-  const loaders = { verdict: loadVerdict, technical: loadTechnical, fundamental: loadFundamental, sentiment: loadSentiment, news: loadNews };
+  const loaders = { verdict: loadVerdict, overview: loadOverview, technical: loadTechnical, fundamental: loadFundamental, sentiment: loadSentiment, news: loadNews };
   (loaders[tab] || loadVerdict)();
 }
 
 // ═══════════════════════════════════════════════════
-// VERDICT TAB
+// OVERVIEW TAB — snapshot card combining price + verdict + key technicals
 // ═══════════════════════════════════════════════════
+async function loadOverview() {
+  const m = document.getElementById('main');
+  try {
+    const d = await fetch('/api/verdict/' + SYM).then(r => r.json());
+    if (!d.success) throw new Error(d.error);
+    TECH = d.tech; FUND = d.fundamental;
+    const t = d.tech, f = d.fundamental || {}, vs = verdictStyle(d.verdict);
+    const chgPct = t.price && t.ma20 ? (((t.price - t.ma20) / t.ma20) * 100).toFixed(2) : null;
+    const chgCol = chgPct > 0 ? G : chgPct < 0 ? R : Y;
+
+    m.innerHTML = `<div class="sec">
+
+      <!-- ── OVERVIEW STOCK CARD ── -->
+      <div class="wl-card" style="cursor:default">
+        <div class="wl-card-accent" style="background:${vs.col}"></div>
+        <div style="padding-left:6px">
+          <div class="wl-card-top">
+            <div>
+              <div class="wl-card-sym">${d.symbol}</div>
+              <div class="wl-card-name">${f.name || d.symbol}</div>
+            </div>
+            <span class="wl-badge ${vs.cls==='vbuy'?'wl-badge-buy':vs.cls==='vsell'?'wl-badge-sell':'wl-badge-hold'}">${d.verdict}</span>
+          </div>
+          <div class="wl-card-mid">
+            <div>
+              <div class="wl-price">&#8377;${d.price.toLocaleString('en-IN')}</div>
+              ${chgPct !== null ? `<div class="wl-chg" style="color:${chgCol}">${chgPct > 0 ? '+' : ''}${chgPct}% vs MA20</div>` : ''}
+            </div>
+            <div class="wl-meta">
+              <div>Conf: <b style="color:${vs.col}">${d.confidence}</b></div>
+              <div>Risk: <b>${d.risk}</b></div>
+              <div>${d.best_for}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PRICE LEVELS ── -->
+      <div class="card">
+        <div class="clbl">&#128205; Key Price Levels</div>
+        <div class="pgrid">
+          <div class="pcell"><div class="pcell-l">Support</div><div class="pcell-v" style="color:${G}">&#8377;${t.support}</div></div>
+          <div class="pcell"><div class="pcell-l">Resistance</div><div class="pcell-v" style="color:${R}">&#8377;${t.resistance}</div></div>
+          <div class="pcell"><div class="pcell-l">Target 3M</div><div class="pcell-v" style="color:${B}">&#8377;${d.target_3m}</div></div>
+          <div class="pcell"><div class="pcell-l">Target 12M</div><div class="pcell-v" style="color:${B}">&#8377;${d.target_12m}</div></div>
+          <div class="pcell"><div class="pcell-l">Stop Loss</div><div class="pcell-v" style="color:${R}">&#8377;${d.stop_loss}</div></div>
+          <div class="pcell"><div class="pcell-l">Sentiment</div><div class="pcell-v" style="color:${d.sentiment>60?G:d.sentiment<40?R:Y}">${d.sentiment}% Bull</div></div>
+        </div>
+      </div>
+
+      <!-- ── SIGNAL SNAPSHOT ── -->
+      <div class="card">
+        <div class="clbl">&#127919; Signal Snapshot</div>
+        <div class="igrid">
+          <div class="ibox">
+            <div class="ilbl">RSI (14)</div>
+            <div class="ival" style="color:${rsiCol(t.rsi)}">${t.rsi}</div>
+            <div class="isig" style="color:${rsiCol(t.rsi)}">${t.rsi>=70?'Overbought':t.rsi<=30?'Oversold':t.rsi>=55?'Bullish':'Neutral'}</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">MACD</div>
+            <div class="ival" style="color:${t.macd_hist>0?G:R}">${t.macd_hist>0?'Bullish':'Bearish'}</div>
+            <div class="isig" style="color:${M}">Hist: ${t.macd_hist}</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">Trend</div>
+            <div class="ival" style="color:${t.golden_cross?G:R}">${t.golden_cross?'Golden':'Death'}</div>
+            <div class="isig" style="color:${M}">${t.golden_cross?'MA cross bullish':'MA cross bearish'}</div>
+          </div>
+          <div class="ibox">
+            <div class="ilbl">Bull Score</div>
+            <div class="ival" style="color:${t.bull_score>=57?G:t.bull_score>=43?Y:R}">${t.bull_score}%</div>
+            <div class="isig" style="color:${M}">${t.signal}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── FUNDAMENTALS STRIP ── -->
+      ${f.pe && f.pe !== '—' ? `<div class="card">
+        <div class="clbl">&#128202; Fundamentals at a Glance</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px">
+          ${[['P/E',f.pe,'Valuation'],['ROE',f.roe,'Efficiency'],['Promoter',f.promoter,'Trust'],['D/E',f.debt_equity,'Leverage'],['EPS',f.eps,'Earnings'],['Mkt Cap',f.market_cap,'Size']].map(([l,v,s])=>`
+          <div class="pcell"><div class="pcell-l">${l}</div><div class="pcell-v" style="font-size:12px">${fmt(v)}</div><div style="font-size:9px;color:${M};margin-top:1px">${s}</div></div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- ── QUICK ACTION BUTTONS ── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding-bottom:8px">
+        ${['verdict','technical','fundamental','sentiment','news'].slice(0,3).map((t,i)=>{
+          const labels=[['🤖','AI Verdict'],['📐','Technical'],['📊','Fundamental']];
+          return `<button onclick="showTab('${t}',document.querySelectorAll('.tab')[${i}])" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 4px;color:var(--text);font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px">${labels[i][0]}<br><span style="font-size:10px;color:var(--muted)">${labels[i][1]}</span></button>`;
+        }).join('')}
+      </div>
+
+    </div>`;
+  } catch(e) {
+    m.innerHTML = `<div class="err">&#9888;&#65039; ${e.message}</div>`;
+  }
+}
+
+
 async function loadVerdict() {
   const m = document.getElementById('main');
   try {
@@ -1276,28 +1483,38 @@ async function loadWatchlist() {
     html += d.stocks.map(stock => {
       const pnl     = stock.pnl_pct;
       const pnlCol  = pnl > 0 ? 'var(--green)' : pnl < 0 ? 'var(--red)' : 'var(--muted)';
-      const sigCol  = signalCol[stock.signal] || 'var(--muted)';
+      const sigRaw  = (stock.signal || 'N/A').toUpperCase();
+      const sigCol  = signalCol[sigRaw] || 'var(--muted)';
+      const isBuy   = sigRaw.includes('BUY');
+      const isSell  = sigRaw.includes('SELL');
+      const accentCol = isBuy ? 'var(--green)' : isSell ? 'var(--red)' : 'var(--yellow)';
+      const badgeCls  = isBuy ? 'wl-badge-buy' : isSell ? 'wl-badge-sell' : sigRaw === 'N/A' ? 'wl-badge-na' : 'wl-badge-hold';
       const hasData = stock.live_price !== null;
       return `
-        <div onclick="loadWatchlistVerdict('${stock.symbol}')" style="padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div>
-              <span style="font-family:Syne,sans-serif;font-size:13px;font-weight:800;color:var(--blue)">${stock.symbol}</span>
-              <span style="font-size:11px;color:var(--muted);margin-left:6px">${stock.name}</span>
+        <div class="wl-card" onclick="loadWatchlistVerdict('${stock.symbol}')">
+          <div class="wl-card-accent" style="background:${accentCol}"></div>
+          <div style="padding-left:6px">
+            <div class="wl-card-top">
+              <div>
+                <div class="wl-card-sym">${stock.symbol}</div>
+                <div class="wl-card-name">${stock.name}</div>
+              </div>
+              <span class="wl-badge ${badgeCls}">${stock.signal}</span>
             </div>
-            <span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;background:${sigCol}22;color:${sigCol}">${stock.signal}</span>
+            <div class="wl-card-mid">
+              <div>
+                <div class="wl-price">${hasData ? '&#8377;'+stock.live_price.toLocaleString('en-IN') : '<span style="font-size:14px;color:var(--muted)">Loading…</span>'}</div>
+                <div class="wl-chg" style="color:${pnlCol}">${pnl !== null ? (pnl > 0 ? '+' : '')+pnl+'%' : '—'} <span style="font-size:10px;color:var(--muted);font-weight:400">vs ref &#8377;${stock.ref_price}</span></div>
+              </div>
+              <div class="wl-meta">
+                ${stock.rsi ? `<div>RSI <b style="color:${rsiCol(stock.rsi)}">${stock.rsi}</b></div>` : ''}
+                ${stock.bull_score ? `<div>Bull <b style="color:${sigCol}">${stock.bull_score}%</b></div>` : ''}
+                <div>Promo <b>${stock.promoter}%</b></div>
+                <div class="wl-spark-btn" style="margin-top:5px">📈 Full Analysis</div>
+              </div>
+            </div>
+            ${stock.error ? `<div style="font-size:10px;color:var(--red);margin-top:4px">⚠ ${stock.error}</div>` : ''}
           </div>
-          <div style="display:flex;justify-content:space-between;margin-top:6px">
-            <div>
-              <div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700">${hasData ? '&#8377;'+stock.live_price.toLocaleString('en-IN') : 'Loading...'}</div>
-              <div style="font-size:10px;color:var(--muted)">Ref: &#8377;${stock.ref_price} &nbsp;|&nbsp; Promoter: ${stock.promoter}%</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:${pnlCol}">${pnl !== null ? (pnl > 0 ? '+' : '')+pnl+'%' : '—'}</div>
-              <div style="font-size:10px;color:var(--muted)">${stock.rsi ? 'RSI: '+stock.rsi : ''} ${stock.bull_score ? '| Score: '+stock.bull_score+'%' : ''}</div>
-            </div>
-          </div>
-          ${stock.error ? `<div style="font-size:10px;color:var(--red);margin-top:3px">Error: ${stock.error}</div>` : ''}
         </div>`;
     }).join('');
 
