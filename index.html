@@ -103,9 +103,9 @@
     }
 
     /* ─── Hero ─── */
-    .hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-bottom: 16px; overflow: visible; }
 
-    .hero-main { padding: 32px; position: relative; overflow: visible; }
+    .hero-main { padding: 32px; position: relative; overflow: visible; z-index: 10; }
     #analysisCard { overflow: hidden; }
     .hero-main::before {
       content: '';
@@ -139,7 +139,7 @@
     .hero-copy { font-size: 14px; line-height: 1.75; color: var(--muted); max-width: 600px; margin-bottom: 24px; }
 
     /* ─── Search ─── */
-    .search-shell { position: relative; max-width: 640px; }
+    .search-shell { position: relative; max-width: 640px; z-index: 9999; }
     .search-box {
       display: flex; gap: 8px; align-items: center;
       background: rgba(6,13,26,.85);
@@ -174,9 +174,9 @@
     .search-drop {
       position: absolute; top: calc(100% + 8px); left: 0; right: 0;
       background: #0c1a30; border: 1px solid rgba(56,189,248,.2);
-      border-radius: var(--radius); overflow: hidden; display: none;
-      z-index: 999; max-height: 320px; overflow-y: auto;
-      box-shadow: 0 24px 60px rgba(0,0,0,.5);
+      border-radius: var(--radius); display: none;
+      z-index: 9999; max-height: 320px; overflow-y: auto;
+      box-shadow: 0 24px 60px rgba(0,0,0,.7);
     }
     .search-drop.open { display: block; }
     .suggestion {
