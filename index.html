@@ -100,13 +100,13 @@
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow);
-      overflow: hidden;
     }
 
     /* ─── Hero ─── */
     .hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-bottom: 16px; }
 
-    .hero-main { padding: 32px; position: relative; }
+    .hero-main { padding: 32px; position: relative; overflow: visible; }
+    #analysisCard { overflow: hidden; }
     .hero-main::before {
       content: '';
       position: absolute; top: -60px; right: -60px;
@@ -216,15 +216,35 @@
     }
     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
 
-    .feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
-    .feat {
-      background: rgba(255,255,255,.025); border: 1px solid var(--line);
+    .tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
+    .tile {
       border-radius: var(--radius); padding: 14px 16px;
-      transition: border-color .2s, background .2s;
+      border: 1px solid var(--line);
+      position: relative; overflow: hidden;
+      display: flex; flex-direction: column; justify-content: space-between; gap: 8px;
+      transition: transform .18s, border-color .18s;
     }
-    .feat:hover { border-color: rgba(56,189,248,.25); background: rgba(56,189,248,.04); }
-    .feat-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; }
-    .feat-value { font-size: 18px; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
+    .tile:hover { transform: translateY(-2px); }
+    .tile::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .tile-market  { background: linear-gradient(135deg, rgba(16,185,129,.12) 0%, rgba(16,185,129,.04) 100%); border-color: rgba(16,185,129,.2); }
+    .tile-bull    { background: linear-gradient(135deg, rgba(56,189,248,.12) 0%, rgba(56,189,248,.04) 100%); border-color: rgba(56,189,248,.2); }
+    .tile-bear    { background: linear-gradient(135deg, rgba(248,113,113,.10) 0%, rgba(248,113,113,.04) 100%); border-color: rgba(248,113,113,.18); }
+    .tile-btc     { background: linear-gradient(135deg, rgba(251,191,36,.12) 0%, rgba(251,191,36,.04) 100%);  border-color: rgba(251,191,36,.2); }
+    .tile-label   { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+    .tile-market .tile-label { color: var(--green); }
+    .tile-bull    .tile-label { color: var(--brand); }
+    .tile-bear    .tile-label { color: var(--red); }
+    .tile-btc     .tile-label { color: var(--amber); }
+    .tile-value   { font-size: 22px; font-weight: 700; letter-spacing: -.04em; font-family: 'DM Mono', monospace; line-height: 1; }
+    .tile-sub     { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .tile-icon    { font-size: 22px; position: absolute; top: 12px; right: 14px; opacity: .35; }
+    .market-dot   { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; flex-shrink:0; }
+    .market-open  { background: var(--green); box-shadow: 0 0 0 3px rgba(16,185,129,.25); animation: pulse 2s infinite; }
+    .market-closed{ background: var(--muted); }
 
     /* ─── Main grid ─── */
     .main-grid { display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items: start; }
@@ -407,7 +427,7 @@
       .rowish { grid-template-columns: 1fr 1fr; }
       .hero-price { text-align: left; }
       .analysis-head { flex-direction: column; }
-      .feat-grid { grid-template-columns: 1fr; }
+      .tile-grid { grid-template-columns: 1fr 1fr; }
     }
 
     /* ─── View transition ─── */
@@ -465,22 +485,42 @@
         </div>
         <div class="card hero-side">
           <div class="live-pill"><span class="dot"></span> Live APIs + cached responses</div>
-          <div class="feat-grid">
-            <div class="feat">
-              <div class="feat-label">Search</div>
-              <div class="feat-value">Autocomplete</div>
+          <div class="tile-grid">
+            <!-- Market Status -->
+            <div class="tile tile-market">
+              <span class="tile-icon">🏛️</span>
+              <div class="tile-label">NSE Market</div>
+              <div>
+                <div class="tile-value" id="tileMarketStatus">—</div>
+                <div class="tile-sub" id="tileMarketTime">Checking…</div>
+              </div>
             </div>
-            <div class="feat">
-              <div class="feat-label">Layout</div>
-              <div class="feat-value">Modern UI</div>
+            <!-- Bullish count -->
+            <div class="tile tile-bull">
+              <span class="tile-icon">📈</span>
+              <div class="tile-label">Bullish</div>
+              <div>
+                <div class="tile-value" id="tileBullish">—</div>
+                <div class="tile-sub" id="tileBullSub">of watchlist</div>
+              </div>
             </div>
-            <div class="feat">
-              <div class="feat-label">Loading</div>
-              <div class="feat-value">Lazy fetch</div>
+            <!-- Bearish count -->
+            <div class="tile tile-bear">
+              <span class="tile-icon">📉</span>
+              <div class="tile-label">Bearish</div>
+              <div>
+                <div class="tile-value" id="tileBearish">—</div>
+                <div class="tile-sub" id="tileBearSub">of watchlist</div>
+              </div>
             </div>
-            <div class="feat">
-              <div class="feat-label">Views</div>
-              <div class="feat-value">Tabs</div>
+            <!-- BTC Price -->
+            <div class="tile tile-btc">
+              <span class="tile-icon">₿</span>
+              <div class="tile-label">Bitcoin</div>
+              <div>
+                <div class="tile-value" id="tileBtcPrice">—</div>
+                <div class="tile-sub" id="tileBtcChange">Loading…</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1065,8 +1105,69 @@
     window.openStock = openStock;
     window.chooseSuggestion = chooseSuggestion;
 
+
+    /* ── Hero Tiles ── */
+    async function loadHeroTiles() {
+      loadMarketStatus();
+      loadBtcPrice();
+      // watchlist summary tiles get filled via renderWatchlistSummary patch
+    }
+
+    function loadMarketStatus() {
+      const el    = qs('#tileMarketStatus');
+      const subEl = qs('#tileMarketTime');
+      // NSE trades Mon–Fri 09:15–15:30 IST (UTC+5:30)
+      const now   = new Date();
+      const ist   = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const day   = ist.getDay(); // 0=Sun,6=Sat
+      const hhmm  = ist.getHours() * 100 + ist.getMinutes();
+      const isWeekday = day >= 1 && day <= 5;
+      const inSession = hhmm >= 915 && hhmm < 1530;
+      const isOpen    = isWeekday && inSession;
+      const timeStr   = ist.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      el.innerHTML = isOpen
+        ? `<span class="market-dot market-open"></span>OPEN`
+        : `<span class="market-dot market-closed"></span>CLOSED`;
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      subEl.textContent = `IST ${timeStr}`;
+    }
+
+    async function loadBtcPrice() {
+      const el    = qs('#tileBtcPrice');
+      const subEl = qs('#tileBtcChange');
+      try {
+        const r    = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?interval=1d&range=2d');
+        const data = await r.json();
+        const meta = data.chart.result[0].meta;
+        const p    = meta.regularMarketPrice;
+        const prev = meta.chartPreviousClose;
+        const chg  = ((p - prev) / prev * 100);
+        el.textContent  = '$' + Math.round(p).toLocaleString('en-US');
+        subEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% today';
+        subEl.style.color = chg >= 0 ? 'var(--green)' : 'var(--red)';
+      } catch {
+        el.textContent  = '—';
+        subEl.textContent = 'Unavailable';
+      }
+    }
+
+    /* patch renderWatchlistSummary to also update tiles */
+    const _origRenderSummary = renderWatchlistSummary;
+    function renderWatchlistSummary(s = {}) {
+      _origRenderSummary(s);
+      const bullish = (s.strong_buy || 0) + (s.buy || 0);
+      const bearish = (s.sell || 0) + (s.strong_sell || 0);
+      const total   = s.total || 0;
+      const tB = qs('#tileBullish'); if (tB) tB.textContent = bullish;
+      const tBs= qs('#tileBullSub'); if (tBs) tBs.textContent = `of ${total} stocks`;
+      const tR = qs('#tileBearish'); if (tR) tR.textContent = bearish;
+      const tRs= qs('#tileBearSub'); if (tRs) tRs.textContent = `of ${total} stocks`;
+    }
+
     /* ── Init ── */
     loadWatchlist();
+    loadHeroTiles();
   </script>
 </body>
 </html>
