@@ -779,19 +779,37 @@
 
   function renderFundamental(f) {
     setHeadPrice(f.price, null);
-    const rows = [
-      ['P/E Ratio', f.pe, 'Valuation relative to earnings'],
-      ['ROE', f.roe ? f.roe+'%' : null, 'Return on equity'],
-      ['Debt / Equity', f.debt_equity, 'Balance sheet leverage'],
-      ['Market Cap', f.market_cap || f.mcap, 'Company size'],
-      ['Profit Margin', f.profit_margin ? f.profit_margin+'%' : null, 'Operating profitability'],
-      ['Revenue Growth', f.revenue_growth ? f.revenue_growth+'%' : null, 'Top-line expansion']
+    var fmt = function(v) { return (v == null || v === 'N/A' || v === '') ? '—' : v; };
+    var pf  = function(v) {
+      if (v == null || v === 'N/A' || v === '') return '—';
+      var s = String(v); return s.includes('%') ? s : s + '%';
+    };
+    var rows = [
+      ['P/E Ratio',        fmt(f.pe),                              'Valuation relative to earnings'],
+      ['ROE',              pf(f.roe),                              'Return on equity'],
+      ['ROCE',             pf(f.roce),                             'Return on capital employed'],
+      ['Debt / Equity',    fmt(f.debt_equity),                    'Balance sheet leverage'],
+      ['Market Cap',       fmt(f.mcap || f.market_cap),           'Company size'],
+      ['EPS',              fmt(f.eps),                             'Earnings per share'],
+      ['P/B Ratio',        fmt(f.pb),                              'Price to book value'],
+      ['Profit Margin',    pf(f.profit_margin),                   'Net profitability'],
+      ['Revenue Growth',   pf(f.rev_growth || f.revenue_growth),  'Top-line expansion'],
+      ['Sales CAGR 5Y',    fmt(f.sales_cagr || f.cagr_5y),       '5-year sales growth'],
+      ['Profit CAGR 5Y',   fmt(f.profit_cagr),                    '5-year profit growth'],
+      ['Promoter Holding', pf(f.promoter),                        'Promoter stake'],
+      ['FII Holding',      pf(f.fii),                             'Foreign institutional investors'],
+      ['DII Holding',      pf(f.dii),                             'Domestic institutional investors'],
     ];
-    qs('.analysis-body').innerHTML = '<div class="list">' + rows.map(([label,value,note]) => `
-      <div class="list-item">
-        <div class="split"><strong>${label}</strong><span style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace">${value??'—'}</span></div>
-        <small>${note}</small>
-      </div>`).join('') + '</div>';
+    var html = '<div class="list">';
+    rows.forEach(function(r) {
+      html += '<div class="list-item">' +
+        '<div class="split"><strong>' + r[0] + '</strong>' +
+        '<span style="font-size:14px;font-weight:600;font-family:monospace">' + r[1] + '</span></div>' +
+        '<small>' + r[2] + '</small>' +
+        '</div>';
+    });
+    html += '</div>';
+    qs('.analysis-body').innerHTML = html;
   }
 
   function renderSentiment(s) {
