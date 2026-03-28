@@ -19,7 +19,10 @@ Key features:
 from flask import Flask, jsonify, send_from_directory, request as freq
 from flask_cors import CORS
 import requests, re, os, time, json, threading, datetime, difflib
+from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
@@ -35,6 +38,20 @@ SCH = {"User-Agent": UA, "Accept": "text/html,application/xhtml+xml", "Accept-La
 MCH = {"User-Agent": UA, "Accept": "text/html,*/*", "Accept-Language": "en-IN,en;q=0.9", "Referer": "https://www.moneycontrol.com"}
 GNH = {"User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"}
 NSE_H = {"User-Agent": UA, "Accept": "application/json,*/*", "Referer": "https://www.nseindia.com", "Accept-Language": "en-US,en;q=0.9"}
+
+
+# Shared HTTP session for better connection reuse on Render
+_http = requests.Session()
+_retry = Retry(total=2, connect=2, read=2, backoff_factor=0.25, status_forcelist=[429,500,502,503,504], allowed_methods=["GET","POST"])
+_adapter = HTTPAdapter(pool_connections=40, pool_maxsize=40, max_retries=_retry)
+_http.mount("https://", _adapter)
+_http.mount("http://", _adapter)
+
+def http_get(url, headers=None, timeout=8, **kwargs):
+    return _http.get(url, headers=headers, timeout=timeout, **kwargs)
+
+def http_post(url, headers=None, timeout=15, **kwargs):
+    return _http.post(url, headers=headers, timeout=timeout, **kwargs)
 
 # ============================================================
 # SMART CACHE - TTL based, thread-safe
@@ -129,6 +146,16 @@ def api_test():
             results[name] = {"ok": False, "error": str(e)[:60]}
     return jsonify({"results": results, "groq_key_set": GROQ_API_KEY != "YOUR_GROQ_KEY_HERE"})
 
+@app.route("/api/health")
+def api_health():
+    return jsonify({
+        "success": True,
+        "status": "ok",
+        "service": "Kevin Kataria Stock Intelligence",
+        "cache_keys": len(_cache),
+        "search_universe": len(get_search_universe()) if "get_search_universe" in globals() else None
+    })
+
 # ============================================================
 # PRICE - Yahoo Finance (never blocked on cloud)
 # ============================================================
@@ -139,7 +166,7 @@ def price(symbol):
     if cached: return jsonify(cached)
     for base in ["query1","query2"]:
         try:
-            r = requests.get(f"https://{base}.finance.yahoo.com/v8/finance/chart/{sym}.NS",
+            r = http_get(f"https://{base}.finance.yahoo.com/v8/finance/chart/{sym}.NS",
                              headers=YFH, timeout=8)
             if not r.ok: continue
             meta = r.json()["chart"]["result"][0]["meta"]
@@ -372,7 +399,7 @@ def fundamental(symbol):
 
     for suffix in ["/consolidated/","/"]:
         try:
-            r=requests.get(f"https://www.screener.in/company/{sym}{suffix}",headers=SCH,timeout=12)
+            r=http_get(f"https://www.screener.in/company/{sym}{suffix}",headers=SCH,timeout=12)
             if r.status_code==200 and len(r.text)>5000:
                 result=parse_screener(r.text)
                 if result:
@@ -383,7 +410,7 @@ def fundamental(symbol):
     for base in ["query1","query2"]:
         try:
             url=f"https://{base}.finance.yahoo.com/v11/finance/quoteSummary/{sym}.NS?modules=defaultKeyStatistics%2CfinancialData%2CsummaryDetail%2CmajorHoldersBreakdown"
-            r=requests.get(url,headers=YFH,timeout=8)
+            r=http_get(url,headers=YFH,timeout=8)
             if not r.ok: continue
             res=r.json()["quoteSummary"]["result"][0]
             fd=res.get("financialData",{}); sd=res.get("summaryDetail",{})
@@ -434,7 +461,7 @@ def news(symbol):
     all_items=[]; seen=set()
     def fetch(q):
         try:
-            r=requests.get(f"https://news.google.com/rss/search?q={q}&hl=en-IN&gl=IN&ceid=IN:en",headers=GNH,timeout=6)
+            r=http_get(f"https://news.google.com/rss/search?q={q}&hl=en-IN&gl=IN&ceid=IN:en",headers=GNH,timeout=6)
             items=re.findall(r'<item>(.*?)</item>',r.text,re.DOTALL)
             out=[]
             for item in items[:4]:
@@ -535,7 +562,7 @@ def verdict(symbol):
                 "VERDICT: [BUY/SELL/HOLD]\nCONFIDENCE: [X%]\nREASONING:\n- point with number\n- point\n- point\n- point\n"
                 f"CURRENT PRICE: Rs.{t['price']}\nTARGET 3M: Rs.[]\nTARGET 12M: Rs.[]\nSTOP LOSS: Rs.{t['stop_loss']}\n"
                 "RISK: [Low/Medium/High]\nBEST FOR: [Short-term/Long-term/Both]\nDISCLAIMER: Not financial advice.")
-        resp=requests.post("https://api.groq.com/openai/v1/chat/completions",
+        resp=http_post("https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization":f"Bearer {GROQ_API_KEY}","Content-Type":"application/json"},
             json={"model":"llama-3.3-70b-versatile","max_tokens":800,
                   "messages":[{"role":"system","content":"Stock analyst. Use ONLY the numbers provided. Never use training memory for prices."},
@@ -873,7 +900,7 @@ def geopolitical():
     ai=""
     try:
         summary="\n".join([n["title"] for n in all_news[:12]])
-        resp=requests.post("https://api.groq.com/openai/v1/chat/completions",
+        resp=http_post("https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization":f"Bearer {GROQ_API_KEY}","Content-Type":"application/json"},
             json={"model":"llama-3.3-70b-versatile","max_tokens":500,
                   "messages":[{"role":"system","content":"Indian stock market analyst. Be concise and specific with sector and stock names."},
@@ -1001,7 +1028,7 @@ def watchlist_verdict(symbol):
             f"TARGET: Rs.[based on Rs.{t['price']}]\nSTOP LOSS: Rs.{t['stop_loss']}\n"
             "DISCLAIMER: Not financial advice.")
     try:
-        resp=requests.post("https://api.groq.com/openai/v1/chat/completions",
+        resp=http_post("https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization":f"Bearer {GROQ_API_KEY}","Content-Type":"application/json"},
             json={"model":"llama-3.3-70b-versatile","max_tokens":400,
                   "messages":[{"role":"system","content":"Stock analyst. Use only provided numbers."},
@@ -2291,133 +2318,40 @@ def _norm_search_text(value):
 def search_stocks():
     raw_q = freq.args.get("q", "").strip()
     limit = min(max(int(freq.args.get("limit", 30) or 30), 1), 100)
+    enrich = str(freq.args.get("enrich", "0")).lower() in ("1", "true", "yes")
     if not raw_q:
         return jsonify({"success": True, "results": []})
 
-    q = raw_q.upper()
-    q_norm = _norm_search_text(raw_q)
+    results = _rank_search_results(raw_q, limit=limit)
 
-    stock_map = {}
-
-    for s in WATCHLIST:
-        stock_map[s["symbol"]] = {
-            "symbol": s["symbol"],
-            "name": s["name"],
-            "source": "watchlist"
-        }
-
-    for sym in SCREEN_STOCKS:
-        stock_map.setdefault(sym, {
-            "symbol": sym,
-            "name": sym,
-            "source": "screener"
-        })
-
-    for s in SEARCH_STOCKS_EXTENDED:
-        stock_map.setdefault(s["symbol"], {
-            "symbol": s["symbol"],
-            "name": s["name"],
-            "source": "universe"
-        })
-
-    ranked = []
-    for item in stock_map.values():
-        sym = item["symbol"].upper()
-        name = item["name"].upper()
-        sym_norm = _norm_search_text(sym)
-        name_norm = _norm_search_text(name)
-
-        if sym.startswith(q):
-            rank = 0
-        elif sym_norm.startswith(q_norm):
-            rank = 1
-        elif name.startswith(q):
-            rank = 2
-        elif name_norm.startswith(q_norm):
-            rank = 3
-        elif q in sym:
-            rank = 4
-        elif q_norm and q_norm in sym_norm:
-            rank = 5
-        elif q in name:
-            rank = 6
-        elif q_norm and q_norm in name_norm:
-            rank = 7
-        else:
-            continue
-
-        ranked.append({
-            "symbol": item["symbol"],
-            "name": item["name"],
-            "source": item.get("source", "stock"),
-            "_rank": rank,
-            "_sym_len": len(item["symbol"]),
-        })
-
-    ranked.sort(key=lambda x: (x["_rank"], x["_sym_len"], x["symbol"]))
-    results = [{k: v for k, v in r.items() if not k.startswith("_")} for r in ranked[:limit]]
-
-    # If no direct prefix/contains matches, provide fuzzy fallbacks for common typos
-    if not results and q_norm:
-        choices = []
-        seen = set()
-        for item in stock_map.values():
+    if enrich and results:
+        def fetch_change(item):
             sym = item["symbol"]
-            name = item["name"]
-            sym_norm = _norm_search_text(sym)
-            name_norm = _norm_search_text(name)
-            for label, norm in ((sym, sym_norm), (name, name_norm)):
-                if norm and norm not in seen:
-                    seen.add(norm)
-                    choices.append((norm, sym, name, item.get("source", "stock")))
-
-        scored = []
-        for norm, sym, name, source in choices:
-            ratio = difflib.SequenceMatcher(None, q_norm, norm[:max(len(q_norm), min(len(norm), len(q_norm)+4))]).ratio()
-            if ratio >= 0.55:
-                scored.append((ratio, sym, name, source))
-
-        scored.sort(key=lambda x: (-x[0], len(x[1]), x[1]))
-        results = [
-            {"symbol": sym, "name": name, "source": source}
-            for ratio, sym, name, source in scored[:limit]
-        ]
-
-    # Fetch live price + day change% for top results in parallel
-    def fetch_change(item):
-        sym = item["symbol"]
-        cached = cache_get(f"price:{sym}")
-        if cached:
-            item["price"] = cached.get("price")
-            item["change_pct"] = cached.get("pct")
+            cached = cache_get(f"price:{sym}")
+            if cached:
+                item["price"] = cached.get("price")
+                item["change_pct"] = cached.get("pct")
+                return item
+            try:
+                r = http_get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}.NS?interval=1d&range=2d", headers=YFH, timeout=4)
+                if r.ok:
+                    meta = r.json()["chart"]["result"][0]["meta"]
+                    p = meta.get("regularMarketPrice", 0)
+                    prev = meta.get("chartPreviousClose", 0)
+                    item["price"] = round(p, 2)
+                    item["change_pct"] = round((p - prev) / prev * 100, 2) if prev else 0
+            except Exception:
+                item["price"] = None
+                item["change_pct"] = None
             return item
-        try:
-            r = requests.get(
-                f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}.NS?interval=1d&range=2d",
-                headers=YFH, timeout=5)
-            if r.ok:
-                meta = r.json()["chart"]["result"][0]["meta"]
-                p    = meta.get("regularMarketPrice", 0)
-                prev = meta.get("chartPreviousClose", 0)
-                item["price"]      = round(p, 2)
-                item["change_pct"] = round((p - prev) / prev * 100, 2) if prev else 0
-        except:
-            item["price"]      = None
-            item["change_pct"] = None
-        return item
 
-    top  = results[:15]
-    rest = results[15:]
-    with ThreadPoolExecutor(max_workers=10) as pool:
-        top = list(pool.map(fetch_change, top))
-    results = top + rest
+        top = results[:8]
+        rest = results[8:]
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            top = list(pool.map(fetch_change, top))
+        results = top + rest
 
-    return jsonify({
-        "success": True,
-        "query": raw_q,
-        "count": len(results),
-        "results": results
-    })
+    return jsonify({"success": True, "query": raw_q, "count": len(results), "results": results})
 
 @app.route("/api/screener")
 def screener():
