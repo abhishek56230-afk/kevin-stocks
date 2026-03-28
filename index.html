@@ -607,7 +607,14 @@
   /* ─── API ─── */
   async function api(path, opts) {
     const r = await fetch(path, opts);
-    const d = await r.json();
+    let d;
+    try {
+      const text = await r.text();
+      if (!text || !text.trim()) throw new Error('Empty response from server. Try again.');
+      d = JSON.parse(text);
+    } catch(e) {
+      throw new Error('Server error — ' + (e.message || 'unexpected response. Try again in a few seconds.'));
+    }
     if (!r.ok) throw new Error(d.error || 'Request failed');
     if (d && d.success === false) throw new Error(d.error || 'No data returned');
     return d;
@@ -1011,7 +1018,7 @@
 
   async function runScreener() {
     const list = qs('#screenerList');
-    list.innerHTML = '<div class="loader"></div>';
+    list.innerHTML = '<div class="loader"></div><div style="text-align:center;color:var(--muted);font-size:12px;padding-bottom:16px">Scanning stocks — takes 15–20 seconds…</div>';
     try {
       const params = new URLSearchParams();
       var filters = [
