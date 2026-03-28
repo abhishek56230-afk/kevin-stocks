@@ -298,6 +298,21 @@
 
     /* ── Table rows ── */
     .tableish { display: flex; flex-direction: column; gap: 8px; }
+    .scr-table-head, .scr-table-row {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr .8fr .8fr .8fr .8fr 1fr .9fr .8fr .8fr;
+      gap: 8px; padding: 11px 14px; border-radius: var(--radius-sm); font-size: 12px;
+    }
+    .scr-table-head {
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .08em;
+      background: rgba(255,255,255,.02); border: 1px solid var(--line);
+    }
+    .scr-table-row {
+      background: rgba(255,255,255,.022); border: 1px solid var(--line);
+      cursor: pointer; transition: background .12s, border-color .12s;
+    }
+    .scr-table-row:hover { background: rgba(56,189,248,.06); border-color: rgba(56,189,248,.25); }
     .rowish { display: grid; grid-template-columns: 1.1fr .8fr .8fr .8fr; gap: 10px; padding: 13px 16px; border-radius: var(--radius-sm); background: rgba(255,255,255,.022); border: 1px solid var(--line); }
     .rowish.head { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; background: transparent; border: none; padding: 0 2px; }
 
@@ -323,7 +338,15 @@
     .split { display: flex; justify-content: space-between; gap: 14px; align-items: center; flex-wrap: wrap; }
     .danger { background: rgba(248,113,113,.07) !important; color: var(--red) !important; border-color: rgba(248,113,113,.25) !important; }
 
-    .loader { padding: 36px; text-align: center; color: var(--muted); font-size: 14px; }
+    .scr-grid  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 4px; }
+    .scr-group { display: flex; flex-direction: column; gap: 6px; }
+    .scr-label { font-size: 11px; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: .1em; }
+    .scr-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .scr-row .input:only-child { grid-column: 1 / -1; }
+    @media (max-width: 900px) { .scr-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .scr-grid { grid-template-columns: 1fr; } }
+
+        .loader { padding: 36px; text-align: center; color: var(--muted); font-size: 14px; }
     .loader::before { content: ''; display: block; width: 28px; height: 28px; margin: 0 auto 12px; border: 2px solid rgba(56,189,248,.15); border-top-color: var(--brand); border-radius: 50%; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -472,17 +495,78 @@
   <div id="view-screener" class="view" style="display:none">
     <div class="card panel">
       <div class="panel-head">
-        <div><h2>Screener</h2><div class="sub">Filter NSE stocks by fundamentals.</div></div>
-        <button class="primary-btn" id="runScreenerBtn">Run Screener</button>
+        <div><h2>Screener</h2><div class="sub">Filter NSE stocks by fundamentals. Leave blank to skip a filter.</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="ghost" id="resetScreenerBtn">Reset</button>
+          <button class="primary-btn" id="runScreenerBtn">Run Screener</button>
+        </div>
       </div>
-      <div class="filter-bar">
-        <input class="input" id="maxPe"   placeholder="Max P/E — e.g. 30"        type="number" step="0.1" />
-        <input class="input" id="minRoe"  placeholder="Min ROE % — e.g. 15"      type="number" step="0.1" />
-        <input class="input" id="maxDebt" placeholder="Max Debt/Equity — e.g. 1"  type="number" step="0.1" />
-        <button class="ghost" id="resetScreenerBtn">Reset</button>
+
+      <div class="scr-grid">
+        <div class="scr-group">
+          <div class="scr-label">P/E Ratio</div>
+          <div class="scr-row">
+            <input class="input" id="minPe"  placeholder="Min" type="number" step="0.1" />
+            <input class="input" id="maxPe"  placeholder="Max" type="number" step="0.1" />
+          </div>
+        </div>
+        <div class="scr-group">
+          <div class="scr-label">PEG Ratio</div>
+          <div class="scr-row">
+            <input class="input" id="maxPeg" placeholder="Max PEG" type="number" step="0.01" />
+          </div>
+        </div>
+        <div class="scr-group">
+          <div class="scr-label">ROE %</div>
+          <div class="scr-row">
+            <input class="input" id="minRoe" placeholder="Min ROE %" type="number" step="0.1" />
+          </div>
+        </div>
+        <div class="scr-group">
+          <div class="scr-label">Debt / Equity</div>
+          <div class="scr-row">
+            <input class="input" id="maxDebt" placeholder="Max D/E" type="number" step="0.1" />
+          </div>
+        </div>
+        <div class="scr-group">
+          <div class="scr-label">Market Cap (Cr)</div>
+          <div class="scr-row">
+            <input class="input" id="minMcap" placeholder="Min" type="number" step="100" />
+            <input class="input" id="maxMcap" placeholder="Max" type="number" step="100" />
+          </div>
+        </div>
+        <div class="scr-group">
+          <div class="scr-label">Promoter Holding %</div>
+          <div class="scr-row">
+            <input class="input" id="minPromoter" placeholder="Min %" type="number" step="0.1" max="100" />
+            <input class="input" id="maxPromoter" placeholder="Max %" type="number" step="0.1" max="100" />
+          </div>
+        </div>
+        <div class="scr-group">
+          <div class="scr-label">FII Holding %</div>
+          <div class="scr-row">
+            <input class="input" id="minFii" placeholder="Min %" type="number" step="0.1" max="100" />
+            <input class="input" id="maxFii" placeholder="Max %" type="number" step="0.1" max="100" />
+          </div>
+        </div>
+        <div class="scr-group">
+          <div class="scr-label">DII / Inst %</div>
+          <div class="scr-row">
+            <input class="input" id="minDii" placeholder="Min %" type="number" step="0.1" max="100" />
+            <input class="input" id="maxDii" placeholder="Max %" type="number" step="0.1" max="100" />
+          </div>
+        </div>
+        <div class="scr-group">
+          <div class="scr-label">Public Holding %</div>
+          <div class="scr-row">
+            <input class="input" id="minPublic" placeholder="Min %" type="number" step="0.1" max="100" />
+            <input class="input" id="maxPublic" placeholder="Max %" type="number" step="0.1" max="100" />
+          </div>
+        </div>
       </div>
-      <div id="screenerList" class="tableish">
-        <div style="padding:20px;color:var(--muted);font-size:13px">Set filters and click Run Screener.</div>
+
+      <div id="screenerList" class="tableish" style="margin-top:18px">
+        <div style="padding:16px;color:var(--muted);font-size:13px">Set filters above and click Run Screener.</div>
       </div>
     </div>
   </div>
@@ -779,32 +863,40 @@
 
   function renderFundamental(f) {
     setHeadPrice(f.price, null);
-    var fmt = function(v) { return (v == null || v === 'N/A' || v === '') ? '—' : v; };
-    var pf  = function(v) {
-      if (v == null || v === 'N/A' || v === '') return '—';
-      var s = String(v); return s.includes('%') ? s : s + '%';
-    };
+    /* normalise a value — treat null, undefined, "N/A", "", "0" as missing */
+    function fmtV(v) {
+      if (v == null || v === '' || String(v).trim() === 'N/A' || String(v).trim() === '0') return null;
+      return String(v).trim();
+    }
+    function fmtPct(v) {
+      var s = fmtV(v); if (!s) return null;
+      return s.includes('%') ? s : s + '%';
+    }
     var rows = [
-      ['P/E Ratio',        fmt(f.pe),                              'Valuation relative to earnings'],
-      ['ROE',              pf(f.roe),                              'Return on equity'],
-      ['ROCE',             pf(f.roce),                             'Return on capital employed'],
-      ['Debt / Equity',    fmt(f.debt_equity),                    'Balance sheet leverage'],
-      ['Market Cap',       fmt(f.mcap || f.market_cap),           'Company size'],
-      ['EPS',              fmt(f.eps),                             'Earnings per share'],
-      ['P/B Ratio',        fmt(f.pb),                              'Price to book value'],
-      ['Profit Margin',    pf(f.profit_margin),                   'Net profitability'],
-      ['Revenue Growth',   pf(f.rev_growth || f.revenue_growth),  'Top-line expansion'],
-      ['Sales CAGR 5Y',    fmt(f.sales_cagr || f.cagr_5y),       '5-year sales growth'],
-      ['Profit CAGR 5Y',   fmt(f.profit_cagr),                    '5-year profit growth'],
-      ['Promoter Holding', pf(f.promoter),                        'Promoter stake'],
-      ['FII Holding',      pf(f.fii),                             'Foreign institutional investors'],
-      ['DII Holding',      pf(f.dii),                             'Domestic institutional investors'],
+      ['P/E Ratio',        fmtV(f.pe),                                    'Valuation relative to earnings'],
+      ['EPS',              fmtV(f.eps),                                    'Earnings per share (TTM)'],
+      ['P/B Ratio',        fmtV(f.pb),                                     'Price to book value'],
+      ['Market Cap',       fmtV(f.mcap || f.market_cap),                  'Company size'],
+      ['ROE',              fmtPct(f.roe),                                   'Return on equity'],
+      ['ROCE',             fmtPct(f.roce),                                  'Return on capital employed'],
+      ['Debt / Equity',    fmtV(f.debt_equity),                           'Balance sheet leverage'],
+      ['Current Ratio',    fmtV(f.current_ratio),                         'Short-term liquidity'],
+      ['Profit Margin',    fmtPct(f.profit_margin),                        'Net profitability'],
+      ['Revenue Growth',   fmtPct(f.rev_growth || f.revenue_growth),       'Top-line YoY expansion'],
+      ['Sales CAGR 5Y',    fmtV(f.sales_cagr || f.cagr_5y),              '5-year revenue CAGR'],
+      ['Profit CAGR 5Y',   fmtV(f.profit_cagr),                           '5-year profit CAGR'],
+      ['Dividend Yield',   fmtPct(f.dividend),                             'Annual dividend yield'],
+      ['Promoter Holding', fmtPct(f.promoter),                             'Promoter stake'],
+      ['FII Holding',      fmtPct(f.fii),                                  'Foreign institutional investors'],
+      ['DII Holding',      fmtPct(f.dii),                                  'Domestic institutional investors'],
     ];
-    var html = '<div class="list">';
+    var source = f.source ? '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Source: ' + f.source + '</div>' : '';
+    var html = source + '<div class="list">';
     rows.forEach(function(r) {
+      var val = r[1] ? r[1] : '<span style="color:var(--muted)">—</span>';
       html += '<div class="list-item">' +
         '<div class="split"><strong>' + r[0] + '</strong>' +
-        '<span style="font-size:14px;font-weight:600;font-family:monospace">' + r[1] + '</span></div>' +
+        '<span style="font-size:14px;font-weight:600;font-family:DM Mono,monospace;color:' + (r[1] ? 'var(--text)' : 'var(--muted)') + '">' + val + '</span></div>' +
         '<small>' + r[2] + '</small>' +
         '</div>';
     });
@@ -915,24 +1007,60 @@
   }
 
   /* ─── Screener ─── */
+  function scrVal(id) { var v = (qs('#'+id)||{}).value; return v && v.trim() ? v.trim() : null; }
+
   async function runScreener() {
     const list = qs('#screenerList');
     list.innerHTML = '<div class="loader"></div>';
     try {
       const params = new URLSearchParams();
-      if (qs('#maxPe').value)   params.set('max_pe',   qs('#maxPe').value);
-      if (qs('#minRoe').value)  params.set('min_roe',  qs('#minRoe').value);
-      if (qs('#maxDebt').value) params.set('max_debt', qs('#maxDebt').value);
+      var filters = [
+        ['min_pe','minPe'],['max_pe','maxPe'],
+        ['max_peg','maxPeg'],
+        ['min_roe','minRoe'],
+        ['max_debt','maxDebt'],
+        ['min_mcap','minMcap'],['max_mcap','maxMcap'],
+        ['min_promoter','minPromoter'],['max_promoter','maxPromoter'],
+        ['min_fii','minFii'],['max_fii','maxFii'],
+        ['min_dii','minDii'],['max_dii','maxDii'],
+        ['min_public','minPublic'],['max_public','maxPublic'],
+      ];
+      filters.forEach(function(f) { var v = scrVal(f[1]); if (v) params.set(f[0], v); });
+
       const data = await api('/api/screener?' + params.toString());
+      var stocks = data.stocks || [];
+      if (!stocks.length) {
+        list.innerHTML = '<div style="padding:20px;color:var(--muted);font-size:13px">No stocks matched your filters. Try relaxing the criteria.</div>';
+        return;
+      }
+      var fmt = function(v, suffix) { return (v == null) ? '—' : v + (suffix||''); };
+      var mcapFmt = function(cr) {
+        if (!cr) return '—';
+        if (cr >= 100000) return (cr/100000).toFixed(1) + ' L Cr';
+        if (cr >= 1000)   return (cr/1000).toFixed(1)   + ' K Cr';
+        return cr + ' Cr';
+      };
       list.innerHTML =
-        '<div class="rowish head"><div>Symbol</div><div>Price</div><div>P/E</div><div>ROE</div></div>' +
-        (data.stocks||[]).map(s => `
-          <div class="rowish">
-            <div><strong style="cursor:pointer" onclick="setView('home');openStock('${s.symbol}')">${s.symbol}</strong></div>
-            <div style="font-family:'DM Mono',monospace">${money(s.price)}</div>
-            <div style="font-family:'DM Mono',monospace">${s.pe??'—'}</div>
-            <div class="${s.roe>=15?'up':''}" style="font-family:'DM Mono',monospace">${s.roe!=null?s.roe+'%':'—'}</div>
-          </div>`).join('');
+        '<div class="scr-table-head">' +
+          '<div>Symbol</div><div>Price</div><div>P/E</div><div>PEG</div>' +
+          '<div>ROE</div><div>D/E</div><div>MCap</div>' +
+          '<div>Promoter</div><div>FII</div><div>Public</div>' +
+        '</div>' +
+        stocks.map(function(s) { return (
+          '<div class="scr-table-row" onclick="setView(\'home\');openStock(\''+s.symbol+'\')">' +
+            '<div><strong>'+s.symbol+'</strong></div>' +
+            '<div style="font-family:DM Mono,monospace">'+money(s.price)+'</div>' +
+            '<div style="font-family:DM Mono,monospace">'+fmt(s.pe)+'</div>' +
+            '<div style="font-family:DM Mono,monospace">'+fmt(s.peg)+'</div>' +
+            '<div class="'+(s.roe>=15?'up':'')+'" style="font-family:DM Mono,monospace">'+fmt(s.roe,'%')+'</div>' +
+            '<div style="font-family:DM Mono,monospace">'+fmt(s.debt_equity)+'</div>' +
+            '<div style="font-family:DM Mono,monospace">'+mcapFmt(s.mcap_cr)+'</div>' +
+            '<div style="font-family:DM Mono,monospace">'+fmt(s.promoter,'%')+'</div>' +
+            '<div style="font-family:DM Mono,monospace">'+fmt(s.fii,'%')+'</div>' +
+            '<div style="font-family:DM Mono,monospace">'+fmt(s.public,'%')+'</div>' +
+          '</div>'
+        );}).join('') +
+        '<div style="padding:12px 16px;font-size:12px;color:var(--muted)">' + stocks.length + ' stocks matched</div>';
     } catch(e) { list.innerHTML = '<div class="analysis-empty">' + e.message + '</div>'; }
   }
 
@@ -1023,7 +1151,12 @@
   qs('#reloadPortfolio').addEventListener('click', loadPortfolio);
   qs('#addHoldingBtn').addEventListener('click', addHolding);
   qs('#runScreenerBtn').addEventListener('click', runScreener);
-  qs('#resetScreenerBtn').addEventListener('click', () => { ['#maxPe','#minRoe','#maxDebt'].forEach(id => qs(id).value=''); runScreener(); });
+  qs('#resetScreenerBtn').addEventListener('click', function() {
+    ['minPe','maxPe','maxPeg','minRoe','maxDebt','minMcap','maxMcap',
+     'minPromoter','maxPromoter','minFii','maxFii','minDii','maxDii','minPublic','maxPublic'
+    ].forEach(function(id) { var el = qs('#'+id); if(el) el.value=''; });
+    qs('#screenerList').innerHTML = '<div style="padding:16px;color:var(--muted);font-size:13px">Filters cleared. Click Run Screener to load all stocks.</div>';
+  });
   qs('#refreshAlerts').addEventListener('click', loadAlerts);
   qs('#addAlertBtn').addEventListener('click', addAlert);
 
