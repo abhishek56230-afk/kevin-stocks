@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kevin Kataria — Stock Intelligence</title>
+  <title>Kevin Kataria — Stock Intelligence Pro</title>
+  <meta name="description" content="Professional NSE stock analysis with fast search, AI verdicts, watchlists, alerts and premium-ready monetization sections." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -388,7 +389,7 @@
         </svg>
       </div>
       <div>
-        <div class="brand-title">Kevin Kataria — Stock Intelligence</div>
+        <div class="brand-title">Kevin Kataria — Stock Intelligence Pro</div>
         <div class="brand-sub">NSE · live prices · AI analysis · portfolio tracking</div>
       </div>
     </div>
@@ -406,14 +407,15 @@
       <!-- Search card -->
       <div class="card hero-main">
         <div class="eyebrow">Live Intelligence</div>
-        <h1 class="hero-title">Search any NSE stock and get a cleaner, faster, more professional experience.</h1>
-        <p class="hero-copy">Instant search suggestions, clean signal cards, lazy tab loading, and a full AI verdict — built to feel like a real product.</p>
+        <h1 class="hero-title">Search NSE stocks with pro-grade speed, cleaner analysis, and premium-ready monetization UX.</h1>
+        <p class="hero-copy">Faster suggestions, cleaner signal cards, lazy-loaded tabs, premium call-to-actions, and a sharper product feel built for real users and future revenue.</p>
         <div class="search-shell">
           <div class="search-box">
             <input id="searchInput" type="text" placeholder="Type AD, HCL, REL… and get matching NSE stocks" autocomplete="off" spellcheck="false" />
             <button class="primary-btn" id="analyseBtn">Analyse Stock</button>
           </div>
           <div id="searchDrop" class="search-drop"></div>
+          <div style="margin-top:10px;font-size:11px;color:var(--muted)">Fast search now prioritizes instant symbol matching instead of fetching live quotes on every keystroke.</div>
         </div>
       </div>
 
@@ -448,6 +450,30 @@
         </div>
       </div>
     </div><!-- /hero -->
+
+    <div class="card panel" style="margin-bottom:16px">
+      <div class="panel-head">
+        <div><h2>Monetization Ready</h2><div class="sub">Simple paths to turn traffic into revenue without hurting trust.</div></div>
+        <button class="ghost" onclick="document.getElementById('pricingPlans').scrollIntoView({behavior:'smooth'})">View plans</button>
+      </div>
+      <div class="kpi-grid" id="pricingPlans">
+        <div class="metric">
+          <div class="section-title">Starter</div>
+          <div class="metric-value">Free</div>
+          <div class="metric-note">Search, watchlist and basic analysis. Ideal for organic traffic, SEO and lead capture.</div>
+        </div>
+        <div class="metric">
+          <div class="section-title">Pro</div>
+          <div class="metric-value">₹499/mo</div>
+          <div class="metric-note">Premium verdicts, faster refresh, deeper alerts, saved portfolio insights and priority features.</div>
+        </div>
+        <div class="metric">
+          <div class="section-title">Partner Revenue</div>
+          <div class="metric-value">Ads / Affiliate</div>
+          <div class="metric-note">Reserved slots for brokers, newsletters, finance tools and sponsored research placements.</div>
+        </div>
+      </div>
+    </div>
 
     <!-- Main grid -->
     <div class="main-grid">
@@ -688,13 +714,28 @@
   /* ─── Search ─── */
   async function searchStocks(query) {
     const q = (query || '').trim();
-    if (!q) { closeSearch(); return; }
+    if (q.length < 2) { closeSearch(); return; }
+    if (state.searchCache.has(q)) {
+      state.searchResults = state.searchCache.get(q);
+      state.activeSuggestion = -1;
+      renderSearchResults(q, state.searchResults.length);
+      return;
+    }
+    if (state.searchAbort) state.searchAbort.abort();
+    state.searchAbort = new AbortController();
+    state.lastSearch = q;
     try {
-      const data = await api('/api/search?q=' + encodeURIComponent(q) + '&limit=40');
-      state.searchResults    = data.results || [];
+      const r = await fetch('/api/search?q=' + encodeURIComponent(q) + '&limit=12&enrich=0', { signal: state.searchAbort.signal });
+      const data = await r.json();
+      if (state.lastSearch !== q) return;
+      state.searchResults = data.results || [];
+      state.searchCache.set(q, state.searchResults);
+      if (state.searchCache.size > 20) state.searchCache.delete(state.searchCache.keys().next().value);
       state.activeSuggestion = -1;
       renderSearchResults(q, data.count || state.searchResults.length);
-    } catch { closeSearch(); }
+    } catch (e) {
+      if (e.name !== 'AbortError') closeSearch();
+    }
   }
 
   function renderSearchResults(query, total) {
@@ -1172,7 +1213,7 @@
     if (!val) return;
     if (state.searchResults.length) { chooseSuggestion(state.searchResults[0].symbol); return; }
     try {
-      const data = await api('/api/search?q=' + encodeURIComponent(val) + '&limit=10');
+      const data = await api('/api/search?q=' + encodeURIComponent(val) + '&limit=10&enrich=0');
       if (data.results && data.results.length) chooseSuggestion(data.results[0].symbol);
       else openStock(val.toUpperCase());
     } catch { openStock(val.toUpperCase()); }
@@ -1182,7 +1223,7 @@
     clearTimeout(state.searchTimer);
     const val = e.target.value;
     if (!val.trim()) { closeSearch(); return; }
-    state.searchTimer = setTimeout(() => searchStocks(val), 150);
+    state.searchTimer = setTimeout(() => searchStocks(val), 220);
   });
 
   qs('#searchInput').addEventListener('keydown', e => {
