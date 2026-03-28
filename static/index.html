@@ -1035,10 +1035,10 @@
       }
       var fmt = function(v, suffix) { return (v == null) ? '—' : v + (suffix||''); };
       var mcapFmt = function(cr) {
-        if (!cr) return '—';
+        if (!cr && cr !== 0) return '—';
         if (cr >= 100000) return (cr/100000).toFixed(1) + ' L Cr';
         if (cr >= 1000)   return (cr/1000).toFixed(1)   + ' K Cr';
-        return cr + ' Cr';
+        return cr.toFixed(0) + ' Cr';
       };
       list.innerHTML =
         '<div class="scr-table-head">' +
