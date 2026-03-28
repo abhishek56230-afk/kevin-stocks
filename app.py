@@ -323,8 +323,8 @@ def fundamental(symbol):
                 re.escape(label) + r'[^<]*</td>\s*<td[^>]*>\s*([\d,\.]+)',
                 # data attribute or value after colon
                 re.escape(label) + r'[^<]{0,20}:\s*([\d,\.]+)',
-                # any number near the label within 200 chars
-                re.escape(label) + r'[\s\S]{0,200}?(?<![\d])(\d{1,6}(?:[,\.]\d+)*)(?![\d])',
+                # number within 100 chars (tighter to avoid wrong matches)
+                re.escape(label) + r'[\s\S]{0,100}?([\d]+(?:[,\.]\d+)+)',
             ]
             for pat in patterns:
                 try:
@@ -398,7 +398,13 @@ def fundamental(symbol):
                     raw=v.get("raw")
                     if raw is not None: return str(round(float(raw)*100,2))+"%"
                 return "N/A"
+            # Get live price for the header
+            yf_price = None
+            try:
+                yf_price = (sd.get("regularMarketPrice") or {}).get("raw") or                            (fd.get("currentPrice") or {}).get("raw")
+            except: pass
             data={"success":True,"source":"Yahoo Finance",
+                "price": yf_price,
                 "mcap":fv2(sd,"marketCap"),"pe":fv2(sd,"trailingPE"),"fwd_pe":fv2(sd,"forwardPE"),
                 "peg":fv2(ks,"pegRatio"),"pb":fv2(ks,"priceToBook"),"eps":fv2(ks,"trailingEps"),
                 "book_value":fv2(ks,"bookValue"),"dividend":pv(sd,"dividendYield"),
@@ -950,18 +956,27 @@ def analyse_single(stock):
 def watchlist():
     cached=cache_get("watchlist")
     if cached: return jsonify(cached)
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures=[pool.submit(analyse_single,s) for s in WATCHLIST]
-        results=[f.result() for f in as_completed(futures,timeout=30)]
+    results = []
+    try:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(analyse_single, s) for s in WATCHLIST]
+            for f in as_completed(futures, timeout=30):
+                try:
+                    results.append(f.result(timeout=5))
+                except Exception:
+                    pass
+    except Exception:
+        pass  # TimeoutError — return partial results
     signal_order={"STRONG BUY":0,"BUY":1,"HOLD":2,"SELL":3,"STRONG SELL":4,"N/A":5}
     results.sort(key=lambda x:(signal_order.get(x["signal"],5),-(x["pnl_pct"] or 0)))
     summary={"total":len(results),
-             "strong_buy":sum(1 for r in results if r["signal"]=="STRONG BUY"),
-             "buy":sum(1 for r in results if r["signal"]=="BUY"),
-             "hold":sum(1 for r in results if r["signal"]=="HOLD"),
-             "sell":sum(1 for r in results if r["signal"] in ("SELL","STRONG SELL")),
-             "gainers":sum(1 for r in results if (r["pnl_pct"] or 0)>0),
-             "losers":sum(1 for r in results if (r["pnl_pct"] or 0)<0)}
+             "strong_buy": sum(1 for r in results if r["signal"]=="STRONG BUY"),
+             "buy":        sum(1 for r in results if r["signal"]=="BUY"),
+             "hold":       sum(1 for r in results if r["signal"]=="HOLD"),
+             "sell":       sum(1 for r in results if r["signal"]=="SELL"),
+             "strong_sell":sum(1 for r in results if r["signal"]=="STRONG SELL"),
+             "gainers":    sum(1 for r in results if (r["pnl_pct"] or 0)>0),
+             "losers":     sum(1 for r in results if (r["pnl_pct"] or 0)<0)}
     result={"success":True,"stocks":results,"summary":summary}
     cache_set("watchlist",result,ttl=300)
     return jsonify(result)
@@ -2461,7 +2476,7 @@ def screener():
                 fd  = res.get("financialData", {}) or {}
                 sd  = res.get("summaryDetail", {}) or {}
                 ks  = res.get("defaultKeyStatistics", {}) or {}
-                mh  = res.get("majorHoldersBreakdown", {}) or {}
+                mh  = res.get("majorHoldersBreakdown") or {}
 
                 pe           = safe_float(safe_raw(sd, "trailingPE"))
                 peg          = safe_float(safe_raw(ks, "pegRatio"))
@@ -2511,9 +2526,21 @@ def screener():
                 continue
         return None
 
-    with ThreadPoolExecutor(max_workers=10) as pool:
-        results = list(pool.map(screen_one, symbols[:80]))
-    results = [r for r in results if r]
+    # Cap at 40 stocks, 5 workers to stay within Render timeout
+    symbols_to_scan = symbols[:40]
+    results = []
+    try:
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            futures = {pool.submit(screen_one, sym): sym for sym in symbols_to_scan}
+            for future in as_completed(futures, timeout=28):
+                try:
+                    r = future.result(timeout=4)
+                    if r is not None:
+                        results.append(r)
+                except Exception:
+                    pass
+    except Exception:
+        pass  # TimeoutError or any other error — return whatever we have so far
     results.sort(key=lambda x: (x.get("roe") or 0), reverse=True)
     return jsonify({"success":True,"stocks":results,"total":len(results)})
 
