@@ -1492,6 +1492,103 @@ SEARCH_STOCKS_EXTENDED = [
     {"symbol": "ZEEL",         "name": "Zee Entertainment Enterprises"},
     {"symbol": "ZENTEC",       "name": "Zen Technologies"},
     {"symbol": "ZOMATO",       "name": "Zomato"},
+    # ── Commonly searched by company name (not symbol) ──
+    {"symbol": "FRACTALINK",    "name": "Fractal Analytics"},
+    {"symbol": "DELHIVERY",     "name": "Delhivery"},
+    {"symbol": "NYKAA",         "name": "FSN E-Commerce Ventures (Nykaa)"},
+    {"symbol": "PAYTM",         "name": "One97 Communications (Paytm)"},
+    {"symbol": "POLICYBZR",     "name": "PB Fintech (PolicyBazaar)"},
+    {"symbol": "CARTRADE",      "name": "CarTrade Tech"},
+    {"symbol": "EASEMYTRIP",    "name": "Easy Trip Planners"},
+    {"symbol": "ZOMATO",        "name": "Zomato"},
+    {"symbol": "NAUKRI",        "name": "Info Edge India (Naukri)"},
+    {"symbol": "JUSTDIAL",      "name": "Just Dial"},
+    {"symbol": "INDIAMART",     "name": "IndiaMART InterMESH"},
+    {"symbol": "MATRIMONY",     "name": "Matrimony.com"},
+    {"symbol": "INDIGOPNTS",    "name": "Indigo Paints"},
+    {"symbol": "LATENTVIEW",    "name": "Latent View Analytics"},
+    {"symbol": "HAPPSTMNDS",    "name": "Happiest Minds Technologies"},
+    {"symbol": "TANLA",         "name": "Tanla Platforms"},
+    {"symbol": "ROUTE",         "name": "Route Mobile"},
+    {"symbol": "RATEGAIN",      "name": "RateGain Travel Technologies"},
+    {"symbol": "MTAR",          "name": "MTAR Technologies"},
+    {"symbol": "NAZARA",        "name": "Nazara Technologies"},
+    {"symbol": "HFCL",          "name": "HFCL"},
+    {"symbol": "RAILTEL",       "name": "RailTel Corporation of India"},
+    {"symbol": "IRCTC",         "name": "Indian Railway Catering & Tourism (IRCTC)"},
+    {"symbol": "MAZDOCK",       "name": "Mazagon Dock Shipbuilders"},
+    {"symbol": "COCHINSHIP",    "name": "Cochin Shipyard"},
+    {"symbol": "GARUDA",        "name": "Garuda Construction and Engineering"},
+    {"symbol": "KAYNES",        "name": "Kaynes Technology India"},
+    {"symbol": "SYRMA",         "name": "Syrma SGS Technology"},
+    {"symbol": "AVALON",        "name": "Avalon Technologies"},
+    {"symbol": "CAMPUS",        "name": "Campus Activewear"},
+    {"symbol": "VEDANT",        "name": "Vedant Fashions (Manyavar)"},
+    {"symbol": "METROBRAND",    "name": "Metro Brands"},
+    {"symbol": "SAPPHIRE",      "name": "Sapphire Foods India (KFC/Pizza Hut)"},
+    {"symbol": "DEVYANI",       "name": "Devyani International (KFC/Pizza Hut)"},
+    {"symbol": "WESTLIFE",      "name": "Westlife Foodworld (McDonald's)"},
+    {"symbol": "BARBEQUE",      "name": "Barbeque Nation Hospitality"},
+    {"symbol": "LEMONTREE",     "name": "Lemon Tree Hotels"},
+    {"symbol": "CHALET",        "name": "Chalet Hotels"},
+    {"symbol": "MAHINDCIE",     "name": "Mahindra CIE Automotive"},
+    {"symbol": "SANSERA",       "name": "Sansera Engineering"},
+    {"symbol": "CRAFTSMAN",     "name": "Craftsman Automation"},
+    {"symbol": "SUPRAJIT",      "name": "Suprajit Engineering"},
+    {"symbol": "LUMAXTECH",     "name": "Lumax Auto Technologies"},
+    {"symbol": "LUMAXIND",      "name": "Lumax Industries"},
+    {"symbol": "SONACOMS",      "name": "Sona BLW Precision Forgings"},
+    {"symbol": "MINDAIND",      "name": "Minda Industries"},
+    {"symbol": "TITAGARH",      "name": "Titagarh Rail Systems"},
+    {"symbol": "TEXRAIL",       "name": "Texmaco Rail & Engineering"},
+    {"symbol": "RVNL",          "name": "Rail Vikas Nigam"},
+    {"symbol": "IRCON",         "name": "IRCON International"},
+    {"symbol": "SJVN",          "name": "SJVN"},
+    {"symbol": "NHPC",          "name": "NHPC"},
+    {"symbol": "CESC",          "name": "CESC"},
+    {"symbol": "TATAPOWER",     "name": "Tata Power Company"},
+    {"symbol": "ADANIGREEN",    "name": "Adani Green Energy"},
+    {"symbol": "ADANIENSOL",    "name": "Adani Energy Solutions"},
+    {"symbol": "TORNTPOWER",    "name": "Torrent Power"},
+    {"symbol": "SUZLON",        "name": "Suzlon Energy"},
+    {"symbol": "INOXWIND",      "name": "Inox Wind"},
+    {"symbol": "WINDWORLD",     "name": "Wind World India"},
+    {"symbol": "STERLINWIL",    "name": "Sterling and Wilson Renewable Energy"},
+    {"symbol": "BOSCHLTD",      "name": "Bosch India"},
+    {"symbol": "SCHAEFFLER",    "name": "Schaeffler India"},
+    {"symbol": "TIMKEN",        "name": "Timken India"},
+    {"symbol": "SKFINDIA",      "name": "SKF India"},
+    {"symbol": "GREAVESCOT",    "name": "Greaves Cotton"},
+    {"symbol": "THERMAX",       "name": "Thermax"},
+    {"symbol": "ISGEC",         "name": "Isgec Heavy Engineering"},
+    {"symbol": "GMMPFAUDLR",    "name": "GMM Pfaudler"},
+    {"symbol": "ELGIEQUIP",     "name": "Elgi Equipments"},
+    {"symbol": "KIRLOSBROS",    "name": "Kirloskar Brothers"},
+    {"symbol": "ASTRAL",        "name": "Astral Poly Technik"},
+    {"symbol": "POLYCAB",       "name": "Polycab India"},
+    {"symbol": "KEI",           "name": "KEI Industries"},
+    {"symbol": "FINOLEX",       "name": "Finolex Cables"},
+    {"symbol": "HBLENGINE",     "name": "HBL Engineering"},
+    {"symbol": "KPITTECH",      "name": "KPIT Technologies"},
+    {"symbol": "CYIENT",        "name": "Cyient"},
+    {"symbol": "TATAELXSI",     "name": "Tata Elxsi"},
+    {"symbol": "LTTS",          "name": "L&T Technology Services"},
+    {"symbol": "PERSISTENT",    "name": "Persistent Systems"},
+    {"symbol": "COFORGE",       "name": "Coforge"},
+    {"symbol": "MPHASIS",       "name": "Mphasis"},
+    {"symbol": "HEXAWARE",      "name": "Hexaware Technologies"},
+    {"symbol": "NIIT",          "name": "NIIT"},
+    {"symbol": "NIITTECH",      "name": "NIIT Technologies"},
+    {"symbol": "MASTEK",        "name": "Mastek"},
+    {"symbol": "SASKEN",        "name": "Sasken Technologies"},
+    {"symbol": "ZENSAR",        "name": "Zensar Technologies"},
+    {"symbol": "ZENSARTECH",    "name": "Zensar Technologies"},
+    {"symbol": "INFOBEAN",      "name": "InfoBeans Technologies"},
+    {"symbol": "INTELLECT",     "name": "Intellect Design Arena"},
+    {"symbol": "RAMCOSYS",      "name": "Ramco Systems"},
+    {"symbol": "NEWGEN",        "name": "Newgen Software Technologies"},
+    {"symbol": "NUCLEUS",       "name": "Nucleus Software Exports"},
+    {"symbol": "TANLA",         "name": "Tanla Platforms"},
     {"symbol": "ZUARI",        "name": "Zuari Agro Chemicals"},
     {"symbol": "ZYDUSLIFE",    "name": "Zydus Lifesciences"},
     {"symbol": "ZYDUSWEL",     "name": "Zydus Wellness"},
@@ -2046,6 +2143,103 @@ SEARCH_STOCKS_EXTENDED = [
     {"symbol": "YUKEN",        "name": "Yuken India"},
     {"symbol": "ZENSARTECH",   "name": "Zensar Technologies"},
     {"symbol": "ZENTEC",       "name": "Zen Technologies"},
+    # ── Commonly searched by company name (not symbol) ──
+    {"symbol": "FRACTALINK",    "name": "Fractal Analytics"},
+    {"symbol": "DELHIVERY",     "name": "Delhivery"},
+    {"symbol": "NYKAA",         "name": "FSN E-Commerce Ventures (Nykaa)"},
+    {"symbol": "PAYTM",         "name": "One97 Communications (Paytm)"},
+    {"symbol": "POLICYBZR",     "name": "PB Fintech (PolicyBazaar)"},
+    {"symbol": "CARTRADE",      "name": "CarTrade Tech"},
+    {"symbol": "EASEMYTRIP",    "name": "Easy Trip Planners"},
+    {"symbol": "ZOMATO",        "name": "Zomato"},
+    {"symbol": "NAUKRI",        "name": "Info Edge India (Naukri)"},
+    {"symbol": "JUSTDIAL",      "name": "Just Dial"},
+    {"symbol": "INDIAMART",     "name": "IndiaMART InterMESH"},
+    {"symbol": "MATRIMONY",     "name": "Matrimony.com"},
+    {"symbol": "INDIGOPNTS",    "name": "Indigo Paints"},
+    {"symbol": "LATENTVIEW",    "name": "Latent View Analytics"},
+    {"symbol": "HAPPSTMNDS",    "name": "Happiest Minds Technologies"},
+    {"symbol": "TANLA",         "name": "Tanla Platforms"},
+    {"symbol": "ROUTE",         "name": "Route Mobile"},
+    {"symbol": "RATEGAIN",      "name": "RateGain Travel Technologies"},
+    {"symbol": "MTAR",          "name": "MTAR Technologies"},
+    {"symbol": "NAZARA",        "name": "Nazara Technologies"},
+    {"symbol": "HFCL",          "name": "HFCL"},
+    {"symbol": "RAILTEL",       "name": "RailTel Corporation of India"},
+    {"symbol": "IRCTC",         "name": "Indian Railway Catering & Tourism (IRCTC)"},
+    {"symbol": "MAZDOCK",       "name": "Mazagon Dock Shipbuilders"},
+    {"symbol": "COCHINSHIP",    "name": "Cochin Shipyard"},
+    {"symbol": "GARUDA",        "name": "Garuda Construction and Engineering"},
+    {"symbol": "KAYNES",        "name": "Kaynes Technology India"},
+    {"symbol": "SYRMA",         "name": "Syrma SGS Technology"},
+    {"symbol": "AVALON",        "name": "Avalon Technologies"},
+    {"symbol": "CAMPUS",        "name": "Campus Activewear"},
+    {"symbol": "VEDANT",        "name": "Vedant Fashions (Manyavar)"},
+    {"symbol": "METROBRAND",    "name": "Metro Brands"},
+    {"symbol": "SAPPHIRE",      "name": "Sapphire Foods India (KFC/Pizza Hut)"},
+    {"symbol": "DEVYANI",       "name": "Devyani International (KFC/Pizza Hut)"},
+    {"symbol": "WESTLIFE",      "name": "Westlife Foodworld (McDonald's)"},
+    {"symbol": "BARBEQUE",      "name": "Barbeque Nation Hospitality"},
+    {"symbol": "LEMONTREE",     "name": "Lemon Tree Hotels"},
+    {"symbol": "CHALET",        "name": "Chalet Hotels"},
+    {"symbol": "MAHINDCIE",     "name": "Mahindra CIE Automotive"},
+    {"symbol": "SANSERA",       "name": "Sansera Engineering"},
+    {"symbol": "CRAFTSMAN",     "name": "Craftsman Automation"},
+    {"symbol": "SUPRAJIT",      "name": "Suprajit Engineering"},
+    {"symbol": "LUMAXTECH",     "name": "Lumax Auto Technologies"},
+    {"symbol": "LUMAXIND",      "name": "Lumax Industries"},
+    {"symbol": "SONACOMS",      "name": "Sona BLW Precision Forgings"},
+    {"symbol": "MINDAIND",      "name": "Minda Industries"},
+    {"symbol": "TITAGARH",      "name": "Titagarh Rail Systems"},
+    {"symbol": "TEXRAIL",       "name": "Texmaco Rail & Engineering"},
+    {"symbol": "RVNL",          "name": "Rail Vikas Nigam"},
+    {"symbol": "IRCON",         "name": "IRCON International"},
+    {"symbol": "SJVN",          "name": "SJVN"},
+    {"symbol": "NHPC",          "name": "NHPC"},
+    {"symbol": "CESC",          "name": "CESC"},
+    {"symbol": "TATAPOWER",     "name": "Tata Power Company"},
+    {"symbol": "ADANIGREEN",    "name": "Adani Green Energy"},
+    {"symbol": "ADANIENSOL",    "name": "Adani Energy Solutions"},
+    {"symbol": "TORNTPOWER",    "name": "Torrent Power"},
+    {"symbol": "SUZLON",        "name": "Suzlon Energy"},
+    {"symbol": "INOXWIND",      "name": "Inox Wind"},
+    {"symbol": "WINDWORLD",     "name": "Wind World India"},
+    {"symbol": "STERLINWIL",    "name": "Sterling and Wilson Renewable Energy"},
+    {"symbol": "BOSCHLTD",      "name": "Bosch India"},
+    {"symbol": "SCHAEFFLER",    "name": "Schaeffler India"},
+    {"symbol": "TIMKEN",        "name": "Timken India"},
+    {"symbol": "SKFINDIA",      "name": "SKF India"},
+    {"symbol": "GREAVESCOT",    "name": "Greaves Cotton"},
+    {"symbol": "THERMAX",       "name": "Thermax"},
+    {"symbol": "ISGEC",         "name": "Isgec Heavy Engineering"},
+    {"symbol": "GMMPFAUDLR",    "name": "GMM Pfaudler"},
+    {"symbol": "ELGIEQUIP",     "name": "Elgi Equipments"},
+    {"symbol": "KIRLOSBROS",    "name": "Kirloskar Brothers"},
+    {"symbol": "ASTRAL",        "name": "Astral Poly Technik"},
+    {"symbol": "POLYCAB",       "name": "Polycab India"},
+    {"symbol": "KEI",           "name": "KEI Industries"},
+    {"symbol": "FINOLEX",       "name": "Finolex Cables"},
+    {"symbol": "HBLENGINE",     "name": "HBL Engineering"},
+    {"symbol": "KPITTECH",      "name": "KPIT Technologies"},
+    {"symbol": "CYIENT",        "name": "Cyient"},
+    {"symbol": "TATAELXSI",     "name": "Tata Elxsi"},
+    {"symbol": "LTTS",          "name": "L&T Technology Services"},
+    {"symbol": "PERSISTENT",    "name": "Persistent Systems"},
+    {"symbol": "COFORGE",       "name": "Coforge"},
+    {"symbol": "MPHASIS",       "name": "Mphasis"},
+    {"symbol": "HEXAWARE",      "name": "Hexaware Technologies"},
+    {"symbol": "NIIT",          "name": "NIIT"},
+    {"symbol": "NIITTECH",      "name": "NIIT Technologies"},
+    {"symbol": "MASTEK",        "name": "Mastek"},
+    {"symbol": "SASKEN",        "name": "Sasken Technologies"},
+    {"symbol": "ZENSAR",        "name": "Zensar Technologies"},
+    {"symbol": "ZENSARTECH",    "name": "Zensar Technologies"},
+    {"symbol": "INFOBEAN",      "name": "InfoBeans Technologies"},
+    {"symbol": "INTELLECT",     "name": "Intellect Design Arena"},
+    {"symbol": "RAMCOSYS",      "name": "Ramco Systems"},
+    {"symbol": "NEWGEN",        "name": "Newgen Software Technologies"},
+    {"symbol": "NUCLEUS",       "name": "Nucleus Software Exports"},
+    {"symbol": "TANLA",         "name": "Tanla Platforms"},
     {"symbol": "ZUARI",        "name": "Zuari Agro Chemicals"},
     {"symbol": "ZYDUSLIFE",    "name": "Zydus Lifesciences"},
     {"symbol": "ZYDUSWEL",     "name": "Zydus Wellness"},
@@ -2190,43 +2384,101 @@ def search_stocks():
 
 @app.route("/api/screener")
 def screener():
-    max_pe   = float(freq.args.get("max_pe",9999))
-    min_roe  = float(freq.args.get("min_roe",0))
-    max_debt = float(freq.args.get("max_debt",9999))
-    symbols  = freq.args.get("symbols",",".join(SCREEN_STOCKS)).split(",")
+    # All filter params — 9999/-9999 = no filter applied
+    def fp(k, default): 
+        v = freq.args.get(k, "")
+        try: return float(v) if v.strip() else default
+        except: return default
+
+    max_pe       = fp("max_pe",    9999)
+    min_pe       = fp("min_pe",    0)
+    max_peg      = fp("max_peg",   9999)
+    min_roe      = fp("min_roe",   -9999)
+    max_debt     = fp("max_debt",  9999)
+    min_mcap     = fp("min_mcap",  0)          # in Crores
+    max_mcap     = fp("max_mcap",  9999999999)
+    min_promoter = fp("min_promoter", 0)
+    max_promoter = fp("max_promoter", 100)
+    min_fii      = fp("min_fii",   0)
+    max_fii      = fp("max_fii",   100)
+    min_dii      = fp("min_dii",   0)
+    max_dii      = fp("max_dii",   100)
+    min_public   = fp("min_public", 0)
+    max_public   = fp("max_public", 100)
+    symbols      = freq.args.get("symbols", ",".join(SCREEN_STOCKS)).split(",")
 
     def screen_one(sym):
         try:
             for base in ["query1","query2"]:
-                url=f"https://{base}.finance.yahoo.com/v11/finance/quoteSummary/{sym}.NS?modules=defaultKeyStatistics%2CfinancialData%2CsummaryDetail"
-                r=requests.get(url,headers=YFH,timeout=8)
+                url = (f"https://{base}.finance.yahoo.com/v11/finance/quoteSummary/{sym}.NS"
+                       f"?modules=defaultKeyStatistics%2CfinancialData%2CsummaryDetail%2CmajorHoldersBreakdown")
+                r = requests.get(url, headers=YFH, timeout=8)
                 if not r.ok: continue
-                res=r.json().get("quoteSummary",{}).get("result",[{}])[0]
-                fd=res.get("financialData",{}); sd=res.get("summaryDetail",{})
-                def gv(d,k):
-                    v=d.get(k)
-                    if isinstance(v,dict): return v.get("raw")
+                res = r.json().get("quoteSummary",{}).get("result",[{}])[0]
+                fd  = res.get("financialData",{})
+                sd  = res.get("summaryDetail",{})
+                ks  = res.get("defaultKeyStatistics",{})
+                mh  = res.get("majorHoldersBreakdown",{})
+
+                def gv(d, k):
+                    v = d.get(k)
+                    if isinstance(v, dict): return v.get("raw")
                     return v
-                pe=gv(sd,"trailingPE") or 0
-                roe=(gv(fd,"returnOnEquity") or 0)*100
-                debt=gv(fd,"debtToEquity") or 0
-                price=gv(sd,"regularMarketPrice") or gv(fd,"currentPrice") or 0
-                mcap=gv(sd,"marketCap") or 0
-                rev_growth=(gv(fd,"revenueGrowth") or 0)*100
-                profit_margin=(gv(fd,"profitMargins") or 0)*100
-                if pe and pe>max_pe: return None
-                if roe and roe<min_roe: return None
-                if debt and debt>max_debt: return None
-                return {"symbol":sym,"price":round(price,2) if price else None,
-                        "pe":round(pe,1) if pe else None,"roe":round(roe,1) if roe else None,
-                        "debt_equity":round(debt,2) if debt else None,"mcap":mcap,
-                        "rev_growth":round(rev_growth,1),"profit_margin":round(profit_margin,1)}
+                def gvpct(d, k):
+                    v = gv(d, k)
+                    return round(float(v)*100, 2) if v is not None else None
+
+                pe           = gv(sd, "trailingPE") or 0
+                peg          = gv(ks, "pegRatio") or 0
+                roe          = gvpct(fd, "returnOnEquity") or 0
+                debt         = gv(fd, "debtToEquity") or 0
+                price        = gv(sd, "regularMarketPrice") or gv(fd, "currentPrice") or 0
+                mcap_raw     = gv(sd, "marketCap") or 0
+                mcap_cr      = round(mcap_raw / 1e7, 1) if mcap_raw else 0   # convert to Crores
+                rev_growth   = gvpct(fd, "revenueGrowth") or 0
+                profit_margin= gvpct(fd, "profitMargins") or 0
+                promoter_pct = gvpct(mh, "insidersPercentHeld") or 0
+                inst_pct     = gvpct(mh, "institutionsPercentHeld") or 0
+                # Yahoo doesn't separate FII/DII/public well — use institution as FII proxy
+                fii_pct      = inst_pct
+                public_pct   = max(0, round(100 - promoter_pct - inst_pct, 1))
+
+                # Apply all filters
+                if pe     and pe    > max_pe:       return None
+                if pe     and pe    < min_pe:       return None
+                if peg    and peg   > max_peg:      return None
+                if roe    and roe   < min_roe:      return None
+                if debt   and debt  > max_debt:     return None
+                if mcap_cr and mcap_cr < min_mcap:  return None
+                if mcap_cr and mcap_cr > max_mcap:  return None
+                if promoter_pct < min_promoter:     return None
+                if promoter_pct > max_promoter:     return None
+                if fii_pct      < min_fii:          return None
+                if fii_pct      > max_fii:          return None
+                if public_pct   < min_public:       return None
+                if public_pct   > max_public:       return None
+
+                return {
+                    "symbol":       sym,
+                    "price":        round(price, 2) if price else None,
+                    "pe":           round(pe, 1)    if pe    else None,
+                    "peg":          round(peg, 2)   if peg   else None,
+                    "roe":          round(roe, 1)   if roe   else None,
+                    "debt_equity":  round(debt, 2)  if debt  else None,
+                    "mcap":         mcap_raw,
+                    "mcap_cr":      mcap_cr,
+                    "rev_growth":   round(rev_growth, 1),
+                    "profit_margin":round(profit_margin, 1),
+                    "promoter":     round(promoter_pct, 1),
+                    "fii":          round(fii_pct, 1),
+                    "public":       round(public_pct, 1),
+                }
         except: return None
 
     with ThreadPoolExecutor(max_workers=10) as pool:
-        results=list(pool.map(screen_one,symbols[:60]))
-    results=[r for r in results if r]
-    results.sort(key=lambda x:(x.get("roe") or 0),reverse=True)
+        results = list(pool.map(screen_one, symbols[:80]))
+    results = [r for r in results if r]
+    results.sort(key=lambda x: (x.get("roe") or 0), reverse=True)
     return jsonify({"success":True,"stocks":results,"total":len(results)})
 
 # ============================================================
