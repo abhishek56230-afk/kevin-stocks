@@ -75,6 +75,60 @@ def cache_ts(key):
         item = _cache.get(key)
         return item["ts"] if item else None
 
+
+WATCHLIST_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_watchlist.json")
+_watchlist_lock = threading.Lock()
+
+def _load_user_watchlist():
+    try:
+        if os.path.exists(WATCHLIST_FILE):
+            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+    except Exception:
+        pass
+    return []
+
+def _save_user_watchlist(items):
+    try:
+        with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
+            json.dump(items, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+
+USER_WATCHLIST = _load_user_watchlist()
+
+def clear_cache_key(key):
+    with _cache_lock:
+        _cache.pop(key, None)
+
+def normalize_mobile_number(number):
+    digits = re.sub(r"\D", "", str(number or ""))
+    if len(digits) == 10:
+        return "91" + digits
+    if digits.startswith("0") and len(digits) > 10:
+        digits = digits.lstrip("0")
+    return digits
+
+def get_combined_watchlist():
+    seen = set()
+    combined = []
+    for item in WATCHLIST:
+        sym = str(item.get("symbol", "")).upper().strip()
+        if not sym or sym in seen:
+            continue
+        seen.add(sym)
+        combined.append(item)
+    with _watchlist_lock:
+        for item in USER_WATCHLIST:
+            sym = str(item.get("symbol", "")).upper().strip()
+            if not sym or sym in seen:
+                continue
+            seen.add(sym)
+            combined.append(item)
+    return combined
+
 # ============================================================
 # HELPERS
 # ============================================================
@@ -949,7 +1003,8 @@ def analyse_single(stock):
         C=[c for c in q.get("close",[]) if c]
         result["live_price"]=round(live,2)
         result["change_pct"]=round((live-prev)/prev*100,2) if prev else 0
-        result["pnl_pct"]=round((live-stock["ref_price"])/stock["ref_price"]*100,2)
+        ref_price = safe_float(stock.get("ref_price", 0))
+        result["pnl_pct"]=round((live-ref_price)/ref_price*100,2) if ref_price else None
         if len(C)>=15:
             g,ls=[],[]
             for i in range(1,min(15,len(C))):
@@ -983,10 +1038,11 @@ def analyse_single(stock):
 def watchlist():
     cached=cache_get("watchlist")
     if cached: return jsonify(cached)
+    live_watchlist = get_combined_watchlist()
     results = []
     try:
         with ThreadPoolExecutor(max_workers=8) as pool:
-            futures = [pool.submit(analyse_single, s) for s in WATCHLIST]
+            futures = [pool.submit(analyse_single, s) for s in live_watchlist]
             for f in as_completed(futures, timeout=30):
                 try:
                     results.append(f.result(timeout=5))
@@ -1005,8 +1061,90 @@ def watchlist():
              "gainers":    sum(1 for r in results if (r["pnl_pct"] or 0)>0),
              "losers":     sum(1 for r in results if (r["pnl_pct"] or 0)<0)}
     result={"success":True,"stocks":results,"summary":summary}
-    cache_set("watchlist",result,ttl=300)
+    cache_set("watchlist",result,ttl=120)
     return jsonify(result)
+
+@app.route("/api/watchlist/add", methods=["POST"])
+def add_to_watchlist():
+    data = freq.get_json(silent=True) or {}
+    symbol = str(data.get("symbol", "")).upper().strip()
+    name = str(data.get("name", symbol)).strip() or symbol
+
+    if not symbol:
+        return jsonify({"success":False,"error":"Symbol is required"}), 400
+
+    existing = get_combined_watchlist()
+    if any(str(x.get("symbol", "")).upper().strip() == symbol for x in existing):
+        return jsonify({"success":True,"message":f"{symbol} is already in watchlist"})
+
+    item = {
+        "name": name,
+        "symbol": symbol,
+        "ref_price": 0,
+        "promoter": 0
+    }
+
+    with _watchlist_lock:
+        USER_WATCHLIST.append(item)
+        _save_user_watchlist(USER_WATCHLIST)
+
+    clear_cache_key("watchlist")
+    return jsonify({"success":True,"message":f"{symbol} added to watchlist"})
+
+@app.route("/api/watchlist/remove/<symbol>", methods=["DELETE"])
+def remove_from_watchlist(symbol):
+    sym = str(symbol or "").upper().strip()
+    removed = False
+
+    with _watchlist_lock:
+        before = len(USER_WATCHLIST)
+        USER_WATCHLIST[:] = [x for x in USER_WATCHLIST if str(x.get("symbol", "")).upper().strip() != sym]
+        removed = len(USER_WATCHLIST) != before
+        _save_user_watchlist(USER_WATCHLIST)
+
+    clear_cache_key("watchlist")
+    return jsonify({"success":True,"removed":removed,"symbol":sym})
+
+@app.route("/api/verdict-share/<symbol>")
+def verdict_share(symbol):
+    sym = symbol.upper().strip()
+    mobile = normalize_mobile_number(freq.args.get("mobile", ""))
+    channel = str(freq.args.get("channel", "sms")).lower().strip()
+
+    with app.app_context():
+        verdict_data = verdict(sym).get_json()
+
+    if not verdict_data.get("success"):
+        return jsonify({"success":False,"error":verdict_data.get("error", f"Could not build verdict for {sym}")})
+
+    reason_lines = verdict_data.get("reasoning") or []
+    compact_reasons = "; ".join(reason_lines[:3]) if reason_lines else "AI verdict generated from technical, fundamental and sentiment inputs."
+    share_text = (
+        f"Stock Verdict: {sym}\n"
+        f"Verdict: {verdict_data.get('verdict', 'HOLD')}\n"
+        f"Current Price: Rs.{verdict_data.get('price', 'N/A')}\n"
+        f"3M Target: Rs.{verdict_data.get('target_3m', 'N/A')}\n"
+        f"12M Target: Rs.{verdict_data.get('target_12m', 'N/A')}\n"
+        f"Stop Loss: Rs.{verdict_data.get('stop_loss', 'N/A')}\n"
+        f"Risk: {verdict_data.get('risk', 'N/A')} | Best For: {verdict_data.get('best_for', 'N/A')}\n"
+        f"Why: {compact_reasons}\n"
+        f"Disclaimer: Not financial advice."
+    )
+
+    encoded = requests.utils.quote(share_text)
+    sms_link = f"sms:{mobile}?body={encoded}" if mobile else f"sms:?body={encoded}"
+    whatsapp_link = f"https://wa.me/{mobile}?text={encoded}" if mobile else f"https://wa.me/?text={encoded}"
+
+    return jsonify({
+        "success":True,
+        "symbol":sym,
+        "mobile":mobile,
+        "channel":channel,
+        "share_text":share_text,
+        "sms_link":sms_link,
+        "whatsapp_link":whatsapp_link,
+        "note":"This prepares the AI verdict message for SMS or WhatsApp. Actual sending happens from the user's device/app."
+    })
 
 @app.route("/api/watchlist/verdict/<symbol>")
 def watchlist_verdict(symbol):
