@@ -153,7 +153,7 @@ def api_health():
         "status": "ok",
         "service": "Kevin Kataria Stock Intelligence",
         "cache_keys": len(_cache),
-        "search_universe": len(get_search_universe()) if "get_search_universe" in globals() else None
+        "search_universe": len(_search_universe_cached()) if "_search_universe_cached" in globals() else None
     })
 
 # ============================================================
@@ -2314,17 +2314,225 @@ SEARCH_STOCKS_EXTENDED = [
 def _norm_search_text(value):
     return re.sub(r"[^A-Z0-9]", "", str(value or "").upper())
 
+
+def get_search_universe():
+    """Build one deduplicated search universe from all stock lists."""
+    combined = []
+
+    for var_name in ["SEARCH_STOCKS_EXTENDED", "WATCHLIST", "SCREEN_STOCKS"]:
+        items = globals().get(var_name, [])
+        if not items:
+            continue
+
+        if isinstance(items, list) and items and isinstance(items[0], str):
+            for sym in items:
+                combined.append({"symbol": sym, "name": sym})
+        else:
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                sym = str(item.get("symbol", "")).strip().upper()
+                name = str(item.get("name", sym)).strip()
+                if sym:
+                    combined.append({"symbol": sym, "name": name})
+
+    aliases = [
+        {"symbol": "RELIANCE", "name": "Reliance Industries", "aliases": ["RIL", "RELIANCE", "RELIANCEIND"]},
+        {"symbol": "INFY", "name": "Infosys", "aliases": ["INFOSYS", "INFY"]},
+        {"symbol": "TCS", "name": "Tata Consultancy Services", "aliases": ["TCS", "TATA CONSULTANCY", "TATA CONSULTANCY SERVICES"]},
+        {"symbol": "HDFCBANK", "name": "HDFC Bank", "aliases": ["HDFC", "HDFC BANK", "HDFCBANK"]},
+        {"symbol": "ICICIBANK", "name": "ICICI Bank", "aliases": ["ICICI", "ICICI BANK"]},
+        {"symbol": "SBIN", "name": "State Bank of India", "aliases": ["SBI", "STATE BANK", "STATE BANK OF INDIA"]},
+        {"symbol": "LT", "name": "Larsen & Toubro", "aliases": ["L&T", "LT", "LARSEN", "LARSEN TOUBRO"]},
+        {"symbol": "M&M", "name": "Mahindra & Mahindra", "aliases": ["M&M", "MM", "MAHINDRA", "MAHINDRA AND MAHINDRA"]},
+        {"symbol": "BAJAJ-AUTO", "name": "Bajaj Auto", "aliases": ["BAJAJ AUTO", "BAJAJAUTO"]},
+        {"symbol": "COCHINSHIP", "name": "Cochin Shipyard", "aliases": ["COCHIN", "COCHIN SHIPYARD"]},
+        {"symbol": "KPITTECH", "name": "KPIT Technologies", "aliases": ["KPIT", "KPIT TECH"]},
+        {"symbol": "ABCAPITAL", "name": "Aditya Birla Capital", "aliases": ["AB CAPITAL", "ADITYA BIRLA CAPITAL"]},
+        {"symbol": "ACMESOLAR", "name": "ACME Solar Holdings", "aliases": ["ACME SOLAR", "ACME"]},
+        {"symbol": "LODHA", "name": "Macrotech Developers (Lodha)", "aliases": ["LODHA", "MACROTECH"]},
+    ]
+
+    alias_rows = []
+    for item in aliases:
+        for alias in item.get("aliases", []):
+            alias_rows.append({"symbol": item["symbol"], "name": item["name"], "alias": alias})
+
+    dedup = {}
+    for item in combined:
+        sym = _norm_search_text(item.get("symbol"))
+        if not sym:
+            continue
+        if sym not in dedup:
+            dedup[sym] = {
+                "symbol": str(item.get("symbol", "")).strip().upper(),
+                "name": str(item.get("name", "")).strip(),
+                "aliases": []
+            }
+
+    for item in alias_rows:
+        sym = _norm_search_text(item.get("symbol"))
+        if sym not in dedup:
+            dedup[sym] = {
+                "symbol": str(item.get("symbol", "")).strip().upper(),
+                "name": str(item.get("name", "")).strip(),
+                "aliases": []
+            }
+        dedup[sym]["aliases"].append(item["alias"])
+
+    return list(dedup.values())
+
+
+@lru_cache(maxsize=1)
+def _search_universe_cached():
+    return get_search_universe()
+
+
+@app.route("/api/search-universe")
+def search_universe():
+    universe = _search_universe_cached()
+    return jsonify({"success": True, "count": len(universe), "stocks": universe[:200]})
+
+
+def _score_candidate(query_raw, item):
+    q = query_raw.strip().upper()
+    qn = _norm_search_text(q)
+
+    symbol = str(item.get("symbol", "")).upper()
+    name = str(item.get("name", ""))
+    aliases = item.get("aliases", []) or []
+
+    symbol_n = _norm_search_text(symbol)
+    name_n = _norm_search_text(name)
+    alias_ns = [_norm_search_text(a) for a in aliases]
+
+    score = 0
+    reasons = []
+
+    if q == symbol or qn == symbol_n:
+        score += 1000
+        reasons.append("exact_symbol")
+    if q == name.upper() or qn == name_n:
+        score += 950
+        reasons.append("exact_name")
+    if q in [a.upper() for a in aliases] or qn in alias_ns:
+        score += 900
+        reasons.append("exact_alias")
+
+    if symbol.startswith(q) or symbol_n.startswith(qn):
+        score += 350
+        reasons.append("symbol_prefix")
+    if name.upper().startswith(q) or name_n.startswith(qn):
+        score += 300
+        reasons.append("name_prefix")
+    if any(a.upper().startswith(q) or _norm_search_text(a).startswith(qn) for a in aliases):
+        score += 260
+        reasons.append("alias_prefix")
+
+    if q in symbol or qn in symbol_n:
+        score += 220
+        reasons.append("symbol_contains")
+    if q in name.upper() or qn in name_n:
+        score += 180
+        reasons.append("name_contains")
+    if any(q in a.upper() or qn in _norm_search_text(a) for a in aliases):
+        score += 150
+        reasons.append("alias_contains")
+
+    fuzzy_scores = [
+        difflib.SequenceMatcher(None, qn, symbol_n).ratio(),
+        difflib.SequenceMatcher(None, qn, name_n).ratio(),
+    ]
+    for a in alias_ns:
+        fuzzy_scores.append(difflib.SequenceMatcher(None, qn, a).ratio())
+
+    best_fuzzy = max(fuzzy_scores) if fuzzy_scores else 0
+
+    if best_fuzzy >= 0.92:
+        score += 260
+        reasons.append("fuzzy_very_strong")
+    elif best_fuzzy >= 0.84:
+        score += 180
+        reasons.append("fuzzy_strong")
+    elif best_fuzzy >= 0.75:
+        score += 90
+        reasons.append("fuzzy_ok")
+
+    score -= max(len(symbol_n) - len(qn), 0) * 0.3
+
+    return {
+        "symbol": symbol,
+        "name": name,
+        "score": round(score, 2),
+        "match_quality": round(best_fuzzy, 3),
+        "aliases": aliases[:5],
+        "reasons": reasons[:5],
+    }
+
+
+def _rank_search_results(raw_q, limit=30):
+    universe = _search_universe_cached()
+    q = (raw_q or "").strip()
+    if not q:
+        return []
+
+    ranked = []
+    for item in universe:
+        scored = _score_candidate(q, item)
+        if scored["score"] > 0:
+            ranked.append(scored)
+
+    ranked.sort(key=lambda x: (-x["score"], -x["match_quality"], len(x["symbol"]), x["symbol"]))
+
+    final = []
+    seen = set()
+    for item in ranked:
+        if item["symbol"] in seen:
+            continue
+        seen.add(item["symbol"])
+        final.append(item)
+        if len(final) >= limit:
+            break
+
+    return final
+
+
 @app.route("/api/search")
 def search_stocks():
-    raw_q = freq.args.get("q", "").strip()
-    limit = min(max(int(freq.args.get("limit", 30) or 30), 1), 100)
+    raw_q = (freq.args.get("q") or "").strip()
+
+    try:
+        limit = int(freq.args.get("limit", 10) or 10)
+    except Exception:
+        limit = 10
+
+    limit = min(max(limit, 1), 50)
     enrich = str(freq.args.get("enrich", "0")).lower() in ("1", "true", "yes")
+
     if not raw_q:
-        return jsonify({"success": True, "results": []})
+        return jsonify({"success": True, "query": "", "count": 0, "results": []})
 
-    results = _rank_search_results(raw_q, limit=limit)
+    try:
+        results = _rank_search_results(raw_q, limit=limit)
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "query": raw_q,
+            "count": 0,
+            "results": [],
+            "error": f"Search failed safely: {str(e)[:120]}"
+        }), 200
 
-    if enrich and results:
+    if not results:
+        return jsonify({
+            "success": True,
+            "query": raw_q,
+            "count": 0,
+            "results": [],
+            "message": "No exact match found. Try company name or NSE symbol."
+        })
+
+    if enrich:
         def fetch_change(item):
             sym = item["symbol"]
             cached = cache_get(f"price:{sym}")
@@ -2338,8 +2546,11 @@ def search_stocks():
                     meta = r.json()["chart"]["result"][0]["meta"]
                     p = meta.get("regularMarketPrice", 0)
                     prev = meta.get("chartPreviousClose", 0)
-                    item["price"] = round(p, 2)
+                    item["price"] = round(p, 2) if p else None
                     item["change_pct"] = round((p - prev) / prev * 100, 2) if prev else 0
+                else:
+                    item["price"] = None
+                    item["change_pct"] = None
             except Exception:
                 item["price"] = None
                 item["change_pct"] = None
