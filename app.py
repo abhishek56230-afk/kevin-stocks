@@ -628,62 +628,103 @@ def sentiment(symbol):
 # ============================================================
 # VERDICT - Parallel fetch + Groq AI
 # ============================================================
+def build_verdict_data(sym):
+    sym = sym.upper().strip()
+    cached = cache_get(f"verdict:{sym}")
+    if cached:
+        return cached
+
+    def get_tech():
+        with app.test_request_context(f"/api/technical/{sym}"):
+            return technical(sym).get_json()
+
+    def get_fund():
+        with app.test_request_context(f"/api/fundamental/{sym}"):
+            return fundamental(sym).get_json()
+
+    def get_news_():
+        with app.test_request_context(f"/api/news/{sym}"):
+            return news(sym).get_json()
+
+    def get_sent():
+        with app.test_request_context(f"/api/sentiment/{sym}"):
+            return sentiment(sym).get_json()
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        tf = pool.submit(get_tech)
+        ff = pool.submit(get_fund)
+        nf = pool.submit(get_news_)
+        sf = pool.submit(get_sent)
+        t = tf.result(timeout=20)
+        f = ff.result(timeout=15)
+        n = nf.result(timeout=12)
+        s = sf.result(timeout=12)
+
+    if not t.get("success"):
+        return {"success": False, "error": "Technical data failed: " + t.get("error", "")}
+
+    avg_bull = s.get("avg_bull", 50)
+    news_txt = "\n".join([x["title"] for x in n.get("news", [])[:5]])
+    prompt = (
+        f"LIVE DATA FOR {sym} -- USE ONLY THESE NUMBERS:\n"
+        f"Price:Rs.{t['price']} | MA20:Rs.{t['ma20']} | MA50:Rs.{t['ma50']} | MA200:Rs.{t.get('ma200','N/A')}\n"
+        f"RSI:{t['rsi']} | MACD:{t['macd_hist']} | ADX:{t['adx']} | Stoch:{t['stoch_k']}%\n"
+        f"Bollinger:Rs.{t['bb_lower']}-Rs.{t['bb_upper']} | SAR:Rs.{t['sar']}\n"
+        f"Score:{t['bull_score']}% -> {t['signal']} | Support:Rs.{t['support']} | Resistance:Rs.{t['resistance']}\n"
+        f"Stop:Rs.{t['stop_loss']} | T1:Rs.{t['target1']} | T2:Rs.{t['target2']}\n"
+        f"PE:{f.get('pe','N/A')} | ROE:{f.get('roe','N/A')} | ROCE:{f.get('roce','N/A')} | Promoter:{f.get('promoter','N/A')}\n"
+        f"Sentiment:{avg_bull}% Bullish\nHeadlines:\n{news_txt}\n\n"
+        "VERDICT: [BUY/SELL/HOLD]\nCONFIDENCE: [X%]\nREASONING:\n- point with number\n- point\n- point\n- point\n"
+        f"CURRENT PRICE: Rs.{t['price']}\nTARGET 3M: Rs.[]\nTARGET 12M: Rs.[]\nSTOP LOSS: Rs.{t['stop_loss']}\n"
+        "RISK: [Low/Medium/High]\nBEST FOR: [Short-term/Long-term/Both]\nDISCLAIMER: Not financial advice."
+    )
+    resp = http_post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+        json={
+            "model": "llama-3.3-70b-versatile",
+            "max_tokens": 800,
+            "messages": [
+                {"role": "system", "content": "Stock analyst. Use ONLY the numbers provided. Never use training memory for prices."},
+                {"role": "user", "content": prompt},
+            ],
+        },
+        timeout=25,
+    )
+    resp.raise_for_status()
+    txt = resp.json()["choices"][0]["message"]["content"]
+
+    def find(p):
+        m = re.search(p, txt)
+        return m.group(1).strip() if m else None
+
+    data = {
+        "success": True,
+        "symbol": sym,
+        "price": t["price"],
+        "verdict": find(r"VERDICT:\s*(.+)") or t["signal"],
+        "confidence": find(r"CONFIDENCE:\s*(.+)") or "N/A",
+        "target_3m": find(r"TARGET 3M:\s*Rs\.([0-9,./]+)") or str(t["target1"]),
+        "target_12m": find(r"TARGET 12M:\s*Rs\.([0-9,./]+)") or str(t["target2"]),
+        "stop_loss": find(r"STOP LOSS:\s*Rs\.([0-9,./]+)") or str(t["stop_loss"]),
+        "risk": find(r"RISK:\s*(.+)") or "Medium",
+        "best_for": find(r"BEST FOR:\s*(.+)") or "Both",
+        "reasoning": re.findall(r"- (.+)", txt)[:4],
+        "full_text": txt,
+        "tech": t,
+        "fundamental": f,
+        "sentiment": avg_bull,
+    }
+    cache_set(f"verdict:{sym}", data, ttl=300)
+    return data
+
 @app.route("/api/verdict/<symbol>")
 def verdict(symbol):
-    sym=symbol.upper().strip()
-    cached=cache_get(f"verdict:{sym}")
-    if cached: return jsonify(cached)
+    sym = symbol.upper().strip()
     try:
-        def get_tech():
-            with app.app_context(): return technical(sym).get_json()
-        def get_fund():
-            with app.app_context(): return fundamental(sym).get_json()
-        def get_news_():
-            with app.app_context(): return news(sym).get_json()
-        def get_sent():
-            with app.app_context(): return sentiment(sym).get_json()
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            tf=pool.submit(get_tech); ff=pool.submit(get_fund)
-            nf=pool.submit(get_news_); sf=pool.submit(get_sent)
-            t=tf.result(timeout=20); f=ff.result(timeout=15)
-            n=nf.result(timeout=12); s=sf.result(timeout=12)
-        if not t.get("success"):
-            return jsonify({"success":False,"error":"Technical data failed: "+t.get("error","")})
-        avg_bull=s.get("avg_bull",50)
-        news_txt="\n".join([x["title"] for x in n.get("news",[])[:5]])
-        prompt=(f"LIVE DATA FOR {sym} -- USE ONLY THESE NUMBERS:\n"
-                f"Price:Rs.{t['price']} | MA20:Rs.{t['ma20']} | MA50:Rs.{t['ma50']} | MA200:Rs.{t.get('ma200','N/A')}\n"
-                f"RSI:{t['rsi']} | MACD:{t['macd_hist']} | ADX:{t['adx']} | Stoch:{t['stoch_k']}%\n"
-                f"Bollinger:Rs.{t['bb_lower']}-Rs.{t['bb_upper']} | SAR:Rs.{t['sar']}\n"
-                f"Score:{t['bull_score']}% -> {t['signal']} | Support:Rs.{t['support']} | Resistance:Rs.{t['resistance']}\n"
-                f"Stop:Rs.{t['stop_loss']} | T1:Rs.{t['target1']} | T2:Rs.{t['target2']}\n"
-                f"PE:{f.get('pe','N/A')} | ROE:{f.get('roe','N/A')} | ROCE:{f.get('roce','N/A')} | Promoter:{f.get('promoter','N/A')}\n"
-                f"Sentiment:{avg_bull}% Bullish\nHeadlines:\n{news_txt}\n\n"
-                "VERDICT: [BUY/SELL/HOLD]\nCONFIDENCE: [X%]\nREASONING:\n- point with number\n- point\n- point\n- point\n"
-                f"CURRENT PRICE: Rs.{t['price']}\nTARGET 3M: Rs.[]\nTARGET 12M: Rs.[]\nSTOP LOSS: Rs.{t['stop_loss']}\n"
-                "RISK: [Low/Medium/High]\nBEST FOR: [Short-term/Long-term/Both]\nDISCLAIMER: Not financial advice.")
-        resp=http_post("https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization":f"Bearer {GROQ_API_KEY}","Content-Type":"application/json"},
-            json={"model":"llama-3.3-70b-versatile","max_tokens":800,
-                  "messages":[{"role":"system","content":"Stock analyst. Use ONLY the numbers provided. Never use training memory for prices."},
-                               {"role":"user","content":prompt}]},timeout=25)
-        resp.raise_for_status()
-        txt=resp.json()["choices"][0]["message"]["content"]
-        def find(p): m=re.search(p,txt); return m.group(1).strip() if m else None
-        data={"success":True,"symbol":sym,"price":t["price"],
-            "verdict":   find(r"VERDICT:\s*(.+)")    or t["signal"],
-            "confidence":find(r"CONFIDENCE:\s*(.+)") or "N/A",
-            "target_3m": find(r"TARGET 3M:\s*Rs\.([0-9,./]+)") or str(t["target1"]),
-            "target_12m":find(r"TARGET 12M:\s*Rs\.([0-9,./]+)") or str(t["target2"]),
-            "stop_loss": find(r"STOP LOSS:\s*Rs\.([0-9,./]+)") or str(t["stop_loss"]),
-            "risk":      find(r"RISK:\s*(.+)")    or "Medium",
-            "best_for":  find(r"BEST FOR:\s*(.+)") or "Both",
-            "reasoning": re.findall(r"- (.+)",txt)[:4],
-            "full_text": txt,"tech":t,"fundamental":f,"sentiment":avg_bull}
-        cache_set(f"verdict:{sym}",data,ttl=300)
-        return jsonify(data)
+        return jsonify(build_verdict_data(sym))
     except Exception as e:
-        return jsonify({"success":False,"error":str(e)})
+        return jsonify({"success": False, "error": str(e)})
 
 # ============================================================
 # INSIDER TRADES - NSE first, Moneycontrol + ET fallback
@@ -1157,8 +1198,10 @@ def verdict_share(symbol):
     mobile = normalize_mobile_number(freq.args.get("mobile", ""))
     channel = str(freq.args.get("channel", "sms")).lower().strip()
 
-    with app.app_context():
-        verdict_data = verdict(sym).get_json()
+    try:
+        verdict_data = build_verdict_data(sym)
+    except Exception as e:
+        return jsonify({"success":False,"error":str(e)})
 
     if not verdict_data.get("success"):
         return jsonify({"success":False,"error":verdict_data.get("error", f"Could not build verdict for {sym}")})
