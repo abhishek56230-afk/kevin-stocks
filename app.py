@@ -18,7 +18,7 @@ Key features:
 """
 from flask import Flask, jsonify, send_from_directory, request as freq
 from flask_cors import CORS
-import requests, re, os, time, json, threading, datetime, difflib
+import requests, re, os, time, json, threading, datetime, difflib, uuid
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 from functools import lru_cache
@@ -2924,6 +2924,16 @@ def screener():
 # ============================================================
 PORTFOLIO_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "portfolio.json")
 ALERTS_FILE    = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alerts.json")
+LEADS_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "membership_leads.json")
+MEMBERS_FILE   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "memberships.json")
+
+def now_iso():
+    return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+def normalize_plan(plan):
+    plan = str(plan or "starter").strip().lower()
+    aliases = {"free":"starter", "pro":"pro", "partner":"partner"}
+    return aliases.get(plan, plan if plan in {"starter","pro","partner"} else "starter")
 
 def load_json(path):
     try:
@@ -3033,6 +3043,642 @@ def remove_alert(symbol):
     alerts=[a for a in load_json(ALERTS_FILE) if a["symbol"]!=symbol.upper()]
     save_json(ALERTS_FILE,alerts)
     return jsonify({"success":True})
+
+
+# ============================================================
+# MONETIZATION / MEMBERSHIP LEADS
+# ============================================================
+@app.route("/api/monetization/interest", methods=["POST"])
+def monetization_interest():
+    try:
+        data = freq.get_json() or {}
+        name = str(data.get("name", "")).strip()
+        email = str(data.get("email", "")).strip().lower()
+        phone = str(data.get("phone", "")).strip()
+        plan = normalize_plan(data.get("plan"))
+        notes = str(data.get("notes", "")).strip()
+        source = str(data.get("source", "website")).strip() or "website"
+        if not name or not email:
+            return jsonify({"success": False, "error": "Name and email are required."}), 400
+        leads = load_json(LEADS_FILE)
+        existing = None
+        for lead in leads:
+            if str(lead.get("email", "")).lower() == email and normalize_plan(lead.get("plan")) == plan:
+                existing = lead
+                break
+        if existing:
+            existing["name"] = name
+            existing["phone"] = phone
+            existing["notes"] = notes
+            existing["source"] = source
+            existing["updated_at"] = now_iso()
+            existing["status"] = existing.get("status") or "interested"
+            lead_id = existing["id"]
+            message = f"Updated existing {plan.title()} interest."
+        else:
+            lead_id = "lead_" + uuid.uuid4().hex[:10]
+            leads.insert(0, {
+                "id": lead_id,
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "plan": plan,
+                "notes": notes,
+                "source": source,
+                "status": "interested",
+                "created_at": now_iso(),
+                "updated_at": now_iso()
+            })
+            message = f"Interest saved for {plan.title()}."
+        save_json(LEADS_FILE, leads)
+        return jsonify({"success": True, "message": message, "lead_id": lead_id})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/monetization/summary", methods=["GET"])
+def monetization_summary():
+    leads = load_json(LEADS_FILE)
+    members = load_json(MEMBERS_FILE)
+    def count_plan(items, plan):
+        return sum(1 for x in items if normalize_plan(x.get("plan")) == plan)
+    active_members = [m for m in members if str(m.get("status", "")).lower() == "active"]
+    recent_leads = sorted(leads, key=lambda x: x.get("updated_at") or x.get("created_at") or "", reverse=True)[:12]
+    return jsonify({
+        "success": True,
+        "summary": {
+            "total_leads": len(leads),
+            "starter_interest": count_plan(leads, "starter"),
+            "pro_interest": count_plan(leads, "pro"),
+            "partner_interest": count_plan(leads, "partner"),
+            "active_members": len(active_members),
+            "paid_pro_members": sum(1 for m in active_members if normalize_plan(m.get("plan")) == "pro")
+        },
+        "recent_leads": recent_leads,
+        "members": sorted(members, key=lambda x: x.get("updated_at") or x.get("created_at") or "", reverse=True)[:12]
+    })
+
+@app.route("/api/monetization/memberships", methods=["GET"])
+def monetization_memberships():
+    leads = sorted(load_json(LEADS_FILE), key=lambda x: x.get("updated_at") or x.get("created_at") or "", reverse=True)
+    members = sorted(load_json(MEMBERS_FILE), key=lambda x: x.get("updated_at") or x.get("created_at") or "", reverse=True)
+    return jsonify({"success": True, "leads": leads, "members": members})
+
+@app.route("/api/monetization/activate", methods=["POST"])
+def monetization_activate():
+    try:
+        data = freq.get_json() or {}
+        lead_id = str(data.get("lead_id", "")).strip()
+        status = str(data.get("status", "active")).strip().lower() or "active"
+        if not lead_id:
+            return jsonify({"success": False, "error": "lead_id is required."}), 400
+        leads = load_json(LEADS_FILE)
+        members = load_json(MEMBERS_FILE)
+        lead = next((x for x in leads if x.get("id") == lead_id), None)
+        if not lead:
+            return jsonify({"success": False, "error": "Lead not found."}), 404
+        lead["status"] = status
+        lead["updated_at"] = now_iso()
+        existing = next((m for m in members if str(m.get("lead_id")) == lead_id), None)
+        if existing:
+            existing.update({
+                "name": lead.get("name"),
+                "email": lead.get("email"),
+                "phone": lead.get("phone"),
+                "plan": normalize_plan(lead.get("plan")),
+                "status": status,
+                "updated_at": now_iso()
+            })
+            member_id = existing["id"]
+        else:
+            member_id = "mem_" + uuid.uuid4().hex[:10]
+            members.insert(0, {
+                "id": member_id,
+                "lead_id": lead_id,
+                "name": lead.get("name"),
+                "email": lead.get("email"),
+                "phone": lead.get("phone"),
+                "plan": normalize_plan(lead.get("plan")),
+                "status": status,
+                "created_at": now_iso(),
+                "updated_at": now_iso()
+            })
+        save_json(LEADS_FILE, leads)
+        save_json(MEMBERS_FILE, members)
+        return jsonify({"success": True, "message": f"Membership marked as {status}.", "member_id": member_id})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================
+# AI COPILOT / RESEARCH LAYER
+# ============================================================
+def _route_json(route_path, fn, *args, **kwargs):
+    try:
+        with app.test_request_context(route_path):
+            resp = fn(*args, **kwargs)
+            if hasattr(resp, "get_json"):
+                return resp.get_json()
+            if isinstance(resp, tuple) and hasattr(resp[0], "get_json"):
+                return resp[0].get_json()
+            return resp
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def _safe_news_lines(news_data, limit=6):
+    items = (news_data or {}).get("news", [])[:limit]
+    lines = []
+    for item in items:
+        title = (item.get("title") or "").strip()
+        source = (item.get("source") or "News").strip()
+        date = (item.get("date") or "").strip()
+        if title:
+            lines.append(f"- {title} ({source}{' · ' + date if date else ''})")
+    return lines
+
+def build_stock_context(sym):
+    sym = (sym or "").upper().strip()
+    if not sym:
+        return {"success": False, "error": "Symbol is required."}
+
+    cache_key = f"context:{sym}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
+    def _price():
+        return _route_json(f"/api/price/{sym}", price, sym)
+
+    def _tech():
+        return _route_json(f"/api/technical/{sym}", technical, sym)
+
+    def _fund():
+        return _route_json(f"/api/fundamental/{sym}", fundamental, sym)
+
+    def _news():
+        return _route_json(f"/api/news/{sym}", news, sym)
+
+    def _sent():
+        return _route_json(f"/api/sentiment/{sym}", sentiment, sym)
+
+    def _verdict():
+        try:
+            return build_verdict_data(sym)
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        futures = {
+            "price": pool.submit(_price),
+            "technical": pool.submit(_tech),
+            "fundamental": pool.submit(_fund),
+            "news": pool.submit(_news),
+            "sentiment": pool.submit(_sent),
+            "verdict": pool.submit(_verdict),
+        }
+        data = {k: f.result(timeout=30) for k, f in futures.items()}
+
+    context = {
+        "success": True,
+        "symbol": sym,
+        "price": data.get("price", {}),
+        "technical": data.get("technical", {}),
+        "fundamental": data.get("fundamental", {}),
+        "news": data.get("news", {}),
+        "sentiment": data.get("sentiment", {}),
+        "verdict": data.get("verdict", {}),
+        "data_used": ["price", "technicals", "fundamentals", "news", "sentiment", "verdict"],
+    }
+    cache_set(cache_key, context, ttl=120)
+    return context
+
+def groq_chat_completion(system_prompt, user_prompt, max_tokens=900, temperature=0.2):
+    if not GROQ_API_KEY or GROQ_API_KEY == "YOUR_GROQ_KEY_HERE":
+        return {
+            "success": False,
+            "error": "GROQ_API_KEY is not configured. Add it in Render environment variables."
+        }
+    try:
+        resp = http_post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            },
+            timeout=45,
+        )
+        resp.raise_for_status()
+        text = resp.json()["choices"][0]["message"]["content"].strip()
+        return {"success": True, "text": text}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def _context_prompt(context, mode="analyst"):
+    sym = context.get("symbol", "")
+    p = context.get("price", {}) or {}
+    t = context.get("technical", {}) or {}
+    f = context.get("fundamental", {}) or {}
+    n = context.get("news", {}) or {}
+    s = context.get("sentiment", {}) or {}
+    v = context.get("verdict", {}) or {}
+    news_lines = _safe_news_lines(n, limit=6)
+    style_hint = (
+        "Write in simple, plain English for a beginner investor."
+        if str(mode).lower() == "beginner"
+        else "Write like a practical equity research analyst, concise but insightful."
+    )
+    return f"""
+STOCK: {sym}
+STYLE: {style_hint}
+
+LIVE DATA
+- Price: {p.get('price', 'N/A')}
+- Change %: {p.get('pct', 'N/A')}
+- Day range: {p.get('low', 'N/A')} to {p.get('high', 'N/A')}
+- 52W range: {p.get('week52_low', 'N/A')} to {p.get('week52_high', 'N/A')}
+- Volume: {p.get('volume', 'N/A')}
+
+TECHNICALS
+- Signal: {t.get('signal', 'N/A')}
+- Bull score: {t.get('bull_score', 'N/A')}
+- RSI: {t.get('rsi', 'N/A')}
+- MACD hist: {t.get('macd_hist', 'N/A')}
+- ADX: {t.get('adx', 'N/A')}
+- Support: {t.get('support', 'N/A')}
+- Resistance: {t.get('resistance', 'N/A')}
+- Stop loss: {t.get('stop_loss', 'N/A')}
+- Target1: {t.get('target1', 'N/A')}
+- Target2: {t.get('target2', 'N/A')}
+
+FUNDAMENTALS
+- PE: {f.get('pe', 'N/A')}
+- PB: {f.get('pb', 'N/A')}
+- EPS: {f.get('eps', 'N/A')}
+- Market cap: {f.get('mcap', 'N/A')}
+- ROE: {f.get('roe', 'N/A')}
+- ROCE: {f.get('roce', 'N/A')}
+- Debt/Equity: {f.get('debt_equity', 'N/A')}
+- Current ratio: {f.get('current_ratio', 'N/A')}
+- Revenue growth: {f.get('rev_growth', 'N/A')}
+- Profit margin: {f.get('profit_margin', 'N/A')}
+- Promoter holding: {f.get('promoter', 'N/A')}
+- FII: {f.get('fii', 'N/A')}
+- DII: {f.get('dii', 'N/A')}
+
+SENTIMENT
+- Avg bullish: {s.get('avg_bull', 'N/A')}
+- Overall: {s.get('overall', 'N/A')}
+
+EXISTING VERDICT
+- Verdict: {v.get('verdict', 'N/A')}
+- Confidence: {v.get('confidence', 'N/A')}
+- Risk: {v.get('risk', 'N/A')}
+- Best for: {v.get('best_for', 'N/A')}
+
+LATEST NEWS
+{chr(10).join(news_lines) if news_lines else '- No recent news fetched.'}
+
+RULES
+- Use ONLY the live data shown above.
+- Do not invent facts.
+- If any section is missing, say live data was unavailable.
+- Mention the data used at the end as: Data used: price, technicals, fundamentals, news, sentiment, verdict.
+""".strip()
+
+@app.route("/api/research/<symbol>")
+def research_report(symbol):
+    sym = symbol.upper().strip()
+    mode = str(freq.args.get("mode", "analyst")).lower()
+    context = build_stock_context(sym)
+    if not context.get("success"):
+        return jsonify(context)
+
+    prompt = _context_prompt(context, mode=mode) + """
+
+Create a structured research report with these headings:
+1. Business Summary
+2. Latest Market Context
+3. News Summary
+4. Bullish Factors
+5. Bearish Factors
+6. Technical View
+7. Fundamental / Valuation View
+8. Key Risks
+9. Short-Term View
+10. Long-Term View
+11. Final AI Conclusion
+
+Keep it evidence-based and practical.
+""".strip()
+
+    ai = groq_chat_completion(
+        "You are an Indian stock research copilot. Be factual, structured, and evidence-based.",
+        prompt,
+        max_tokens=1200,
+        temperature=0.2,
+    )
+    if not ai.get("success"):
+        return jsonify({"success": False, "error": ai.get("error")})
+    return jsonify({
+        "success": True,
+        "symbol": sym,
+        "mode": mode,
+        "report": ai["text"],
+        "data_used": context["data_used"],
+        "context": context,
+    })
+
+@app.route("/api/news-intelligence/<symbol>")
+def news_intelligence(symbol):
+    sym = symbol.upper().strip()
+    mode = str(freq.args.get("mode", "analyst")).lower()
+    context = build_stock_context(sym)
+    news_data = context.get("news", {})
+    news_lines = _safe_news_lines(news_data, limit=8)
+    if not news_lines:
+        return jsonify({"success": False, "error": f"No recent news available for {sym}."})
+
+    prompt = _context_prompt(context, mode=mode) + """
+
+Focus only on news.
+Return:
+- Key developments today / recently
+- What changed
+- Bullish implications
+- Bearish implications
+- What investors should watch next
+""".strip()
+
+    ai = groq_chat_completion(
+        "You are a news-driven Indian equity research assistant. Use only the provided headlines and data.",
+        prompt,
+        max_tokens=700,
+        temperature=0.2,
+    )
+    if not ai.get("success"):
+        return jsonify({"success": False, "error": ai.get("error")})
+    return jsonify({
+        "success": True,
+        "symbol": sym,
+        "mode": mode,
+        "summary": ai["text"],
+        "news": news_data.get("news", []),
+        "data_used": ["news", "price", "sentiment"],
+    })
+
+@app.route("/api/what-changed/<symbol>")
+def what_changed(symbol):
+    sym = symbol.upper().strip()
+    context = build_stock_context(sym)
+    prompt = _context_prompt(context, mode="analyst") + """
+
+Answer this: What changed for this stock today / recently?
+Use these sections:
+- Price action change
+- Technical change
+- News change
+- Sentiment change
+- Bottom line
+Keep it concise.
+""".strip()
+    ai = groq_chat_completion(
+        "You are a market changes summarizer for Indian equities. Stay concrete and concise.",
+        prompt,
+        max_tokens=500,
+        temperature=0.2,
+    )
+    if not ai.get("success"):
+        return jsonify({"success": False, "error": ai.get("error")})
+    return jsonify({
+        "success": True,
+        "symbol": sym,
+        "summary": ai["text"],
+        "data_used": context["data_used"],
+    })
+
+@app.route("/api/bull-bear/<symbol>")
+def bull_bear(symbol):
+    sym = symbol.upper().strip()
+    mode = str(freq.args.get("mode", "analyst")).lower()
+    context = build_stock_context(sym)
+    prompt = _context_prompt(context, mode=mode) + """
+
+Create a short Bull vs Bear debate.
+Format:
+BULL CASE
+- 3 to 5 bullets
+
+BEAR CASE
+- 3 to 5 bullets
+
+BALANCED TAKE
+- 1 short conclusion
+""".strip()
+    ai = groq_chat_completion(
+        "You are a balanced Indian stock analyst. Present both sides clearly from the supplied data only.",
+        prompt,
+        max_tokens=700,
+        temperature=0.2,
+    )
+    if not ai.get("success"):
+        return jsonify({"success": False, "error": ai.get("error")})
+    return jsonify({"success": True, "symbol": sym, "analysis": ai["text"], "data_used": context["data_used"]})
+
+@app.route("/api/risk/<symbol>")
+def risk_analysis(symbol):
+    sym = symbol.upper().strip()
+    mode = str(freq.args.get("mode", "analyst")).lower()
+    context = build_stock_context(sym)
+    prompt = _context_prompt(context, mode=mode) + """
+
+Focus only on risk.
+Return:
+- Market / technical risks
+- Fundamental / balance sheet risks
+- News / sentiment risks
+- Risk level: Low / Medium / High
+- Suitable investor type
+""".strip()
+    ai = groq_chat_completion(
+        "You are a stock risk analyst. Be conservative and transparent. Use only supplied data.",
+        prompt,
+        max_tokens=600,
+        temperature=0.2,
+    )
+    if not ai.get("success"):
+        return jsonify({"success": False, "error": ai.get("error")})
+    return jsonify({"success": True, "symbol": sym, "risk_report": ai["text"], "data_used": context["data_used"]})
+
+@app.route("/api/compare")
+def compare_stocks():
+    raw = str(freq.args.get("symbols", "")).strip()
+    mode = str(freq.args.get("mode", "analyst")).lower()
+    symbols = [x.strip().upper() for x in raw.split(",") if x.strip()]
+    if len(symbols) < 2:
+        return jsonify({"success": False, "error": "Pass at least two symbols in ?symbols=INFY,TCS"})
+    symbols = symbols[:2]
+    contexts = [build_stock_context(sym) for sym in symbols]
+
+    compare_blob = []
+    for ctx in contexts:
+        compare_blob.append(_context_prompt(ctx, mode=mode))
+        compare_blob.append("=" * 60)
+
+    prompt = "\n".join(compare_blob) + """
+
+Compare these two stocks.
+Return:
+1. Quick Winner
+2. Which looks stronger technically
+3. Which looks stronger fundamentally
+4. Which has better news / sentiment support
+5. Key risks in each
+6. Best for short-term
+7. Best for long-term
+8. Final verdict
+
+Do not invent facts. If any live data is missing, say so.
+""".strip()
+
+    ai = groq_chat_completion(
+        "You are an Indian equity comparison copilot. Compare only from supplied live data.",
+        prompt,
+        max_tokens=1000,
+        temperature=0.2,
+    )
+    if not ai.get("success"):
+        return jsonify({"success": False, "error": ai.get("error")})
+    return jsonify({
+        "success": True,
+        "symbols": symbols,
+        "comparison": ai["text"],
+        "contexts": contexts,
+        "data_used": ["price", "technicals", "fundamentals", "news", "sentiment", "verdict"],
+    })
+
+@app.route("/api/portfolio-insights")
+def portfolio_insights():
+    try:
+        portfolio_data = load_json(PORTFOLIO_FILE)
+    except Exception:
+        portfolio_data = []
+    holdings = [h for h in portfolio_data if h.get("symbol")]
+    if not holdings:
+        return jsonify({"success": False, "error": "Portfolio is empty."})
+
+    holdings = holdings[:8]
+    lines = []
+    for h in holdings:
+        sym = str(h.get("symbol", "")).upper().strip()
+        try:
+            ctx = build_stock_context(sym)
+            p = ctx.get("price", {})
+            t = ctx.get("technical", {})
+            v = ctx.get("verdict", {})
+            lines.append(
+                f"{sym}: buy price={h.get('buy_price')} qty={h.get('qty')} live={p.get('price', 'N/A')} "
+                f"change%={p.get('pct', 'N/A')} signal={t.get('signal', 'N/A')} "
+                f"bull_score={t.get('bull_score', 'N/A')} verdict={v.get('verdict', 'N/A')} risk={v.get('risk', 'N/A')}"
+            )
+        except Exception as e:
+            lines.append(f"{sym}: live context unavailable ({e})")
+
+    prompt = """
+You are a portfolio insights copilot for Indian stocks.
+Use only the supplied live data lines.
+
+Portfolio lines:
+""" + "\n".join(lines) + """
+
+Return:
+- Portfolio snapshot
+- Strongest names
+- Weakest / highest-risk names
+- What needs watching
+- Practical next-step ideas
+
+Keep it concise.
+""".strip()
+
+    ai = groq_chat_completion(
+        "You are a practical portfolio copilot. Use only supplied facts.",
+        prompt,
+        max_tokens=800,
+        temperature=0.2,
+    )
+    if not ai.get("success"):
+        return jsonify({"success": False, "error": ai.get("error")})
+    return jsonify({
+        "success": True,
+        "count": len(holdings),
+        "insights": ai["text"],
+        "data_used": ["portfolio", "price", "technicals", "verdict"],
+    })
+
+@app.route("/api/chat", methods=["POST"])
+def ai_chat():
+    payload = freq.get_json(silent=True) or {}
+    message = str(payload.get("message", "")).strip()
+    symbol = str(payload.get("symbol", "")).upper().strip()
+    mode = str(payload.get("mode", "analyst")).lower()
+
+    if not message:
+        return jsonify({"success": False, "error": "Message is required."}), 400
+
+    symbol_match = re.findall(r"\b[A-Z]{2,15}\b", message.upper())
+    detected_symbol = symbol or (symbol_match[0] if symbol_match else "")
+    use_context = bool(detected_symbol)
+    context = build_stock_context(detected_symbol) if use_context else None
+
+    if use_context and not context.get("success"):
+        return jsonify({"success": False, "error": context.get("error", "Could not build stock context.")})
+
+    if use_context:
+        user_prompt = _context_prompt(context, mode=mode) + f"""
+
+USER QUESTION:
+{message}
+
+Answer the question directly and clearly.
+If the user asks for buy/sell or risk, use the live data.
+End with:
+Data used: price, technicals, fundamentals, news, sentiment, verdict.
+""".strip()
+    else:
+        user_prompt = f"""
+The user is asking a general Indian stock-market research question.
+
+Question:
+{message}
+
+Rules:
+- Be helpful but do not invent live stock data.
+- If specific stock data is needed, say the user should provide a symbol.
+- Keep the answer practical.
+""".strip()
+
+    ai = groq_chat_completion(
+        "You are an AI stock research copilot for Indian markets. Use only supplied data when available. Avoid hallucinations.",
+        user_prompt,
+        max_tokens=900,
+        temperature=0.2,
+    )
+    if not ai.get("success"):
+        return jsonify({"success": False, "error": ai.get("error")})
+
+    return jsonify({
+        "success": True,
+        "symbol": detected_symbol or None,
+        "mode": mode,
+        "message": message,
+        "answer": ai["text"],
+        "data_used": context["data_used"] if use_context else [],
+    })
 
 # ============================================================
 # STARTUP
