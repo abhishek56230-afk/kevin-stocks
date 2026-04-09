@@ -557,7 +557,7 @@
       <div class="panel-head">
         <div>
           <h2>AI Copilot</h2>
-          <div class="sub">Ask research questions, compare stocks, and get beginner or analyst-style answers.</div>
+          <div class="sub">Ask any stock or finance question. The copilot now handles company names, stock symbols, compare queries, and general market education.</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <select id="aiMode" class="input" style="width:auto;min-width:170px">
@@ -570,8 +570,8 @@
         <div class="metric">
           <div class="section-title">Ask the Copilot</div>
           <div style="display:flex;flex-direction:column;gap:10px">
-            <input class="input" id="aiChatSymbol" placeholder="Optional symbol e.g. RELIANCE" />
-            <textarea class="input" id="aiChatInput" rows="5" placeholder="Ask: Should I buy Reliance now? Summarize latest news on TCS. What are the risks in INFY?"></textarea>
+            <input class="input" id="aiChatSymbol" placeholder="Optional symbol or company name e.g. RELIANCE or Adani Power" />
+            <textarea class="input" id="aiChatInput" rows="5" placeholder="Ask anything: Should I buy Adani Power now? Explain RSI. Summarize latest news on TCS. Compare Infosys vs TCS."></textarea>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <button class="primary-btn" id="sendAiChatBtn">Ask AI Copilot</button>
               <button class="ghost" id="fillCompareBtn">Fill compare example</button>
@@ -1267,7 +1267,7 @@
         <div class="metric">
           <div class="section-title">AI Copilot Answer ${data.symbol ? '· ' + data.symbol : ''}</div>
           <div class="metric-note" style="font-size:13px;line-height:1.8;color:var(--text-2)">${nl2br(data.answer || 'No answer returned.')}</div>
-          <div style="margin-top:14px;font-size:11px;color:var(--muted)">Data used: ${(data.data_used||[]).join(', ') || 'general market guidance'}</div>
+          <div style="margin-top:14px;font-size:11px;color:var(--muted)">Data used: ${(data.data_used||[]).join(', ') || 'general finance guidance'}${(data.missing_data||[]).length ? ' · Missing: ' + data.missing_data.join(', ') : ''}</div>
         </div>`;
     } catch (e) {
       output.innerHTML = '<div class="analysis-empty"><strong>Error</strong>' + (e.message || 'Could not get AI answer.') + '</div>';
