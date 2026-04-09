@@ -18,7 +18,7 @@ Key features:
 """
 from flask import Flask, jsonify, send_from_directory, request as freq
 from flask_cors import CORS
-import requests, re, os, time, json, threading, datetime, difflib
+import requests, re, os, time, json, threading, datetime, difflib, uuid
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 from functools import lru_cache
@@ -2924,6 +2924,16 @@ def screener():
 # ============================================================
 PORTFOLIO_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "portfolio.json")
 ALERTS_FILE    = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alerts.json")
+LEADS_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "membership_leads.json")
+MEMBERS_FILE   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "memberships.json")
+
+def now_iso():
+    return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+def normalize_plan(plan):
+    plan = str(plan or "starter").strip().lower()
+    aliases = {"free":"starter", "pro":"pro", "partner":"partner"}
+    return aliases.get(plan, plan if plan in {"starter","pro","partner"} else "starter")
 
 def load_json(path):
     try:
@@ -3033,6 +3043,130 @@ def remove_alert(symbol):
     alerts=[a for a in load_json(ALERTS_FILE) if a["symbol"]!=symbol.upper()]
     save_json(ALERTS_FILE,alerts)
     return jsonify({"success":True})
+
+
+# ============================================================
+# MONETIZATION / MEMBERSHIP LEADS
+# ============================================================
+@app.route("/api/monetization/interest", methods=["POST"])
+def monetization_interest():
+    try:
+        data = freq.get_json() or {}
+        name = str(data.get("name", "")).strip()
+        email = str(data.get("email", "")).strip().lower()
+        phone = str(data.get("phone", "")).strip()
+        plan = normalize_plan(data.get("plan"))
+        notes = str(data.get("notes", "")).strip()
+        source = str(data.get("source", "website")).strip() or "website"
+        if not name or not email:
+            return jsonify({"success": False, "error": "Name and email are required."}), 400
+        leads = load_json(LEADS_FILE)
+        existing = None
+        for lead in leads:
+            if str(lead.get("email", "")).lower() == email and normalize_plan(lead.get("plan")) == plan:
+                existing = lead
+                break
+        if existing:
+            existing["name"] = name
+            existing["phone"] = phone
+            existing["notes"] = notes
+            existing["source"] = source
+            existing["updated_at"] = now_iso()
+            existing["status"] = existing.get("status") or "interested"
+            lead_id = existing["id"]
+            message = f"Updated existing {plan.title()} interest."
+        else:
+            lead_id = "lead_" + uuid.uuid4().hex[:10]
+            leads.insert(0, {
+                "id": lead_id,
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "plan": plan,
+                "notes": notes,
+                "source": source,
+                "status": "interested",
+                "created_at": now_iso(),
+                "updated_at": now_iso()
+            })
+            message = f"Interest saved for {plan.title()}."
+        save_json(LEADS_FILE, leads)
+        return jsonify({"success": True, "message": message, "lead_id": lead_id})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/monetization/summary", methods=["GET"])
+def monetization_summary():
+    leads = load_json(LEADS_FILE)
+    members = load_json(MEMBERS_FILE)
+    def count_plan(items, plan):
+        return sum(1 for x in items if normalize_plan(x.get("plan")) == plan)
+    active_members = [m for m in members if str(m.get("status", "")).lower() == "active"]
+    recent_leads = sorted(leads, key=lambda x: x.get("updated_at") or x.get("created_at") or "", reverse=True)[:12]
+    return jsonify({
+        "success": True,
+        "summary": {
+            "total_leads": len(leads),
+            "starter_interest": count_plan(leads, "starter"),
+            "pro_interest": count_plan(leads, "pro"),
+            "partner_interest": count_plan(leads, "partner"),
+            "active_members": len(active_members),
+            "paid_pro_members": sum(1 for m in active_members if normalize_plan(m.get("plan")) == "pro")
+        },
+        "recent_leads": recent_leads,
+        "members": sorted(members, key=lambda x: x.get("updated_at") or x.get("created_at") or "", reverse=True)[:12]
+    })
+
+@app.route("/api/monetization/memberships", methods=["GET"])
+def monetization_memberships():
+    leads = sorted(load_json(LEADS_FILE), key=lambda x: x.get("updated_at") or x.get("created_at") or "", reverse=True)
+    members = sorted(load_json(MEMBERS_FILE), key=lambda x: x.get("updated_at") or x.get("created_at") or "", reverse=True)
+    return jsonify({"success": True, "leads": leads, "members": members})
+
+@app.route("/api/monetization/activate", methods=["POST"])
+def monetization_activate():
+    try:
+        data = freq.get_json() or {}
+        lead_id = str(data.get("lead_id", "")).strip()
+        status = str(data.get("status", "active")).strip().lower() or "active"
+        if not lead_id:
+            return jsonify({"success": False, "error": "lead_id is required."}), 400
+        leads = load_json(LEADS_FILE)
+        members = load_json(MEMBERS_FILE)
+        lead = next((x for x in leads if x.get("id") == lead_id), None)
+        if not lead:
+            return jsonify({"success": False, "error": "Lead not found."}), 404
+        lead["status"] = status
+        lead["updated_at"] = now_iso()
+        existing = next((m for m in members if str(m.get("lead_id")) == lead_id), None)
+        if existing:
+            existing.update({
+                "name": lead.get("name"),
+                "email": lead.get("email"),
+                "phone": lead.get("phone"),
+                "plan": normalize_plan(lead.get("plan")),
+                "status": status,
+                "updated_at": now_iso()
+            })
+            member_id = existing["id"]
+        else:
+            member_id = "mem_" + uuid.uuid4().hex[:10]
+            members.insert(0, {
+                "id": member_id,
+                "lead_id": lead_id,
+                "name": lead.get("name"),
+                "email": lead.get("email"),
+                "phone": lead.get("phone"),
+                "plan": normalize_plan(lead.get("plan")),
+                "status": status,
+                "created_at": now_iso(),
+                "updated_at": now_iso()
+            })
+        save_json(LEADS_FILE, leads)
+        save_json(MEMBERS_FILE, members)
+        return jsonify({"success": True, "message": f"Membership marked as {status}.", "member_id": member_id})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # ============================================================
 # STARTUP
