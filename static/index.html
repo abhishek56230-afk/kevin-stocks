@@ -551,6 +551,49 @@
         </div>
       </div>
     </div>
+
+    <div style="height:16px"></div>
+    <div class="card panel">
+      <div class="panel-head">
+        <div>
+          <h2>AI Copilot</h2>
+          <div class="sub">Ask research questions, compare stocks, and get beginner or analyst-style answers.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="aiMode" class="input" style="width:auto;min-width:170px">
+            <option value="analyst">Analyst mode</option>
+            <option value="beginner">Beginner mode</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="metric">
+          <div class="section-title">Ask the Copilot</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <input class="input" id="aiChatSymbol" placeholder="Optional symbol e.g. RELIANCE" />
+            <textarea class="input" id="aiChatInput" rows="5" placeholder="Ask: Should I buy Reliance now? Summarize latest news on TCS. What are the risks in INFY?"></textarea>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="primary-btn" id="sendAiChatBtn">Ask AI Copilot</button>
+              <button class="ghost" id="fillCompareBtn">Fill compare example</button>
+            </div>
+          </div>
+        </div>
+        <div class="metric">
+          <div class="section-title">Compare Stocks</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="split" style="gap:10px">
+              <input class="input" id="compareSymbol1" placeholder="Symbol 1 e.g. TCS" />
+              <input class="input" id="compareSymbol2" placeholder="Symbol 2 e.g. INFY" />
+            </div>
+            <button class="ghost" id="runCompareBtn">Run Compare</button>
+            <div class="metric-note">Compares price, technicals, fundamentals, news, sentiment, and verdict.</div>
+          </div>
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <div id="aiCopilotOutput" class="analysis-empty"><strong>AI Copilot ready</strong>Ask a question or compare two symbols.</div>
+    </div>
+
   </div><!-- /view-home -->
 
   <!-- PORTFOLIO -->
@@ -972,6 +1015,11 @@
         <button class="tab" data-tab="sentiment">Sentiment</button>
         <button class="tab" data-tab="news">News</button>
         <button class="tab" data-tab="verdict">AI Verdict</button>
+        <button class="tab" data-tab="research">Research Report</button>
+        <button class="tab" data-tab="newsint">News Intelligence</button>
+        <button class="tab" data-tab="bullbear">Bull vs Bear</button>
+        <button class="tab" data-tab="risk">Risk</button>
+        <button class="tab" data-tab="changed">What Changed?</button>
       </div>
       <div class="analysis-body"><div class="loader"></div></div>`;
     bindTabs();
@@ -997,9 +1045,17 @@
       fundamental: ['/api/fundamental/'],
       sentiment:   ['/api/sentiment/'],
       news:        ['/api/news/'],
-      verdict:     ['/api/verdict/']
+      verdict:     ['/api/verdict/'],
+      research:    ['/api/research/'],
+      newsint:     ['/api/news-intelligence/'],
+      bullbear:    ['/api/bull-bear/'],
+      risk:        ['/api/risk/'],
+      changed:     ['/api/what-changed/']
     };
-    const suffix = tab === 'news' ? ('?refresh=1&_ts=' + Date.now()) : '';
+    const aiMode = encodeURIComponent((qs('#aiMode')||{}).value || 'analyst');
+    const suffix = tab === 'news'
+      ? ('?refresh=1&_ts=' + Date.now())
+      : (['research','newsint','bullbear','risk','changed'].includes(tab) ? ('?mode=' + aiMode) : '');
     const results = await Promise.all(eps[tab].map(u => api(u + symbol + suffix)));
     if (useCache) state.analysisCache[key] = results;
     return results;
@@ -1017,6 +1073,11 @@
       else if (tab === 'sentiment')   renderSentiment(data[0]);
       else if (tab === 'news')        renderNews(data[0]);
       else if (tab === 'verdict')     renderVerdict(data[0]);
+      else if (tab === 'research')    renderAiText('Research Report', data[0].report || data[0].summary || data[0].analysis, data[0].data_used);
+      else if (tab === 'newsint')     renderAiText('News Intelligence', data[0].summary || data[0].analysis, data[0].data_used);
+      else if (tab === 'bullbear')    renderAiText('Bull vs Bear', data[0].analysis || data[0].summary, data[0].data_used);
+      else if (tab === 'risk')        renderAiText('Risk Analysis', data[0].risk_report || data[0].analysis || data[0].summary, data[0].data_used);
+      else if (tab === 'changed')     renderAiText('What Changed?', data[0].summary || data[0].analysis, data[0].data_used);
     } catch(e) {
       body.innerHTML = '<div class="analysis-empty"><strong>Error</strong>' + e.message + '</div>';
     }
@@ -1174,6 +1235,65 @@
       <div style="height:12px"></div>
       <div class="list">${(v.reasoning||[]).map(line=>'<div class="list-item"><strong>'+line+'</strong></div>').join('')||'<div class="list-item"><strong>'+(v.full_text||'No reasoning returned')+'</strong></div>'}</div>`;
   }
+
+
+  function nl2br(text) {
+    return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  }
+
+  function renderAiText(title, text, dataUsed) {
+    qs('.analysis-body').innerHTML = `
+      <div class="metric">
+        <div class="section-title">${title}</div>
+        <div class="metric-note" style="font-size:13px;line-height:1.8;color:var(--text-2)">${nl2br(text || 'No AI output returned.')}</div>
+        <div style="margin-top:14px;font-size:11px;color:var(--muted)">Data used: ${(dataUsed||[]).join(', ') || 'live data when available'}</div>
+      </div>`;
+  }
+
+  async function askAiCopilot() {
+    const output = qs('#aiCopilotOutput');
+    const message = qs('#aiChatInput').value.trim();
+    const symbol = qs('#aiChatSymbol').value.trim().toUpperCase();
+    const mode = (qs('#aiMode')||{}).value || 'analyst';
+    if (!message) return alert('Type a question for the AI copilot.');
+    output.innerHTML = '<div class="loader"></div>';
+    try {
+      const data = await api('/api/chat', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ message, symbol, mode })
+      });
+      output.innerHTML = `
+        <div class="metric">
+          <div class="section-title">AI Copilot Answer ${data.symbol ? '· ' + data.symbol : ''}</div>
+          <div class="metric-note" style="font-size:13px;line-height:1.8;color:var(--text-2)">${nl2br(data.answer || 'No answer returned.')}</div>
+          <div style="margin-top:14px;font-size:11px;color:var(--muted)">Data used: ${(data.data_used||[]).join(', ') || 'general market guidance'}</div>
+        </div>`;
+    } catch (e) {
+      output.innerHTML = '<div class="analysis-empty"><strong>Error</strong>' + (e.message || 'Could not get AI answer.') + '</div>';
+    }
+  }
+
+  async function runCompare() {
+    const s1 = qs('#compareSymbol1').value.trim().toUpperCase();
+    const s2 = qs('#compareSymbol2').value.trim().toUpperCase();
+    const mode = (qs('#aiMode')||{}).value || 'analyst';
+    const output = qs('#aiCopilotOutput');
+    if (!s1 || !s2) return alert('Enter two symbols to compare.');
+    output.innerHTML = '<div class="loader"></div>';
+    try {
+      const data = await api('/api/compare?symbols=' + encodeURIComponent(s1 + ',' + s2) + '&mode=' + encodeURIComponent(mode));
+      output.innerHTML = `
+        <div class="metric">
+          <div class="section-title">Compare Stocks · ${s1} vs ${s2}</div>
+          <div class="metric-note" style="font-size:13px;line-height:1.8;color:var(--text-2)">${nl2br(data.comparison || 'No comparison returned.')}</div>
+          <div style="margin-top:14px;font-size:11px;color:var(--muted)">Data used: ${(data.data_used||[]).join(', ')}</div>
+        </div>`;
+    } catch (e) {
+      output.innerHTML = '<div class="analysis-empty"><strong>Error</strong>' + (e.message || 'Could not compare stocks.') + '</div>';
+    }
+  }
+
 
   /* ─── Portfolio ─── */
   async function loadPortfolio() {
@@ -1378,6 +1498,13 @@
   });
   qs('#refreshAlerts').addEventListener('click', loadAlerts);
   qs('#addAlertBtn').addEventListener('click', addAlert);
+  qs('#sendAiChatBtn').addEventListener('click', askAiCopilot);
+  qs('#runCompareBtn').addEventListener('click', runCompare);
+  qs('#fillCompareBtn').addEventListener('click', function() {
+    qs('#compareSymbol1').value = qs('#compareSymbol1').value || 'TCS';
+    qs('#compareSymbol2').value = qs('#compareSymbol2').value || 'INFY';
+    qs('#aiChatInput').value = qs('#aiChatInput').value || 'Compare TCS vs INFY and tell me which looks better for short term and long term.';
+  });
 
   qs('#analyseBtn').addEventListener('click', async () => {
     const val = qs('#searchInput').value.trim();
