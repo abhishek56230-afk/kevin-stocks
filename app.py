@@ -19,6 +19,8 @@ Key features:
 from flask import Flask, jsonify, send_from_directory, request as freq
 from flask_cors import CORS
 import requests, re, os, time, json, threading, datetime, difflib
+import xml.etree.ElementTree as ET
+from email.utils import parsedate_to_datetime
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from requests.adapters import HTTPAdapter
@@ -509,34 +511,78 @@ def fundamental(symbol):
 # ============================================================
 @app.route("/api/news/<symbol>")
 def news(symbol):
-    sym=symbol.upper().strip()
-    cached=cache_get(f"news:{sym}")
-    if cached: return jsonify(cached)
-    all_items=[]; seen=set()
+    sym = symbol.upper().strip()
+    refresh = str(freq.args.get("refresh", "")).lower() in ("1", "true", "yes")
+    cache_key = f"news:{sym}"
+    if not refresh:
+        cached = cache_get(cache_key)
+        if cached:
+            return jsonify(cached)
+
+    all_items = []
+    seen = set()
+
+    def parse_pubdate(raw):
+        try:
+            dt = parsedate_to_datetime(raw)
+            if not dt:
+                return None
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=datetime.timezone.utc)
+            return dt.astimezone(datetime.timezone.utc)
+        except Exception:
+            return None
+
     def fetch(q):
         try:
-            r=http_get(f"https://news.google.com/rss/search?q={q}&hl=en-IN&gl=IN&ceid=IN:en",headers=GNH,timeout=6)
-            items=re.findall(r'<item>(.*?)</item>',r.text,re.DOTALL)
-            out=[]
-            for item in items[:4]:
-                title=re.findall(r'<title>(.*?)</title>',item)
-                link=re.findall(r'<link/>(.*?)\n',item)
-                date=re.findall(r'<pubDate>(.*?)</pubDate>',item)
-                src=re.findall(r'<source[^>]*>(.*?)</source>',item)
-                if title and title[0] not in seen:
-                    seen.add(title[0])
-                    out.append({"title":title[0],"link":link[0].strip() if link else "#",
-                                "date":date[0][:22] if date else "","source":src[0] if src else "News"})
+            url = f"https://news.google.com/rss/search?q={requests.utils.quote(q)}&hl=en-IN&gl=IN&ceid=IN:en"
+            r = http_get(url, headers=GNH, timeout=8)
+            root = ET.fromstring(r.text)
+            out = []
+            for item in root.findall('.//item')[:8]:
+                title = (item.findtext('title') or '').strip()
+                link = (item.findtext('link') or '#').strip()
+                raw_date = (item.findtext('pubDate') or '').strip()
+                source_el = item.find('source')
+                source = (source_el.text or 'News').strip() if source_el is not None else 'News'
+                if not title:
+                    continue
+                norm_title = re.sub(r'\s+', ' ', title)
+                if norm_title in seen:
+                    continue
+                seen.add(norm_title)
+                dt = parse_pubdate(raw_date)
+                out.append({
+                    "title": norm_title,
+                    "link": link,
+                    "date": dt.strftime("%d %b %Y %H:%M UTC") if dt else raw_date[:25],
+                    "published_at": dt.isoformat() if dt else "",
+                    "source": source,
+                    "query": q
+                })
             return out
-        except: return []
-    queries=[f"{sym}+stock+NSE+today",f"{sym}+share+price+latest",f"{sym}+results+India+2025"]
+        except Exception:
+            return []
+
+    queries = [
+        f'"{sym}" NSE stock latest today',
+        f'"{sym}" share price today India',
+        f'"{sym}" results OR order OR deal OR guidance OR target today'
+    ]
     with ThreadPoolExecutor(max_workers=3) as pool:
-        for items in pool.map(fetch,queries): all_items.extend(items)
-    final=[]; seen2=set()
-    for item in all_items:
-        if item["title"] not in seen2: seen2.add(item["title"]); final.append(item)
-    data={"success":True,"news":final[:12]}
-    cache_set(f"news:{sym}",data,ttl=600)
+        for items in pool.map(fetch, queries):
+            all_items.extend(items)
+
+    def sort_key(item):
+        raw = item.get("published_at") or ""
+        try:
+            return datetime.datetime.fromisoformat(raw.replace('Z', '+00:00'))
+        except Exception:
+            return datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+
+    final = sorted(all_items, key=sort_key, reverse=True)
+    data = {"success": True, "news": final[:12], "fetched_at": datetime.datetime.utcnow().isoformat() + "Z"}
+    cache_set(cache_key, data, ttl=120)
     return jsonify(data)
 
 # ============================================================
@@ -1133,7 +1179,8 @@ def verdict_share(symbol):
 
     encoded = requests.utils.quote(share_text)
     sms_link = f"sms:{mobile}?body={encoded}" if mobile else f"sms:?body={encoded}"
-    whatsapp_link = f"https://wa.me/{mobile}?text={encoded}" if mobile else f"https://wa.me/?text={encoded}"
+    whatsapp_app_link = f"whatsapp://send?phone={mobile}&text={encoded}" if mobile else f"whatsapp://send?text={encoded}"
+    whatsapp_web_link = f"https://wa.me/{mobile}?text={encoded}" if mobile else f"https://wa.me/?text={encoded}"
 
     return jsonify({
         "success":True,
@@ -1142,8 +1189,10 @@ def verdict_share(symbol):
         "channel":channel,
         "share_text":share_text,
         "sms_link":sms_link,
-        "whatsapp_link":whatsapp_link,
-        "note":"This prepares the AI verdict message for SMS or WhatsApp. Actual sending happens from the user's device/app."
+        "whatsapp_link":whatsapp_web_link,
+        "whatsapp_app_link":whatsapp_app_link,
+        "whatsapp_web_link":whatsapp_web_link,
+        "note":"This prepares the AI verdict message for WhatsApp or SMS and opens the correct handoff link on the user's device or browser."
     })
 
 @app.route("/api/watchlist/verdict/<symbol>")
