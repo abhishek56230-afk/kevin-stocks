@@ -899,21 +899,51 @@
       const appLink = data.whatsapp_app_link;
       const webLink = data.whatsapp_web_link || data.whatsapp_link;
 
+      const copyFallback = async (text) => {
+        if (!text) return false;
+        try {
+          if (navigator.clipboard && document.hasFocus()) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch (_) {}
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          ta.style.pointerEvents = 'none';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          const ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          return !!ok;
+        } catch (_) {
+          return false;
+        }
+      };
+
       if (isMobile && appLink) {
         window.location.href = appLink;
       } else if (webLink) {
         const popup = window.open(webLink, '_blank', 'noopener,noreferrer');
-        if (!popup && navigator.clipboard && data.share_text) {
-          await navigator.clipboard.writeText(data.share_text);
-          alert('WhatsApp was blocked by the browser, so the verdict text was copied. Open WhatsApp and paste it.');
+        if (!popup) {
+          const copied = await copyFallback(data.share_text);
+          if (copied) {
+            alert('WhatsApp was blocked by the browser, so the verdict text was copied. Open WhatsApp and paste it.');
+          } else {
+            alert('WhatsApp popup was blocked. Please allow popups for this site and try again.');
+          }
           return;
         }
       }
 
-      if (navigator.clipboard && data.share_text) {
-        try { await navigator.clipboard.writeText(data.share_text); } catch (_) {}
-      }
-      alert('WhatsApp handoff is ready. If the chat did not open automatically, paste the copied verdict text into WhatsApp.');
+      const copied = await copyFallback(data.share_text);
+      alert(copied
+        ? 'WhatsApp handoff is ready. If the chat did not open automatically, paste the copied verdict text into WhatsApp.'
+        : 'WhatsApp handoff is ready. If the chat did not open automatically, copy the verdict text manually and paste it into WhatsApp.');
     } catch (e) {
       alert(e.message || 'Could not prepare the verdict message.');
     }
