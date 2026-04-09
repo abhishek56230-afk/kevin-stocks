@@ -3620,6 +3620,109 @@ Keep it concise.
         "data_used": ["portfolio", "price", "technicals", "verdict"],
     })
 
+
+
+def resolve_symbol_from_text(text, explicit_symbol=""):
+    explicit = str(explicit_symbol or "").upper().strip()
+    if explicit:
+        return {"symbol": explicit, "method": "explicit", "confidence": 1.0}
+
+    raw = str(text or "").strip()
+    if not raw:
+        return {"symbol": "", "method": "none", "confidence": 0.0}
+
+    ticker_like = re.findall(r"\b[A-Z]{2,15}\b", raw.upper())
+    for token in ticker_like:
+        ranked = _rank_search_results(token, limit=3)
+        if ranked and ranked[0]["symbol"] == token:
+            return {"symbol": token, "method": "ticker_in_text", "confidence": 0.99}
+
+    cleaned = re.sub(r"[^A-Za-z0-9\s]", " ", raw.lower())
+    filler = {
+        "should","i","buy","sell","hold","is","are","the","a","an","now","today","good",
+        "stock","share","shares","price","latest","news","for","on","of","to","and","vs",
+        "compare","risk","analysis","please","can","you","me","tell","about","what","why",
+        "research","summary","summarize","explain","best","worst","limited","ltd"
+    }
+    words = [w for w in cleaned.split() if w and w not in filler]
+    queries = []
+    if words:
+        queries.append(" ".join(words))
+        for size in (4, 3, 2, 1):
+            for i in range(0, max(0, len(words) - size + 1)):
+                q = " ".join(words[i:i+size])
+                if q not in queries:
+                    queries.append(q)
+    if cleaned.strip() and cleaned.strip() not in queries:
+        queries.append(cleaned.strip())
+
+    best = None
+    for q in queries[:12]:
+        ranked = _rank_search_results(q, limit=5)
+        if ranked:
+            cand = ranked[0]
+            if (best is None) or (cand.get("score", 0) > best.get("score", 0)):
+                best = cand
+                if cand.get("score", 0) >= 900:
+                    break
+
+    if best and (best.get("score", 0) >= 140 or best.get("match_quality", 0) >= 0.75):
+        return {
+            "symbol": best["symbol"],
+            "method": "name_search",
+            "confidence": float(best.get("match_quality", 0)),
+            "name": best.get("name", "")
+        }
+
+    return {"symbol": "", "method": "none", "confidence": 0.0}
+
+
+def detect_chat_intent(message):
+    q = str(message or "").lower()
+    if any(k in q for k in ["compare", " vs ", "versus"]):
+        return "compare"
+    if any(k in q for k in ["news", "headline", "summar"]):
+        return "news"
+    if any(k in q for k in ["risk", "downside", "danger"]):
+        return "risk"
+    if any(k in q for k in ["buy", "sell", "hold", "entry", "target", "stop loss"]):
+        return "recommendation"
+    if any(k in q for k in ["what is", "how does", "explain", "difference between", "learn"]):
+        return "education"
+    return "general"
+
+
+def available_data_labels(context):
+    labels = []
+    mapping = {
+        "price": ["price"],
+        "technical": ["signal", "rsi", "bull_score", "price"],
+        "fundamental": ["pe", "mcap", "roe", "price"],
+        "news": ["news"],
+        "sentiment": ["avg_bull", "overall"],
+        "verdict": ["verdict", "reasoning", "price"],
+    }
+    for key, probes in mapping.items():
+        obj = context.get(key, {}) or {}
+        ok = False
+        if key == "news":
+            ok = bool(obj.get("news"))
+        else:
+            for probe in probes:
+                val = obj.get(probe)
+                if val not in (None, "", [], {}, "N/A"):
+                    ok = True
+                    break
+        if ok:
+            labels.append("technicals" if key == "technical" else ("fundamentals" if key == "fundamental" else key))
+    return labels
+
+
+def missing_data_labels(context):
+    all_labels = ["price", "technicals", "fundamentals", "news", "sentiment", "verdict"]
+    available = set(available_data_labels(context))
+    return [x for x in all_labels if x not in available]
+
 @app.route("/api/chat", methods=["POST"])
 def ai_chat():
     payload = freq.get_json(silent=True) or {}
@@ -3630,40 +3733,73 @@ def ai_chat():
     if not message:
         return jsonify({"success": False, "error": "Message is required."}), 400
 
-    symbol_match = re.findall(r"\b[A-Z]{2,15}\b", message.upper())
-    detected_symbol = symbol or (symbol_match[0] if symbol_match else "")
-    use_context = bool(detected_symbol)
-    context = build_stock_context(detected_symbol) if use_context else None
+    intent = detect_chat_intent(message)
+    resolved = resolve_symbol_from_text(message, explicit_symbol=symbol)
+    detected_symbol = resolved.get("symbol", "")
 
-    if use_context and not context.get("success"):
-        return jsonify({"success": False, "error": context.get("error", "Could not build stock context.")})
+    context = None
+    data_used = []
+    missing = []
+    if detected_symbol:
+        context = build_stock_context(detected_symbol)
+        if context.get("success"):
+            data_used = available_data_labels(context)
+            missing = missing_data_labels(context)
+        else:
+            context = None
+            detected_symbol = ""
 
-    if use_context:
+    if detected_symbol and context:
+        availability_note = (
+            f"Available live data: {', '.join(data_used) if data_used else 'none'}. "
+            f"Missing live data: {', '.join(missing) if missing else 'none'}."
+        )
         user_prompt = _context_prompt(context, mode=mode) + f"""
 
 USER QUESTION:
 {message}
 
-Answer the question directly and clearly.
-If the user asks for buy/sell or risk, use the live data.
-End with:
-Data used: price, technicals, fundamentals, news, sentiment, verdict.
+INTENT:
+{intent}
+
+RESOLUTION:
+- Resolved symbol: {detected_symbol}
+- Resolution method: {resolved.get('method')}
+- Resolution confidence: {resolved.get('confidence')}
+
+DATA AVAILABILITY:
+{availability_note}
+
+RESPONSE RULES:
+- Answer even if some live data is missing.
+- Never refuse only because one data source failed.
+- Use only the supplied live data for stock-specific claims.
+- If the user asks for buy/sell, give a balanced research view, not a guaranteed recommendation.
+- Clearly separate facts from interpretation.
+- If some live data is missing, say exactly what is missing in one short line.
+- End with one short line: Data used: {', '.join(data_used) if data_used else 'general reasoning only'}.
 """.strip()
     else:
         user_prompt = f"""
-The user is asking a general Indian stock-market research question.
+The user is asking a general Indian stock-market or finance question.
 
 Question:
 {message}
 
+INTENT:
+{intent}
+
 Rules:
-- Be helpful but do not invent live stock data.
-- If specific stock data is needed, say the user should provide a symbol.
-- Keep the answer practical.
+- Be helpful even when no stock symbol is detected.
+- Do not invent live stock data.
+- If the question needs stock-specific live analysis, say that a symbol or company name would improve the answer.
+- If the question is educational, answer directly and clearly.
+- Keep the answer practical and concise.
+- End with one short line: Data used: general market knowledge only.
 """.strip()
 
     ai = groq_chat_completion(
-        "You are an AI stock research copilot for Indian markets. Use only supplied data when available. Avoid hallucinations.",
+        "You are an AI stock research copilot for Indian markets. Use supplied live data when available, otherwise answer as a practical finance assistant. Avoid hallucinations.",
         user_prompt,
         max_tokens=900,
         temperature=0.2,
@@ -3675,9 +3811,12 @@ Rules:
         "success": True,
         "symbol": detected_symbol or None,
         "mode": mode,
+        "intent": intent,
         "message": message,
         "answer": ai["text"],
-        "data_used": context["data_used"] if use_context else [],
+        "data_used": data_used,
+        "missing_data": missing,
+        "resolved_by": resolved.get("method"),
     })
 
 # ============================================================
