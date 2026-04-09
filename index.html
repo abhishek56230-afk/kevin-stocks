@@ -462,7 +462,7 @@
       <!-- Search card -->
       <div class="card hero-main">
         <div class="eyebrow">Live Intelligence</div>
-        <h1 class="hero-title">Search NSE stocks with pro-grade speed, cleaner analysis, and premium-ready monetization UX.</h1>
+        <h1 class="hero-title">AI Analytics Stock Researcher</h1>
         <p class="hero-copy">Faster suggestions, cleaner signal cards, lazy-loaded tabs, premium call-to-actions, and a sharper product feel built for real users and future revenue.</p>
         <div class="search-shell">
           <div class="search-box">
@@ -886,13 +886,34 @@
 
     try {
       const data = await api('/api/verdict-share/' + encodeURIComponent(symbol) + '?mobile=' + encodeURIComponent(mobile) + '&channel=' + encodeURIComponent(channel));
-      const targetUrl = channel === 'sms' ? data.sms_link : data.whatsapp_link;
-      if (targetUrl) {
-        window.open(targetUrl, '_blank');
-        alert('Verdict message prepared. Review it and send from the opened app.');
-      } else {
-        alert(data.share_text || 'Verdict ready, but no sharing link was generated.');
+      if (channel === 'sms') {
+        if (data.sms_link) {
+          window.location.href = data.sms_link;
+          return;
+        }
+        alert(data.share_text || 'SMS message is ready.');
+        return;
       }
+
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+      const appLink = data.whatsapp_app_link;
+      const webLink = data.whatsapp_web_link || data.whatsapp_link;
+
+      if (isMobile && appLink) {
+        window.location.href = appLink;
+      } else if (webLink) {
+        const popup = window.open(webLink, '_blank', 'noopener,noreferrer');
+        if (!popup && navigator.clipboard && data.share_text) {
+          await navigator.clipboard.writeText(data.share_text);
+          alert('WhatsApp was blocked by the browser, so the verdict text was copied. Open WhatsApp and paste it.');
+          return;
+        }
+      }
+
+      if (navigator.clipboard && data.share_text) {
+        try { await navigator.clipboard.writeText(data.share_text); } catch (_) {}
+      }
+      alert('WhatsApp handoff is ready. If the chat did not open automatically, paste the copied verdict text into WhatsApp.');
     } catch (e) {
       alert(e.message || 'Could not prepare the verdict message.');
     }
@@ -938,7 +959,8 @@
 
   async function getAnalysis(symbol, tab) {
     const key = symbol + ':' + tab;
-    if (state.analysisCache[key]) return state.analysisCache[key];
+    const useCache = tab !== 'news';
+    if (useCache && state.analysisCache[key]) return state.analysisCache[key];
     const eps = {
       overview:    ['/api/price/', '/api/technical/'],
       technical:   ['/api/technical/'],
@@ -947,8 +969,9 @@
       news:        ['/api/news/'],
       verdict:     ['/api/verdict/']
     };
-    const results = await Promise.all(eps[tab].map(u => api(u + symbol)));
-    state.analysisCache[key] = results;
+    const suffix = tab === 'news' ? ('?refresh=1&_ts=' + Date.now()) : '';
+    const results = await Promise.all(eps[tab].map(u => api(u + symbol + suffix)));
+    if (useCache) state.analysisCache[key] = results;
     return results;
   }
 
@@ -1089,7 +1112,10 @@
 
   function renderNews(n) {
     const items = n.news || n.items || [];
-    qs('.analysis-body').innerHTML = '<div class="list">' +
+    const fetched = n.fetched_at ? new Date(n.fetched_at).toLocaleString() : '';
+    qs('.analysis-body').innerHTML =
+      (fetched ? '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Fresh fetch: ' + fetched + '</div>' : '') +
+      '<div class="list">' +
       (items.map(item => `
         <div class="list-item">
           <a href="${item.link||'#'}" target="_blank" rel="noopener noreferrer">${item.title||'Open article'}</a>
