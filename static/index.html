@@ -393,6 +393,28 @@
     .stack { display: flex; flex-direction: column; gap: 10px; }
     .split { display: flex; justify-content: space-between; gap: 14px; align-items: center; flex-wrap: wrap; }
     .danger { background: rgba(248,113,113,.07) !important; color: var(--red) !important; border-color: rgba(248,113,113,.25) !important; }
+    .plan-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+    .mini-btn { border:1px solid var(--line); background: rgba(255,255,255,.03); color: var(--text-2); border-radius: 10px; padding: 9px 12px; font: 700 12px/1 'Space Grotesk', sans-serif; cursor:pointer; }
+    .mini-btn:hover { background: rgba(255,255,255,.06); }
+    .admin-grid { display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin-top:16px; margin-bottom:16px; }
+    .admin-card { padding:14px 16px; border-radius: var(--radius); background: rgba(255,255,255,.025); border:1px solid var(--line); }
+    .admin-card .label { font-size:11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+    .admin-card .value { font-size:24px; font-weight:700; font-family:'DM Mono', monospace; }
+    .tag { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; border:1px solid var(--line); }
+    .tag.starter { color: var(--text-2); }
+    .tag.pro { color: var(--brand); border-color: rgba(56,189,248,.28); background: rgba(56,189,248,.08); }
+    .tag.partner { color: var(--amber); border-color: rgba(251,191,36,.28); background: rgba(251,191,36,.08); }
+    .tag.active { color: var(--green); border-color: rgba(16,185,129,.28); background: rgba(16,185,129,.08); }
+    .tag.interested { color: var(--amber); border-color: rgba(251,191,36,.28); background: rgba(251,191,36,.08); }
+    .lead-row { display:grid; grid-template-columns: 1.2fr 1fr .8fr .9fr 1.1fr; gap: 10px; align-items:center; padding:12px 14px; border-radius: var(--radius-sm); background: rgba(255,255,255,.022); border: 1px solid var(--line); margin-bottom:8px; }
+    .lead-row.head { background: transparent; border:none; padding:0 2px 8px 2px; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+    .modal-backdrop { position:fixed; inset:0; background: rgba(3,8,18,.78); display:none; align-items:center; justify-content:center; z-index: 10050; padding: 20px; }
+    .modal-backdrop.open { display:flex; }
+    .modal-card { width:min(560px, 100%); padding: 22px; border-radius: var(--radius-lg); background: #0b1528; border:1px solid var(--line-2); box-shadow: var(--shadow); }
+    .modal-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-grid .full { grid-column: 1 / -1; }
+    .close-x { border:none; background:transparent; color: var(--muted); font-size:24px; cursor:pointer; }
+    @media (max-width: 900px) { .admin-grid { grid-template-columns: 1fr 1fr; } .lead-row { grid-template-columns: 1fr; } .lead-row.head { display:none; } }
 
     .scr-grid  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 4px; }
     .scr-group { display: flex; flex-direction: column; gap: 6px; }
@@ -516,18 +538,34 @@
           <div class="section-title">Starter</div>
           <div class="metric-value">Free</div>
           <div class="metric-note">Search, watchlist and basic analysis. Ideal for organic traffic, SEO and lead capture.</div>
+          <div class="plan-actions">
+            <button class="primary-btn" onclick="openInterestModal('starter')">Get Starter Access</button>
+          </div>
         </div>
         <div class="metric">
           <div class="section-title">Pro</div>
           <div class="metric-value">₹499/mo</div>
           <div class="metric-note">Premium verdicts, faster refresh, deeper alerts, saved portfolio insights and priority features.</div>
+          <div class="plan-actions">
+            <button class="primary-btn" onclick="openInterestModal('pro')">I'm Interested</button>
+            <button class="mini-btn" onclick="markLastLeadAsMember('pro')">Mark Latest Lead Paid</button>
+          </div>
         </div>
         <div class="metric">
           <div class="section-title">Partner Revenue</div>
           <div class="metric-value">Ads / Affiliate</div>
           <div class="metric-note">Reserved slots for brokers, newsletters, finance tools and sponsored research placements.</div>
+          <div class="plan-actions">
+            <button class="primary-btn" onclick="openInterestModal('partner')">Become a Partner</button>
+          </div>
         </div>
       </div>
+      <div class="panel-head" style="margin-top:20px">
+        <div><h2>Interest Inbox</h2><div class="sub">See who is interested in your plans and track memberships live.</div></div>
+        <button class="ghost" id="refreshMonetization">↺ Refresh</button>
+      </div>
+      <div id="monetizationSummary" class="admin-grid"><div class="loader"></div></div>
+      <div id="monetizationLeads" class="stack"><div class="loader"></div></div>
     </div>
 
     <!-- Main grid -->
@@ -669,6 +707,30 @@
     </div>
   </div>
 
+
+<div id="interestModal" class="modal-backdrop" aria-hidden="true">
+  <div class="modal-card">
+    <div class="split" style="margin-bottom:14px">
+      <div>
+        <div class="eyebrow">Membership lead capture</div>
+        <h3 id="interestModalTitle" style="font-size:24px;letter-spacing:-.03em">Register interest</h3>
+      </div>
+      <button class="close-x" onclick="closeInterestModal()">×</button>
+    </div>
+    <div class="modal-grid">
+      <input class="input" id="interestName" placeholder="Your name" />
+      <input class="input" id="interestEmail" placeholder="Email address" type="email" />
+      <input class="input" id="interestPhone" placeholder="Phone / WhatsApp" />
+      <input class="input" id="interestPlan" placeholder="Plan" readonly />
+      <textarea class="input full" id="interestNotes" placeholder="Notes (optional): company, use case, budget, questions" rows="4"></textarea>
+      <div class="full split">
+        <div style="font-size:12px;color:var(--muted)">This saves a real lead into your app so you can see interested users immediately.</div>
+        <button class="primary-btn" id="submitInterestBtn">Save Interest</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /shell -->
 
 <script>
@@ -681,7 +743,9 @@
     analysisCache: {},
     searchCache: new Map(),
     searchAbort: null,
-    lastSearch: ''
+    lastSearch: '',
+    selectedPlan: 'pro',
+    monetization: null
   };
 
   const qs  = s => document.querySelector(s);
@@ -1364,6 +1428,106 @@
     }
   }
 
+  /* ─── Monetization / memberships ─── */
+  function openInterestModal(plan) {
+    state.selectedPlan = (plan || 'pro').toLowerCase();
+    qs('#interestPlan').value = state.selectedPlan;
+    qs('#interestModalTitle').textContent = state.selectedPlan === 'partner' ? 'Partner interest' : (state.selectedPlan === 'starter' ? 'Starter access interest' : 'Pro membership interest');
+    qs('#interestModal').classList.add('open');
+  }
+
+  function closeInterestModal() {
+    qs('#interestModal').classList.remove('open');
+  }
+
+  async function submitInterest() {
+    const payload = {
+      name: qs('#interestName').value.trim(),
+      email: qs('#interestEmail').value.trim(),
+      phone: qs('#interestPhone').value.trim(),
+      plan: qs('#interestPlan').value.trim().toLowerCase() || state.selectedPlan || 'pro',
+      notes: qs('#interestNotes').value.trim(),
+      source: 'website'
+    };
+    if (!payload.name || !payload.email) return alert('Name and email are required.');
+    try {
+      const data = await api('/api/monetization/interest', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      alert(data.message || 'Interest saved successfully.');
+      ['#interestName','#interestEmail','#interestPhone','#interestNotes'].forEach(id => qs(id).value='');
+      closeInterestModal();
+      loadMonetization();
+    } catch(e) {
+      alert(e.message || 'Could not save interest.');
+    }
+  }
+
+  async function loadMonetization() {
+    const summaryWrap = qs('#monetizationSummary');
+    const leadsWrap = qs('#monetizationLeads');
+    if (!summaryWrap || !leadsWrap) return;
+    summaryWrap.innerHTML = '<div class="loader"></div>';
+    leadsWrap.innerHTML = '<div class="loader"></div>';
+    try {
+      const data = await api('/api/monetization/summary');
+      state.monetization = data;
+      const s = data.summary || {};
+      summaryWrap.innerHTML = [
+        ['Total Leads', s.total_leads || 0],
+        ['Starter Interest', s.starter_interest || 0],
+        ['Pro Interest', s.pro_interest || 0],
+        ['Active Members', s.active_members || 0]
+      ].map(x => `<div class="admin-card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+
+      const rows = (data.recent_leads || []).map(l => `
+        <div class="lead-row">
+          <div><strong>${l.name || '—'}</strong><div class="muted-text" style="font-size:12px;margin-top:4px">${l.email || '—'}${l.phone ? ' · ' + l.phone : ''}</div></div>
+          <div><span class="tag ${l.plan || 'starter'}">${(l.plan || 'starter').toUpperCase()}</span></div>
+          <div><span class="tag ${l.status || 'interested'}">${(l.status || 'interested').toUpperCase()}</span></div>
+          <div style="font-size:12px;color:var(--muted)">${(l.updated_at || l.created_at || '').replace('T',' ').replace('Z',' UTC')}</div>
+          <div class="split" style="justify-content:flex-end">
+            <button class="mini-btn" onclick="activateLead('${l.id}','active')">Activate</button>
+          </div>
+        </div>`).join('');
+      leadsWrap.innerHTML = `
+        <div class="lead-row head">
+          <div>Lead</div><div>Plan</div><div>Status</div><div>Updated</div><div style="text-align:right">Action</div>
+        </div>
+        ${rows || '<div class="list-item">No interest captured yet. Use the buttons above to test a real lead.</div>'}`;
+    } catch(e) {
+      summaryWrap.innerHTML = '<div class="list-item">Could not load monetization summary.</div>';
+      leadsWrap.innerHTML = '<div class="list-item">' + (e.message || 'Could not load leads.') + '</div>';
+    }
+  }
+
+  async function activateLead(leadId, status) {
+    try {
+      const data = await api('/api/monetization/activate', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ lead_id: leadId, status: status || 'active' })
+      });
+      alert(data.message || 'Membership updated.');
+      loadMonetization();
+    } catch(e) {
+      alert(e.message || 'Could not update membership.');
+    }
+  }
+
+  async function markLastLeadAsMember(plan) {
+    try {
+      const data = await api('/api/monetization/memberships');
+      const target = (data.leads || []).find(x => (x.plan || '').toLowerCase() === String(plan || 'pro').toLowerCase());
+      if (!target) return alert('No lead found yet for this plan. Click the interest button first.');
+      await activateLead(target.id, 'active');
+    } catch(e) {
+      alert(e.message || 'Could not mark latest lead paid.');
+    }
+  }
+
   /* ─── Event listeners ─── */
   qsa('.nav-btn').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
   qs('#refreshWatchlist').addEventListener('click', loadWatchlist);
@@ -1378,6 +1542,8 @@
   });
   qs('#refreshAlerts').addEventListener('click', loadAlerts);
   qs('#addAlertBtn').addEventListener('click', addAlert);
+  qs('#refreshMonetization').addEventListener('click', loadMonetization);
+  qs('#submitInterestBtn').addEventListener('click', submitInterest);
 
   qs('#analyseBtn').addEventListener('click', async () => {
     const val = qs('#searchInput').value.trim();
@@ -1411,16 +1577,22 @@
   });
 
   document.addEventListener('click', e => { if (!e.target.closest('.search-shell')) closeSearch(); });
+  qs('#interestModal').addEventListener('click', e => { if (e.target.id === 'interestModal') closeInterestModal(); });
 
   window.openStock = openStock;
   window.chooseSuggestion = chooseSuggestion;
   window.addCurrentToWatchlist = addCurrentToWatchlist;
   window.sendVerdictToMobile = sendVerdictToMobile;
+  window.openInterestModal = openInterestModal;
+  window.closeInterestModal = closeInterestModal;
+  window.activateLead = activateLead;
+  window.markLastLeadAsMember = markLastLeadAsMember;
 
   /* ─── Init ─── */
   loadWatchlist();
   loadMarketStatus();
   loadBtcPrice();
+  loadMonetization();
 </script>
 </body>
 </html>
