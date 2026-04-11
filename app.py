@@ -1,33 +1,33 @@
 # -*- coding: utf-8 -*-
 """
-ADDITIONS PATCH FOR app.py
-===========================
-Insert these blocks into your existing app.py at the locations marked below.
+FIXED PATCH FOR app.py
+=======================
+ERROR YOU SAW:  NameError: name 'app' is not defined
+ROOT CAUSE:     The new routes were added BEFORE  app = Flask(...)  in app.py.
 
-INSERTION POINTS:
-  1. After the /api/verdict/<symbol> route (~line 727), add:
-       - /api/orderbook/<symbol>
-       - /api/indices
-       - /api/recent-changes/<symbol>
+HOW TO APPLY THIS PATCH CORRECTLY
+===================================
+1. Open your app.py
+2. Find the line (around line 29-31):
+       app = Flask(__name__, static_folder="static", static_url_path="")
+3. Scroll down to the FIRST @app.route after that, e.g.  @app.route("/")
+4. ADD the three new route functions BELOW the existing routes — the safest
+   place is just before the  if __name__ == "__main__":  block at the end.
 
-  2. Replace the build_stock_context() function body to include orderbook + changes.
+DO NOT add any import at the top for this file.
+DO NOT import this file — just copy-paste the code below directly into app.py.
 
-  3. Replace the _context_prompt() function to include orderbook data.
-
-  4. Replace the ai_chat() function with the improved version below.
-
-  5. Optionally add /api/chat-stream for streaming (SSE).
+ALSO REPLACE in app.py:
+  - The function build_stock_context()   → with the version below
+  - The function _context_prompt()       → with the version below
+  - The route  /api/chat  (ai_chat())    → with the version below
 """
 
-# ============================================================
-# INSERT AFTER /api/verdict/<symbol> route
-# ============================================================
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 1 – Add these 3 new routes anywhere AFTER  app = Flask(...)
+#          Recommended: paste them just above  if __name__ == "__main__":
+# ─────────────────────────────────────────────────────────────────────────────
 
-from flask import Response, stream_with_context   # add to existing flask import
-
-# ────────────────────────────────────────────────
-# ORDER BOOK  (Yahoo Finance v7 options endpoint)
-# ────────────────────────────────────────────────
 @app.route("/api/orderbook/<symbol>")
 def orderbook(symbol):
     sym = symbol.upper().strip()
@@ -35,7 +35,7 @@ def orderbook(symbol):
     if cached:
         return jsonify(cached)
 
-    # Method 1: Yahoo Finance v7 options chain (has bid/ask/spread)
+    # Method 1: Yahoo Finance v7 options endpoint (has bid/ask)
     for base in ["query1", "query2"]:
         try:
             url = f"https://{base}.finance.yahoo.com/v7/finance/options/{sym}.NS"
@@ -44,49 +44,45 @@ def orderbook(symbol):
                 jd = r.json()
                 q = (jd.get("optionChain", {}).get("result") or [{}])[0].get("quote", {})
                 if q and q.get("regularMarketPrice"):
-                    p = q.get("regularMarketPrice", 0)
-                    bid = q.get("bid", 0)
-                    ask = q.get("ask", 0)
-                    # Fallback spread estimation if bid/ask not returned
-                    if not bid:
-                        bid = round(p * 0.9995, 2)
-                    if not ask:
-                        ask = round(p * 1.0005, 2)
+                    p   = q.get("regularMarketPrice", 0)
+                    bid = q.get("bid", 0) or round(p * 0.9995, 2)
+                    ask = q.get("ask", 0) or round(p * 1.0005, 2)
                     data = {
-                        "success": True, "symbol": sym,
-                        "price": p,
-                        "bid": bid,
-                        "ask": ask,
-                        "bid_size": q.get("bidSize", 0),
-                        "ask_size": q.get("askSize", 0),
-                        "spread": round(ask - bid, 2),
-                        "open": q.get("regularMarketOpen", 0),
+                        "success":   True,
+                        "symbol":    sym,
+                        "price":     p,
+                        "bid":       bid,
+                        "ask":       ask,
+                        "bid_size":  q.get("bidSize", 0),
+                        "ask_size":  q.get("askSize", 0),
+                        "spread":    round(ask - bid, 2),
+                        "open":      q.get("regularMarketOpen", 0),
                         "prev_close": q.get("regularMarketPreviousClose", 0),
-                        "volume": q.get("regularMarketVolume", 0),
+                        "volume":    q.get("regularMarketVolume", 0),
                         "avg_volume": q.get("averageDailyVolume3Month", 0),
-                        "market_cap": q.get("marketCap", 0),
-                        "fifty_day_avg": q.get("fiftyDayAverage", 0),
-                        "two_hundred_day_avg": q.get("twoHundredDayAverage", 0),
-                        "source": "Yahoo Finance",
-                        "note": "Live bid/ask. For NSE market depth use NSE terminal."
+                        "source":    "Yahoo Finance",
+                        "note":      "Live bid/ask. For NSE market depth use NSE terminal.",
                     }
-                    cache_set(f"ob:{sym}", data, ttl=30)  # 30s cache — very fresh
+                    cache_set(f"ob:{sym}", data, ttl=30)
                     return jsonify(data)
         except Exception:
             continue
 
-    # Method 2: Fallback — build from price data
+    # Method 2: Fallback from price endpoint
     try:
         p_data = cache_get(f"price:{sym}")
         if not p_data:
             for base in ["query1", "query2"]:
                 try:
-                    r = http_get(f"https://{base}.finance.yahoo.com/v8/finance/chart/{sym}.NS", headers=YFH, timeout=8)
+                    r = http_get(
+                        f"https://{base}.finance.yahoo.com/v8/finance/chart/{sym}.NS",
+                        headers=YFH, timeout=8
+                    )
                     if r.ok:
-                        meta = r.json()["chart"]["result"][0]["meta"]
+                        meta   = r.json()["chart"]["result"][0]["meta"]
                         p_data = {
-                            "price": meta.get("regularMarketPrice", 0),
-                            "volume": meta.get("regularMarketVolume", 0),
+                            "price":      meta.get("regularMarketPrice", 0),
+                            "volume":     meta.get("regularMarketVolume", 0),
                             "prev_close": meta.get("chartPreviousClose", 0),
                         }
                         break
@@ -94,31 +90,30 @@ def orderbook(symbol):
                     continue
 
         if p_data and p_data.get("price"):
-            p = p_data["price"]
+            p    = p_data["price"]
             tick = max(0.05, round(p * 0.0005, 2))
             data = {
-                "success": True, "symbol": sym,
-                "price": p,
-                "bid": round(p - tick, 2),
-                "ask": round(p + tick, 2),
-                "bid_size": 0, "ask_size": 0,
-                "spread": round(tick * 2, 2),
-                "volume": p_data.get("volume", 0),
+                "success":    True,
+                "symbol":     sym,
+                "price":      p,
+                "bid":        round(p - tick, 2),
+                "ask":        round(p + tick, 2),
+                "bid_size":   0,
+                "ask_size":   0,
+                "spread":     round(tick * 2, 2),
+                "volume":     p_data.get("volume", 0),
                 "prev_close": p_data.get("prev_close", 0),
-                "source": "Yahoo Finance (price fallback)",
-                "note": "Bid/Ask estimated from last price. Use NSE terminal for live depth."
+                "source":     "Yahoo Finance (price fallback)",
+                "note":       "Bid/Ask estimated from last price. Use NSE terminal for live depth.",
             }
             cache_set(f"ob:{sym}", data, ttl=30)
             return jsonify(data)
     except Exception:
         pass
 
-    return jsonify({"success": False, "error": f"Order book unavailable for {sym}. Check the NSE symbol."})
+    return jsonify({"success": False, "error": f"Order book unavailable for {sym}."})
 
 
-# ────────────────────────────────────────────────
-# INDICES  (Nifty 50, Sensex, VIX, Nifty Bank)
-# ────────────────────────────────────────────────
 @app.route("/api/indices")
 def indices():
     cached = cache_get("indices")
@@ -136,7 +131,7 @@ def indices():
         for base in ["query1", "query2"]:
             try:
                 url = f"https://{base}.finance.yahoo.com/v8/finance/chart/{yfsym}?interval=1d&range=2d"
-                r = http_get(url, headers=YFH, timeout=8)
+                r   = http_get(url, headers=YFH, timeout=8)
                 if r.ok:
                     meta = r.json()["chart"]["result"][0]["meta"]
                     p    = meta.get("regularMarketPrice", 0)
@@ -162,13 +157,10 @@ def indices():
             except Exception:
                 result[key] = {}
 
-    cache_set("indices", result, ttl=60)  # 60s cache for indices
+    cache_set("indices", result, ttl=60)
     return jsonify(result)
 
 
-# ────────────────────────────────────────────────
-# RECENT CHANGES  (5-day daily breakdown)
-# ────────────────────────────────────────────────
 @app.route("/api/recent-changes/<symbol>")
 def recent_changes(symbol):
     sym = symbol.upper().strip()
@@ -178,7 +170,7 @@ def recent_changes(symbol):
 
     result_data = yf_get(sym, range_="5d", interval="1d")
     if not result_data:
-        return jsonify({"success": False, "error": f"No recent data for {sym}. Check the NSE symbol."})
+        return jsonify({"success": False, "error": f"No recent data for {sym}."})
 
     q          = result_data["indicators"]["quote"][0]
     timestamps = result_data.get("timestamp", [])
@@ -195,10 +187,10 @@ def recent_changes(symbol):
     for i in range(1, len(C)):
         day_chg = round(C[i] - C[i-1], 2)
         day_pct = round(day_chg / C[i-1] * 100, 2) if C[i-1] else 0
-        vol_now = V[i]  if i < len(V) else 0
+        vol_now = V[i]   if i     < len(V) else 0
         vol_pre = V[i-1] if (i-1) < len(V) and V[i-1] else 0
         vol_chg = round((vol_now - vol_pre) / vol_pre * 100, 1) if vol_pre else 0
-        ts = timestamps[i] if i < len(timestamps) else 0
+        ts      = timestamps[i] if i < len(timestamps) else 0
         try:
             date_str = datetime.datetime.utcfromtimestamp(ts).strftime("%d %b")
         except Exception:
@@ -218,32 +210,32 @@ def recent_changes(symbol):
     total_chg = round(C[-1] - C[0], 2)
     total_pct = round(total_chg / C[0] * 100, 2) if C[0] else 0
     avg_vol   = round(sum(V) / len(V)) if V else 0
-    max_close = max(C)
-    min_close = min(C)
 
     data = {
         "success":       True,
         "symbol":        sym,
         "current_price": round(C[-1], 2),
-        "5d_ago_price":  round(C[0], 2),
+        "5d_ago_price":  round(C[0],  2),
         "5d_change":     total_chg,
         "5d_pct":        total_pct,
-        "5d_high":       round(max_close, 2),
-        "5d_low":        round(min_close, 2),
+        "5d_high":       round(max(C), 2),
+        "5d_low":        round(min(C), 2),
         "avg_volume":    avg_vol,
         "daily_changes": daily,
         "trend":         "Up" if total_pct >= 0 else "Down",
         "up_days":       sum(1 for d in daily if d["pct"] >= 0),
-        "down_days":     sum(1 for d in daily if d["pct"] < 0),
+        "down_days":     sum(1 for d in daily if d["pct"] <  0),
     }
     cache_set(f"changes:{sym}", data, ttl=300)
     return jsonify(data)
 
 
-# ============================================================
-# REPLACE build_stock_context() with this version
-# (adds orderbook + recent_changes to context)
-# ============================================================
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 2 – FIND and REPLACE build_stock_context() in app.py
+#          Search for:  def build_stock_context(sym):
+#          Replace the ENTIRE function with this:
+# ─────────────────────────────────────────────────────────────────────────────
+
 def build_stock_context(sym):
     sym = str(sym or "").upper().strip()
     if not sym:
@@ -291,38 +283,44 @@ def build_stock_context(sym):
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = {
-            "price":     pool.submit(_price),
-            "technical": pool.submit(_tech),
+            "price":       pool.submit(_price),
+            "technical":   pool.submit(_tech),
             "fundamental": pool.submit(_fund),
-            "news":      pool.submit(_news),
-            "sentiment": pool.submit(_sent),
-            "verdict":   pool.submit(_verdict),
-            "orderbook": pool.submit(_ob),
-            "changes":   pool.submit(_changes),
+            "news":        pool.submit(_news),
+            "sentiment":   pool.submit(_sent),
+            "verdict":     pool.submit(_verdict),
+            "orderbook":   pool.submit(_ob),
+            "changes":     pool.submit(_changes),
         }
         data = {k: f.result(timeout=30) for k, f in futures.items()}
 
     context = {
-        "success":     True,
-        "symbol":      sym,
-        "price":       data.get("price",     {}),
-        "technical":   data.get("technical", {}),
-        "fundamental": data.get("fundamental", {}),
-        "news":        data.get("news",       {}),
-        "sentiment":   data.get("sentiment",  {}),
-        "verdict":     data.get("verdict",    {}),
-        "orderbook":   data.get("orderbook",  {}),
-        "changes":     data.get("changes",    {}),
-        "data_used":   ["price", "technicals", "fundamentals", "news", "sentiment", "verdict", "orderbook", "recent_changes"],
+        "success":       True,
+        "symbol":        sym,
+        "price":         data.get("price",       {}),
+        "technical":     data.get("technical",   {}),
+        "fundamental":   data.get("fundamental", {}),
+        "news":          data.get("news",         {}),
+        "sentiment":     data.get("sentiment",    {}),
+        "verdict":       data.get("verdict",      {}),
+        "orderbook":     data.get("orderbook",    {}),
+        "changes":       data.get("changes",      {}),
+        "data_used":     [
+            "price", "technicals", "fundamentals",
+            "news", "sentiment", "verdict",
+            "orderbook", "recent_changes"
+        ],
     }
     cache_set(cache_key, context, ttl=120)
     return context
 
 
-# ============================================================
-# REPLACE _context_prompt() with this version
-# (includes orderbook + recent changes in AI prompt)
-# ============================================================
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 3 – FIND and REPLACE _context_prompt() in app.py
+#          Search for:  def _context_prompt(context, mode="analyst"):
+#          Replace the ENTIRE function with this:
+# ─────────────────────────────────────────────────────────────────────────────
+
 def _context_prompt(context, mode="analyst"):
     sym = context.get("symbol", "")
     p   = context.get("price",       {}) or {}
@@ -342,11 +340,11 @@ def _context_prompt(context, mode="analyst"):
         else "Write like a practical equity research analyst — concise but insightful."
     )
 
-    # Recent changes summary
     chg_lines = []
     for d in (ch.get("daily_changes") or [])[-5:]:
         chg_lines.append(
-            f"  {d['date']}: close=₹{d['close']} change={d['pct']:+.2f}% vol={int(d.get('volume',0)/1e5):.1f}L"
+            f"  {d['date']}: close=₹{d['close']} change={d['pct']:+.2f}%"
+            f" vol={int(d.get('volume', 0) / 1e5):.1f}L"
         )
 
     return f"""
@@ -355,7 +353,7 @@ STYLE: {style_hint}
 
 LIVE PRICE DATA
 - Price: ₹{p.get('price', 'N/A')}
-- Change %: {p.get('pct', 'N/A')}%
+- Change: {p.get('pct', 'N/A')}%
 - Day range: ₹{p.get('low', 'N/A')} – ₹{p.get('high', 'N/A')}
 - 52W range: ₹{p.get('week52_low', 'N/A')} – ₹{p.get('week52_high', 'N/A')}
 - Volume: {p.get('volume', 'N/A')}
@@ -369,55 +367,54 @@ ORDER BOOK (live bid/ask)
 RECENT 5-DAY CHANGES
 - 5D change: {ch.get('5d_pct', 'N/A')}% (₹{ch.get('5d_change', 'N/A')})
 - Up days: {ch.get('up_days', 'N/A')} / Down days: {ch.get('down_days', 'N/A')}
-- 5D high: ₹{ch.get('5d_high', 'N/A')} / 5D low: ₹{ch.get('5d_low', 'N/A')}
-{chr(10).join(chg_lines) if chg_lines else '- No daily data available.'}
+{chr(10).join(chg_lines) if chg_lines else '  No daily data available.'}
 
 TECHNICALS
 - Signal: {t.get('signal', 'N/A')} | Bull score: {t.get('bull_score', 'N/A')}%
 - RSI: {t.get('rsi', 'N/A')} | MACD hist: {t.get('macd_hist', 'N/A')} | ADX: {t.get('adx', 'N/A')}
 - MA20: ₹{t.get('ma20', 'N/A')} | MA50: ₹{t.get('ma50', 'N/A')} | MA200: ₹{t.get('ma200', 'N/A')}
-- SAR: ₹{t.get('sar', 'N/A')} | Stoch %K: {t.get('stoch_k', 'N/A')} | Williams: {t.get('williams', 'N/A')}
 - Bollinger: ₹{t.get('bb_lower', 'N/A')} – ₹{t.get('bb_upper', 'N/A')}
 - Support: ₹{t.get('support', 'N/A')} | Resistance: ₹{t.get('resistance', 'N/A')}
 - Stop loss: ₹{t.get('stop_loss', 'N/A')} | T1: ₹{t.get('target1', 'N/A')} | T2: ₹{t.get('target2', 'N/A')}
+- SAR: ₹{t.get('sar', 'N/A')} | Stoch %K: {t.get('stoch_k', 'N/A')}
 - Patterns: {', '.join(t.get('patterns', [])) or 'None'}
 
 FUNDAMENTALS
 - PE: {f.get('pe', 'N/A')} | PB: {f.get('pb', 'N/A')} | EPS: {f.get('eps', 'N/A')}
 - Market cap: {f.get('mcap', 'N/A')} | ROE: {f.get('roe', 'N/A')} | ROCE: {f.get('roce', 'N/A')}
-- Debt/Equity: {f.get('debt_equity', 'N/A')} | Current ratio: {f.get('current_ratio', 'N/A')}
-- Revenue growth: {f.get('rev_growth', 'N/A')} | Profit margin: {f.get('profit_margin', 'N/A')}
-- Promoter: {f.get('promoter', 'N/A')} | FII: {f.get('fii', 'N/A')} | DII: {f.get('dii', 'N/A')}
+- Debt/Equity: {f.get('debt_equity', 'N/A')} | Promoter: {f.get('promoter', 'N/A')}
+- FII: {f.get('fii', 'N/A')} | DII: {f.get('dii', 'N/A')}
 
 SENTIMENT
 - Avg bullish: {s.get('avg_bull', 'N/A')}% | Overall: {s.get('overall', 'N/A')}
 
-EXISTING AI VERDICT
+AI VERDICT
 - Verdict: {v.get('verdict', 'N/A')} | Confidence: {v.get('confidence', 'N/A')}
 - Risk: {v.get('risk', 'N/A')} | Best for: {v.get('best_for', 'N/A')}
 
 LATEST NEWS
-{chr(10).join(news_lines) if news_lines else '- No recent news fetched.'}
+{chr(10).join(news_lines) if news_lines else '- No recent news.'}
 
 RULES
 - Use ONLY the live data shown above.
-- NEVER invent prices, percentages, or figures not present in this prompt.
-- If a data field shows N/A, say that data is unavailable — do not guess.
-- Mention at the end: Data used: <list>.
+- NEVER invent prices, ratios, or percentages not in this data block.
+- If a field shows N/A, say that data is unavailable.
+- End with: Data used: <list of sources used>.
 """.strip()
 
 
-# ============================================================
-# REPLACE ai_chat() / /api/chat endpoint with this version
-# (better prompts, anti-hallucination, orderbook + changes aware)
-# ============================================================
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 4 – FIND and REPLACE the /api/chat route  (ai_chat function) in app.py
+#          Search for:  @app.route("/api/chat", methods=["POST"])
+#          Replace the decorator + entire function with this:
+# ─────────────────────────────────────────────────────────────────────────────
+
 @app.route("/api/chat", methods=["POST"])
 def ai_chat():
-    payload    = freq.get_json(silent=True) or {}
-    message    = str(payload.get("message", "")).strip()
-    symbol     = str(payload.get("symbol", "")).upper().strip()
-    mode       = str(payload.get("mode", "analyst")).lower()
-    chat_hist  = payload.get("history", [])  # optional conversation history
+    payload         = freq.get_json(silent=True) or {}
+    message         = str(payload.get("message", "")).strip()
+    symbol          = str(payload.get("symbol", "")).upper().strip()
+    mode            = str(payload.get("mode", "analyst")).lower()
 
     if not message:
         return jsonify({"success": False, "error": "Message is required."}), 400
@@ -439,24 +436,24 @@ def ai_chat():
             context         = None
             detected_symbol = ""
 
-    # Build the user prompt
+    q_lower = message.lower()
+
     if detected_symbol and context:
         availability_note = (
-            f"Available live data: {', '.join(data_used) if data_used else 'none'}. "
-            f"Missing live data: {', '.join(missing) if missing else 'none'}."
+            f"Available: {', '.join(data_used) if data_used else 'none'}. "
+            f"Missing: {', '.join(missing) if missing else 'none'}."
         )
 
-        # Detect if user specifically wants orderbook or recent changes
-        q_lower = message.lower()
+        # Intent-specific focus hints keep AI on topic
         focus_hint = ""
         if any(k in q_lower for k in ["order book", "orderbook", "bid", "ask", "spread", "depth"]):
-            focus_hint = "\nFOCUS: User is asking specifically about the ORDER BOOK / bid-ask / market depth. Lead with the orderbook data above."
-        elif any(k in q_lower for k in ["what changed", "recent", "today", "this week", "5 day", "5d", "last few days"]):
-            focus_hint = "\nFOCUS: User is asking about RECENT CHANGES. Lead with the 5-day change data above."
+            focus_hint = "\nFOCUS: User wants ORDER BOOK details. Lead with bid, ask, spread and liquidity insight."
+        elif any(k in q_lower for k in ["what changed", "recent", "today", "this week", "5 day", "5d", "last few days", "daily"]):
+            focus_hint = "\nFOCUS: User wants RECENT CHANGES. Lead with the 5-day daily breakdown."
         elif any(k in q_lower for k in ["news", "headline", "latest"]):
-            focus_hint = "\nFOCUS: User is asking about NEWS. Lead with the latest headlines above."
+            focus_hint = "\nFOCUS: User wants NEWS. Lead with the latest headlines and their implications."
         elif any(k in q_lower for k in ["buy", "sell", "hold", "entry", "target", "stop loss"]):
-            focus_hint = "\nFOCUS: User wants a BUY/SELL/HOLD recommendation. Use the signal, bull score, verdict, support, resistance, and targets from the data above."
+            focus_hint = "\nFOCUS: User wants a BUY/SELL/HOLD opinion. Use signal, verdict, support/resistance, and targets."
 
         user_prompt = _context_prompt(context, mode=mode) + f"""
 
@@ -464,77 +461,49 @@ USER QUESTION:
 {message}
 
 INTENT: {intent}
-RESOLUTION: Symbol={detected_symbol} | Method={resolved.get('method')} | Confidence={resolved.get('confidence'):.2f}
-
-DATA AVAILABILITY: {availability_note}
+SYMBOL: {detected_symbol} (resolved by {resolved.get('method')}, confidence {resolved.get('confidence', 0):.2f})
+DATA: {availability_note}
 {focus_hint}
 
 RESPONSE RULES:
-1. Answer the question directly using ONLY the live data supplied above.
-2. NEVER invent prices, P/E ratios, targets, or any numbers not in the data block.
-3. Format your response with clear headers (##) and bullet points for readability.
-4. If the user asks for order book → show bid, ask, spread, and what it means for liquidity.
-5. If the user asks about recent changes → show the 5-day daily change table and trend analysis.
-6. If some data is missing, say exactly what is missing in one short line.
-7. For buy/sell advice, give a balanced view using technical signal + fundamental + verdict.
-8. End with: **Data used:** {', '.join(data_used) if data_used else 'general reasoning only'}.
+1. Answer ONLY using the live data supplied above — no training memory for prices.
+2. Format with ## headers and bullet points for clarity.
+3. For order book questions → explain bid, ask, spread and what it means.
+4. For recent changes → summarise the 5-day daily movement clearly.
+5. If data is missing, mention it in one short line.
+6. For buy/sell → give balanced view: technical signal + fundamental + verdict.
+7. End with: **Data used:** {', '.join(data_used) if data_used else 'general reasoning only'}.
 """.strip()
 
     else:
         user_prompt = f"""
 The user is asking a general Indian stock-market or finance question.
 
-Question:
-{message}
-
-INTENT: {intent}
+Question: {message}
+Intent: {intent}
 
 Rules:
-1. Be helpful. If this is an educational question, answer it clearly.
-2. NEVER invent specific live stock prices or live metrics.
-3. If the question needs live stock data, say: "I can give a live analysis if you tell me the company name or NSE symbol."
-4. Use clear formatting with headers and bullets.
-5. Keep it practical and concise.
-6. End with: **Data used:** general market knowledge only.
+1. Be helpful. Answer educational questions directly.
+2. NEVER invent live stock prices or live metrics.
+3. If live data would help, say: mention a company name or NSE symbol for live analysis.
+4. Use clear markdown formatting.
+5. End with: **Data used:** general market knowledge only.
 """.strip()
 
-    # Add conversation history context if provided
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are an AI stock research copilot for Indian NSE markets. "
-                "You ONLY use the live data supplied in the user prompt — never from your training memory for prices. "
-                "If a data field is N/A, say it is unavailable. "
-                "Use clear markdown formatting (## headers, bullet lists, **bold** key numbers). "
-                "Be concise and practical. Avoid hallucinations."
-            )
-        }
-    ]
-
-    # Include recent history for context continuity
-    for h in (chat_hist or [])[-4:]:  # last 4 exchanges max
-        role = "user" if h.get("role") == "user" else "assistant"
-        messages.append({"role": role, "content": str(h.get("text", ""))[:800]})
-
-    messages.append({"role": "user", "content": user_prompt})
-
-    try:
-        resp = http_post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": "llama-3.3-70b-versatile",
-                "temperature": 0.15,        # lower = less hallucination
-                "max_tokens": 1100,
-                "messages": messages,
-            },
-            timeout=45,
-        )
-        resp.raise_for_status()
-        answer = resp.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    ai = groq_chat_completion(
+        (
+            "You are an AI stock research copilot for Indian NSE markets. "
+            "Use ONLY the live data in the user prompt — never your training memory for prices. "
+            "If a field is N/A, say it is unavailable. "
+            "Format responses with ## headers and bullet points. "
+            "Be concise and practical. No hallucinations."
+        ),
+        user_prompt,
+        max_tokens=1100,
+        temperature=0.15,   # low temp = less hallucination
+    )
+    if not ai.get("success"):
+        return jsonify({"success": False, "error": ai.get("error")})
 
     return jsonify({
         "success":      True,
@@ -542,93 +511,8 @@ Rules:
         "mode":         mode,
         "intent":       intent,
         "message":      message,
-        "answer":       answer,
+        "answer":       ai["text"],
         "data_used":    data_used,
         "missing_data": missing,
         "resolved_by":  resolved.get("method"),
     })
-
-
-# ============================================================
-# OPTIONAL: /api/chat-stream  (Server-Sent Events streaming)
-# Add this route for faster perceived response times
-# ============================================================
-@app.route("/api/chat-stream", methods=["POST"])
-def ai_chat_stream():
-    """
-    Streaming chat endpoint using SSE.
-    Frontend receives chunks as they arrive from Groq instead of waiting for
-    the full response — makes AI feel 3–5x faster.
-
-    Frontend usage:
-        const es = new EventSource('/api/chat-stream?...');
-        es.onmessage = e => { addChunk(e.data); }
-        es.addEventListener('done', () => es.close());
-    """
-    payload         = freq.get_json(silent=True) or {}
-    message         = str(payload.get("message", "")).strip()
-    symbol          = str(payload.get("symbol", "")).upper().strip()
-    mode            = str(payload.get("mode", "analyst")).lower()
-
-    if not message:
-        return jsonify({"success": False, "error": "Message is required."}), 400
-
-    resolved        = resolve_symbol_from_text(message, explicit_symbol=symbol)
-    detected_symbol = resolved.get("symbol", "")
-    context         = None
-
-    if detected_symbol:
-        context = build_stock_context(detected_symbol)
-        if not context.get("success"):
-            context         = None
-            detected_symbol = ""
-
-    if detected_symbol and context:
-        user_prompt = _context_prompt(context, mode=mode) + f"\n\nUSER QUESTION:\n{message}\n\nAnswer using ONLY the supplied live data. Use markdown formatting."
-    else:
-        user_prompt = f"Indian stock market question:\n{message}\n\nDo not invent live prices. Use markdown."
-
-    def generate():
-        try:
-            resp = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "llama-3.3-70b-versatile",
-                    "temperature": 0.15,
-                    "max_tokens": 1100,
-                    "stream": True,
-                    "messages": [
-                        {"role": "system", "content": "You are an NSE stock research copilot. Use ONLY supplied live data. Use markdown formatting."},
-                        {"role": "user",   "content": user_prompt},
-                    ],
-                },
-                stream=True,
-                timeout=60,
-            )
-            for line in resp.iter_lines():
-                if line:
-                    line = line.decode("utf-8")
-                    if line.startswith("data: "):
-                        chunk = line[6:]
-                        if chunk == "[DONE]":
-                            yield "event: done\ndata: done\n\n"
-                            break
-                        try:
-                            delta = json.loads(chunk)["choices"][0]["delta"].get("content", "")
-                            if delta:
-                                yield f"data: {json.dumps(delta)}\n\n"
-                        except Exception:
-                            pass
-        except Exception as e:
-            yield f"event: error\ndata: {json.dumps(str(e))}\n\n"
-
-    return Response(
-        stream_with_context(generate()),
-        mimetype="text/event-stream",
-        headers={
-            "Cache-Control":               "no-cache",
-            "X-Accel-Buffering":           "no",
-            "Access-Control-Allow-Origin": "*",
-        }
-    )
