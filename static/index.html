@@ -259,7 +259,7 @@
     .scr-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
     .scr-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .tableish { overflow-x: auto; }
-    .scr-table-head, .scr-table-row { display: grid; grid-template-columns: 100px 80px 60px 60px 60px 60px 80px 80px 60px 60px; gap: 0; font-size: 12px; }
+    .scr-table-head, .scr-table-row { display: grid; grid-template-columns: 100px 80px 60px 60px 60px 60px 80px 80px 60px 60px 60px; gap: 0; font-size: 12px; }
     .scr-table-head { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: 8px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #0c1628; }
     .scr-table-head > div, .scr-table-row > div { padding: 8px 6px; }
     .scr-table-row { border-bottom: 1px solid var(--line); cursor: pointer; transition: background .12s; }
@@ -1249,16 +1249,21 @@ function scrVal(id) { var v=(qs('#'+id)||{}).value; return v&&v.trim()?v.trim():
 
 async function runScreener() {
   const list = qs('#screenerList');
-  list.innerHTML = '<div class="loader"></div><div style="text-align:center;color:var(--muted);font-size:12px;padding-bottom:16px">Scanning stocks — may take 15–20 seconds…</div>';
+  list.innerHTML = '<div class="loader"></div><div style="text-align:center;color:var(--muted);font-size:12px;padding-bottom:16px">Running screener on curated NSE universe…</div>';
   try {
     const params = new URLSearchParams();
     [['min_pe','minPe'],['max_pe','maxPe'],['max_peg','maxPeg'],['min_roe','minRoe'],['max_debt','maxDebt'],['min_mcap','minMcap'],['max_mcap','maxMcap'],['min_promoter','minPromoter'],['max_promoter','maxPromoter'],['min_fii','minFii'],['max_fii','maxFii'],['min_dii','minDii'],['max_dii','maxDii'],['min_public','minPublic'],['max_public','maxPublic']].forEach(f => { var v=scrVal(f[1]); if(v) params.set(f[0],v); });
     const data = await api('/api/screener?' + params.toString());
-    var stocks = data.stocks || [];
-    if (!stocks.length) { list.innerHTML = '<div style="padding:20px;color:var(--muted);font-size:13px">No stocks matched. Try relaxing the criteria.</div>'; return; }
+    const stocks = data.stocks || [];
+    const meta = `<div style="padding:10px 16px 0;font-size:12px;color:var(--muted)">Scanned ${data.scanned||0} stocks · ${stocks.length} matched · ${data.elapsed_sec||'—'}s</div>`;
+    if (!stocks.length) {
+      list.innerHTML = meta + '<div style="padding:20px 16px;color:var(--muted);font-size:13px">No stocks matched those filters in the current screener universe. Try relaxing P/E or adding fewer filters at once.</div>';
+      return;
+    }
     const mcapFmt = cr => { if(!cr&&cr!==0) return '—'; if(cr>=100000) return (cr/100000).toFixed(1)+' L Cr'; if(cr>=1000) return (cr/1000).toFixed(1)+' K Cr'; return cr.toFixed(0)+' Cr'; };
     list.innerHTML =
-      '<div class="scr-table-head"><div>Symbol</div><div>Price</div><div>P/E</div><div>PEG</div><div>ROE</div><div>D/E</div><div>MCap</div><div>Promoter</div><div>FII</div><div>Public</div></div>' +
+      meta +
+      '<div class="scr-table-head"><div>Symbol</div><div>Price</div><div>P/E</div><div>PEG</div><div>ROE</div><div>D/E</div><div>MCap</div><div>Promoter</div><div>FII</div><div>DII</div><div>Public</div></div>' +
       stocks.map(s =>
         `<div class="scr-table-row" onclick="setView('home');openStock('${s.symbol}')">
           <div><strong>${s.symbol}</strong></div>
@@ -1270,11 +1275,14 @@ async function runScreener() {
           <div style="font-family:'DM Mono',monospace">${mcapFmt(s.mcap_cr)}</div>
           <div style="font-family:'DM Mono',monospace">${fmt(s.promoter,'%')}</div>
           <div style="font-family:'DM Mono',monospace">${fmt(s.fii,'%')}</div>
+          <div style="font-family:'DM Mono',monospace">${fmt(s.dii,'%')}</div>
           <div style="font-family:'DM Mono',monospace">${fmt(s.public,'%')}</div>
         </div>`
       ).join('') +
-      `<div style="padding:10px 16px;font-size:12px;color:var(--muted)">${stocks.length} stocks matched</div>`;
-  } catch(e) { list.innerHTML = '<div class="analysis-empty">' + e.message + '</div>'; }
+      `<div style="padding:10px 16px;font-size:12px;color:var(--muted)">Updated ${new Date(data.fetched_at).toLocaleString()}</div>`;
+  } catch(e) {
+    list.innerHTML = '<div class="analysis-empty"><strong>Screener failed</strong>' + (e.message || 'Unexpected error') + '</div>';
+  }
 }
 
 /* ─── Alerts ─── */
