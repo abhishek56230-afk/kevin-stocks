@@ -2795,142 +2795,323 @@ def search_stocks():
     return jsonify({"success": True, "query": raw_q, "count": len(results), "results": results})
 
 
+
 @app.route("/api/screener")
 def screener():
     """
-    Reliable screener for Render.
+    Render-safe screener that always returns JSON quickly.
 
-    Notes:
-      - Uses the existing /api/fundamental logic per symbol, because that path
-        already has Screener.in + Yahoo fallback and is more reliable than a
-        very broad Yahoo-only sweep.
-      - Applies all filters strictly: if a filter is requested and the metric is
-        missing, the symbol is skipped.
-      - Keeps the universe curated so the request finishes on Render.
+    Design goals:
+      - never let the request hang for ~1 minute
+      - prefer partial results over timeout / HTML gateway errors
+      - use Yahoo first, then optional Screener.in enrichment for a short shortlist
     """
+    try:
+        req_started = time.time()
 
-    def fp(k, default):
-        v = freq.args.get(k, "")
-        try:
-            return float(v) if str(v).strip() else default
-        except Exception:
-            return default
+        def fp(k, default):
+            v = freq.args.get(k, "")
+            try:
+                return float(v) if str(v).strip() else default
+            except Exception:
+                return default
 
-    def to_num(v):
-        try:
-            if v is None:
-                return None
-            if isinstance(v, (int, float)):
+        def to_num(v):
+            try:
+                if v is None:
+                    return None
+                if isinstance(v, str):
+                    s = v.strip().replace(",", "").replace("%", "").replace("Cr", "").replace("cr", "")
+                    if s in ("", "N/A", "NA", "--", "-", "Nil", "nil", "None"):
+                        return None
+                    return float(s)
                 return float(v)
-            s = str(v).strip().replace(",", "").replace("%", "").replace("Cr", "").replace("cr", "")
-            if s in ("", "N/A", "NA", "--", "-", "Nil", "nil", "None"):
+            except Exception:
                 return None
-            return float(s)
-        except Exception:
+
+        def first_not_none(*values):
+            for v in values:
+                if v is not None:
+                    return v
             return None
 
-    def passes(val, min_val=None, max_val=None, required=False):
-        if val is None:
-            return not required
-        if min_val is not None and val < min_val:
-            return False
-        if max_val is not None and val > max_val:
-            return False
-        return True
+        def value_passes(val, min_val=None, max_val=None):
+            if val is None:
+                return True
+            if min_val is not None and val < min_val:
+                return False
+            if max_val is not None and val > max_val:
+                return False
+            return True
 
-    min_pe = fp("min_pe", 0)
-    max_pe = fp("max_pe", 9999)
-    max_peg = fp("max_peg", 9999)
-    min_roe = fp("min_roe", -9999)
-    max_debt = fp("max_debt", 9999)
-    min_mcap = fp("min_mcap", 0)
-    max_mcap = fp("max_mcap", 9999999999)
-    min_promoter = fp("min_promoter", 0)
-    max_promoter = fp("max_promoter", 100)
-    min_fii = fp("min_fii", 0)
-    max_fii = fp("max_fii", 100)
-    min_dii = fp("min_dii", 0)
-    max_dii = fp("max_dii", 100)
-    min_public = fp("min_public", 0)
-    max_public = fp("max_public", 100)
+        def extract_screener_num(html, label):
+            patterns = [
+                r'<li[^>]*>\s*<span[^>]*>\s*' + re.escape(label) + r'\s*</span>\s*<span[^>]*>\s*([^<]+)',
+                re.escape(label) + r'[^<]{0,140}</span>\s*<span[^>]*>\s*([^<]+)',
+                re.escape(label) + r'[^<]*</td>\s*<td[^>]*>\s*([^<]+)',
+                re.escape(label) + r'[^:]{0,20}:\s*([0-9,.\-% ]+)',
+            ]
+            for pat in patterns:
+                try:
+                    m = re.search(pat, html, re.IGNORECASE | re.DOTALL)
+                    if m:
+                        raw = re.sub(r"\s+", " ", m.group(1)).strip()
+                        num = to_num(raw)
+                        if num is not None:
+                            return num
+                except Exception:
+                    pass
+            return None
 
-    pe_required = min_pe > 0 or max_pe < 9999
-    peg_required = max_peg < 9999
-    roe_required = min_roe > -9999
-    debt_required = max_debt < 9999
-    mcap_required = min_mcap > 0 or max_mcap < 9999999999
-    promoter_required = min_promoter > 0 or max_promoter < 100
-    fii_required = min_fii > 0 or max_fii < 100
-    dii_required = min_dii > 0 or max_dii < 100
-    public_required = min_public > 0 or max_public < 100
+        def parse_screener_metrics(sym):
+            cache_key = f"screen_sc:{sym}"
+            cached = cache_get(cache_key)
+            if cached is not None:
+                return cached
 
-    raw_symbols = [s.strip().upper() for s in freq.args.get("symbols", "").split(",") if s.strip()]
-    base_universe = SCREEN_STOCKS[:]  # reliable curated universe for fast Render responses
-    if raw_symbols:
-        seen = set()
-        symbols = []
-        for sym in raw_symbols + base_universe:
-            if sym and sym not in seen:
-                seen.add(sym)
-                symbols.append(sym)
-    else:
-        symbols = base_universe
+            for suffix in ["/consolidated/", "/"]:
+                try:
+                    r = http_get(f"https://www.screener.in/company/{sym}{suffix}", headers=SCH, timeout=5)
+                    if r.status_code != 200 or len(r.text) < 3000:
+                        continue
+                    html = r.text
+                    data = {
+                        "pe": extract_screener_num(html, "Stock P/E"),
+                        "roe": extract_screener_num(html, "Return on equity"),
+                        "roce": extract_screener_num(html, "ROCE"),
+                        "debt_equity": extract_screener_num(html, "Debt to equity"),
+                        "mcap_cr": extract_screener_num(html, "Market Cap"),
+                        "promoter": extract_screener_num(html, "Promoter"),
+                        "public": extract_screener_num(html, "Public"),
+                        "fii": extract_screener_num(html, "FII"),
+                        "dii": extract_screener_num(html, "DII"),
+                        "pb": extract_screener_num(html, "Price to Book"),
+                        "dividend": extract_screener_num(html, "Dividend Yield"),
+                        "eps": extract_screener_num(html, "EPS in Rs"),
+                    }
+                    if any(v is not None for v in data.values()):
+                        cache_set(cache_key, data, ttl=1800)
+                        return data
+                except Exception:
+                    continue
 
-    # Keep this bounded so it returns within Render's request window.
-    symbols_to_scan = symbols[:48]
+            cache_set(cache_key, {}, ttl=600)
+            return {}
 
-    filters_payload = {
-        "symbols": symbols_to_scan,
-        "min_pe": min_pe, "max_pe": max_pe, "max_peg": max_peg, "min_roe": min_roe,
-        "max_debt": max_debt, "min_mcap": min_mcap, "max_mcap": max_mcap,
-        "min_promoter": min_promoter, "max_promoter": max_promoter,
-        "min_fii": min_fii, "max_fii": max_fii, "min_dii": min_dii, "max_dii": max_dii,
-        "min_public": min_public, "max_public": max_public
-    }
-    cache_key = "screener_v2:" + json.dumps(filters_payload, sort_keys=True)
-    cached = cache_get(cache_key)
-    if cached:
-        return jsonify(cached)
+        def parse_yahoo_metrics(sym):
+            cache_key = f"screen_yh:{sym}"
+            cached = cache_get(cache_key)
+            if cached is not None:
+                return cached
 
-    started = time.time()
-    results = []
-    errors = []
+            def safe_raw(d, k):
+                try:
+                    v = d.get(k)
+                    if isinstance(v, dict):
+                        return v.get("raw")
+                    return v
+                except Exception:
+                    return None
 
-    def fetch_symbol(sym):
+            def safe_pct(d, k):
+                raw = safe_raw(d, k)
+                if raw is None:
+                    return None
+                try:
+                    return round(float(raw) * 100, 2)
+                except Exception:
+                    return None
+
+            for base in ["query1", "query2"]:
+                try:
+                    url = (
+                        f"https://{base}.finance.yahoo.com/v11/finance/quoteSummary/{sym}.NS"
+                        f"?modules=defaultKeyStatistics%2CfinancialData%2CsummaryDetail%2CmajorHoldersBreakdown"
+                    )
+                    r = http_get(url, headers=YFH, timeout=4)
+                    if not r.ok:
+                        continue
+                    payload = r.json()
+                    result_list = payload.get("quoteSummary", {}).get("result") or []
+                    if not result_list:
+                        continue
+                    res = result_list[0]
+                    fd = res.get("financialData", {}) or {}
+                    sd = res.get("summaryDetail", {}) or {}
+                    ks = res.get("defaultKeyStatistics", {}) or {}
+                    mh = res.get("majorHoldersBreakdown", {}) or {}
+
+                    price = first_not_none(to_num(safe_raw(sd, "regularMarketPrice")), to_num(safe_raw(fd, "currentPrice")))
+                    mcap_raw = to_num(safe_raw(sd, "marketCap"))
+                    inst_pct = safe_pct(mh, "institutionsPercentHeld")
+                    insider_pct = safe_pct(mh, "insidersPercentHeld")
+
+                    data = {
+                        "price": price,
+                        "pe": to_num(safe_raw(sd, "trailingPE")),
+                        "peg": to_num(safe_raw(ks, "pegRatio")),
+                        "roe": safe_pct(fd, "returnOnEquity"),
+                        "debt_equity": to_num(safe_raw(fd, "debtToEquity")),
+                        "mcap_raw": mcap_raw,
+                        "mcap_cr": round(mcap_raw / 1e7, 1) if mcap_raw is not None else None,
+                        "rev_growth": safe_pct(fd, "revenueGrowth"),
+                        "profit_margin": safe_pct(fd, "profitMargins"),
+                        "promoter": insider_pct,
+                        "fii": inst_pct,
+                        "dii": inst_pct,
+                        "public": (
+                            round(max(0.0, 100 - (insider_pct or 0) - (inst_pct or 0)), 1)
+                            if (insider_pct is not None or inst_pct is not None) else None
+                        ),
+                    }
+                    cache_set(cache_key, data, ttl=900)
+                    return data
+                except Exception:
+                    continue
+
+            cache_set(cache_key, {}, ttl=300)
+            return {}
+
+        max_pe = fp("max_pe", 9999)
+        min_pe = fp("min_pe", 0)
+        max_peg = fp("max_peg", 9999)
+        min_roe = fp("min_roe", -9999)
+        max_debt = fp("max_debt", 9999)
+        min_mcap = fp("min_mcap", 0)
+        max_mcap = fp("max_mcap", 9999999999)
+        min_promoter = fp("min_promoter", 0)
+        max_promoter = fp("max_promoter", 100)
+        min_fii = fp("min_fii", 0)
+        max_fii = fp("max_fii", 100)
+        min_dii = fp("min_dii", 0)
+        max_dii = fp("max_dii", 100)
+        min_public = fp("min_public", 0)
+        max_public = fp("max_public", 100)
+
+        raw_symbols = [s.strip().upper() for s in freq.args.get("symbols", ",".join(SCREEN_STOCKS)).split(",") if s.strip()]
+        symbols = list(dict.fromkeys(raw_symbols)) or SCREEN_STOCKS
+
+        filters_payload = {
+            "symbols": symbols,
+            "min_pe": min_pe, "max_pe": max_pe, "max_peg": max_peg, "min_roe": min_roe,
+            "max_debt": max_debt, "min_mcap": min_mcap, "max_mcap": max_mcap,
+            "min_promoter": min_promoter, "max_promoter": max_promoter,
+            "min_fii": min_fii, "max_fii": max_fii,
+            "min_dii": min_dii, "max_dii": max_dii,
+            "min_public": min_public, "max_public": max_public
+        }
+        cache_key = "screener:" + json.dumps(filters_payload, sort_keys=True)
+        cached = cache_get(cache_key)
+        if cached:
+            return jsonify(cached)
+
+        holdings_filters_active = any([
+            min_promoter > 0, max_promoter < 100,
+            min_fii > 0, max_fii < 100,
+            min_dii > 0, max_dii < 100,
+            min_public > 0, max_public < 100
+        ])
+
+        # Hard cap for cloud safety.
+        max_scan = min(len(symbols), 40 if holdings_filters_active else 60)
+        symbols_to_scan = symbols[:max_scan]
+
+        stage1_rows = []
+        results = []
+        errors = 0
+
+        def yahoo_pass(sym):
+            yh = parse_yahoo_metrics(sym)
+            if not yh:
+                return None
+
+            pe = yh.get("pe")
+            peg = yh.get("peg")
+            roe = yh.get("roe")
+            debt = yh.get("debt_equity")
+            mcap_cr = yh.get("mcap_cr")
+            promoter = yh.get("promoter")
+            fii = yh.get("fii")
+            dii = yh.get("dii")
+            public = yh.get("public")
+
+            if not value_passes(pe, min_pe if min_pe > 0 else None, max_pe if max_pe < 9999 else None):
+                return None
+            if not value_passes(peg, None, max_peg if max_peg < 9999 else None):
+                return None
+            if not value_passes(roe, min_roe if min_roe > -9999 else None, None):
+                return None
+            if not value_passes(debt, None, max_debt if max_debt < 9999 else None):
+                return None
+            if not value_passes(mcap_cr, min_mcap if min_mcap > 0 else None, max_mcap if max_mcap < 9999999999 else None):
+                return None
+
+            if not holdings_filters_active:
+                if not value_passes(promoter, min_promoter if min_promoter > 0 else None, max_promoter if max_promoter < 100 else None):
+                    return None
+                if not value_passes(fii, min_fii if min_fii > 0 else None, max_fii if max_fii < 100 else None):
+                    return None
+                if not value_passes(dii, min_dii if min_dii > 0 else None, max_dii if max_dii < 100 else None):
+                    return None
+                if not value_passes(public, min_public if min_public > 0 else None, max_public if max_public < 100 else None):
+                    return None
+
+            return {"symbol": sym, "yh": yh}
+
+        # Stage 1: fast Yahoo pass
         try:
-            with app.test_request_context(f"/api/fundamental/{sym}"):
-                data = fundamental(sym).get_json()
-            if not data or not data.get("success"):
-                return None
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                futures = {pool.submit(yahoo_pass, sym): sym for sym in symbols_to_scan}
+                for future in as_completed(futures, timeout=12):
+                    if time.time() - req_started > 12:
+                        break
+                    try:
+                        row = future.result(timeout=0.5)
+                        if row is not None:
+                            stage1_rows.append(row)
+                    except Exception:
+                        errors += 1
+        except Exception:
+            pass
 
-            pe = to_num(data.get("pe"))
-            peg = to_num(data.get("peg"))
-            roe = to_num(data.get("roe"))
-            debt = to_num(data.get("debt_equity"))
-            mcap_cr = to_num(data.get("mcap"))
-            promoter = to_num(data.get("promoter"))
-            fii = to_num(data.get("fii"))
-            dii = to_num(data.get("dii"))
-            public = to_num(data.get("public"))
-            price = to_num(data.get("price"))
+        # Stage 2: enrich only a very small shortlist
+        candidate_rows = stage1_rows[:15] if holdings_filters_active else stage1_rows[:30]
 
-            if not passes(pe, min_pe if min_pe > 0 else None, max_pe if max_pe < 9999 else None, pe_required):
+        def finalize_row(stage1):
+            sym = stage1["symbol"]
+            yh = stage1.get("yh", {}) or {}
+            need_sc = holdings_filters_active or yh.get("pe") is None or yh.get("roe") is None or yh.get("debt_equity") is None
+            sc = parse_screener_metrics(sym) if need_sc else {}
+
+            pe = first_not_none(sc.get("pe"), yh.get("pe"))
+            peg = first_not_none(yh.get("peg"), sc.get("peg"))
+            roe = first_not_none(sc.get("roe"), yh.get("roe"))
+            debt = first_not_none(sc.get("debt_equity"), yh.get("debt_equity"))
+            mcap_cr = first_not_none(sc.get("mcap_cr"), yh.get("mcap_cr"))
+            mcap_raw = yh.get("mcap_raw")
+            price = yh.get("price")
+            promoter = first_not_none(sc.get("promoter"), yh.get("promoter"))
+            fii = first_not_none(sc.get("fii"), yh.get("fii"))
+            dii = first_not_none(sc.get("dii"), yh.get("dii"))
+            public = first_not_none(sc.get("public"), yh.get("public"))
+
+            if not value_passes(pe, min_pe if min_pe > 0 else None, max_pe if max_pe < 9999 else None):
                 return None
-            if not passes(peg, None, max_peg if max_peg < 9999 else None, peg_required):
+            if not value_passes(peg, None, max_peg if max_peg < 9999 else None):
                 return None
-            if not passes(roe, min_roe if min_roe > -9999 else None, None, roe_required):
+            if not value_passes(roe, min_roe if min_roe > -9999 else None, None):
                 return None
-            if not passes(debt, None, max_debt if max_debt < 9999 else None, debt_required):
+            if not value_passes(debt, None, max_debt if max_debt < 9999 else None):
                 return None
-            if not passes(mcap_cr, min_mcap if min_mcap > 0 else None, max_mcap if max_mcap < 9999999999 else None, mcap_required):
+            if not value_passes(mcap_cr, min_mcap if min_mcap > 0 else None, max_mcap if max_mcap < 9999999999 else None):
                 return None
-            if not passes(promoter, min_promoter if min_promoter > 0 else None, max_promoter if max_promoter < 100 else None, promoter_required):
+            if not value_passes(promoter, min_promoter if min_promoter > 0 else None, max_promoter if max_promoter < 100 else None):
                 return None
-            if not passes(fii, min_fii if min_fii > 0 else None, max_fii if max_fii < 100 else None, fii_required):
+            if not value_passes(fii, min_fii if min_fii > 0 else None, max_fii if max_fii < 100 else None):
                 return None
-            if not passes(dii, min_dii if min_dii > 0 else None, max_dii if max_dii < 100 else None, dii_required):
+            if not value_passes(dii, min_dii if min_dii > 0 else None, max_dii if max_dii < 100 else None):
                 return None
-            if not passes(public, min_public if min_public > 0 else None, max_public if max_public < 100 else None, public_required):
+            if not value_passes(public, min_public if min_public > 0 else None, max_public if max_public < 100 else None):
                 return None
 
             return {
@@ -2940,49 +3121,57 @@ def screener():
                 "peg": round(peg, 2) if peg is not None else None,
                 "roe": round(roe, 1) if roe is not None else None,
                 "debt_equity": round(debt, 2) if debt is not None else None,
+                "mcap_raw": mcap_raw,
                 "mcap_cr": round(mcap_cr, 1) if mcap_cr is not None else None,
                 "promoter": round(promoter, 1) if promoter is not None else None,
                 "fii": round(fii, 1) if fii is not None else None,
                 "dii": round(dii, 1) if dii is not None else None,
                 "public": round(public, 1) if public is not None else None,
-                "source": data.get("source", "Screener.in + Yahoo Finance")
+                "source": {
+                    "fundamentals": "Screener.in + Yahoo Finance" if sc else "Yahoo Finance",
+                    "price": "Yahoo Finance"
+                }
             }
-        except Exception as e:
-            errors.append(f"{sym}: {str(e)[:80]}")
-            return None
 
-    try:
-        with ThreadPoolExecutor(max_workers=6) as pool:
-            futures = {pool.submit(fetch_symbol, sym): sym for sym in symbols_to_scan}
-            for fut in as_completed(futures, timeout=42):
-                try:
-                    row = fut.result(timeout=1)
-                    if row:
-                        results.append(row)
-                except Exception as e:
-                    errors.append(f"{futures.get(fut,'?')}: {str(e)[:80]}")
+        try:
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                futures = {pool.submit(finalize_row, row): row["symbol"] for row in candidate_rows}
+                for future in as_completed(futures, timeout=8):
+                    if time.time() - req_started > 18:
+                        break
+                    try:
+                        row = future.result(timeout=0.5)
+                        if row is not None:
+                            results.append(row)
+                    except Exception:
+                        errors += 1
+        except Exception:
+            pass
+
+        results.sort(key=lambda x: ((x.get("pe") if x.get("pe") is not None else 999999), -(x.get("roe") if x.get("roe") is not None else -9999)))
+
+        response = {
+            "success": True,
+            "stocks": results[:25],
+            "total": len(results[:25]),
+            "scanned": len(stage1_rows),
+            "universe": len(symbols_to_scan),
+            "candidates": len(candidate_rows),
+            "fetched_at": datetime.datetime.utcnow().isoformat() + "Z",
+            "note": "Render-safe screener returned best available latest data without waiting for slow endpoints.",
+            "errors": errors,
+            "elapsed_sec": round(time.time() - req_started, 2)
+        }
+        cache_set(cache_key, response, ttl=180)
+        return jsonify(response)
+
     except Exception as e:
-        errors.append(str(e)[:120])
-
-    results.sort(key=lambda x: (
-        -(x.get("roe") if x.get("roe") is not None else -9999),
-        x.get("pe") if x.get("pe") is not None else 999999,
-        x["symbol"]
-    ))
-
-    response = {
-        "success": True,
-        "stocks": results,
-        "total": len(results),
-        "scanned": len(symbols_to_scan),
-        "universe": len(symbols),
-        "fetched_at": datetime.datetime.utcnow().isoformat() + "Z",
-        "elapsed_sec": round(time.time() - started, 1),
-        "note": "Reliable screener over the app's curated NSE universe. All active filters are applied strictly.",
-        "errors": errors[:5]
-    }
-    cache_set(cache_key, response, ttl=300)
-    return jsonify(response)
+        return jsonify({
+            "success": False,
+            "error": f"Screener failed safely: {str(e)[:160]}",
+            "stocks": [],
+            "total": 0
+        }), 200
 
 
 # ============================================================
