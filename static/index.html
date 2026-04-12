@@ -379,20 +379,455 @@
 
     <div style="height:16px"></div>
 
-    <!-- AI Copilot -->
-    <div class="card panel">
-      <div class="panel-head">
-        <div>
-          <h2>AI Copilot</h2>
-          <div class="sub">Ask anything — order book, recent changes, buy/sell, comparison, news, education.</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="aiMode" class="input" style="width:auto;min-width:150px">
-            <option value="analyst">Analyst mode</option>
-            <option value="beginner">Beginner mode</option>
-          </select>
-        </div>
+    <!--
+  AGENT COPILOT PANEL
+  ===================
+  Replace the existing AI Copilot <div class="card panel"> block
+  in your index.html with this entire block.
+
+  What's new vs old:
+  - "Agent Mode" toggle — when ON, sends to /api/agent-chat (agentic loop)
+  - When OFF, falls back to /api/chat (your existing fast path)
+  - Shows which tools the agent actually called
+  - Shows iteration count (how hard the agent worked)
+  - Agent status badge (live / offline)
+  - Deep Research button per-stock
+  - Quick compare input
+  - All existing chips + compare kept
+-->
+
+<div class="card panel" style="margin-top:16px">
+  <div class="panel-head">
+    <div>
+      <h2>AI Copilot
+        <span id="agentBadge" style="
+          display:inline-flex;align-items:center;gap:5px;
+          font-size:11px;font-weight:700;letter-spacing:.06em;
+          padding:3px 10px;border-radius:99px;margin-left:8px;
+          background:rgba(16,185,129,.12);color:#10b981;
+          border:1px solid rgba(16,185,129,.25);
+          vertical-align:middle;
+        ">
+          <span style="width:6px;height:6px;border-radius:50%;background:#10b981;animation:pulse 1.5s ease-in-out infinite"></span>
+          FREE AGENT
+        </span>
+      </h2>
+      <div class="sub" id="copilotSubtitle">
+        Agent mode: Llama reasons + searches + verifies — 100% free
       </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <!-- Agent mode toggle -->
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text-2)">
+        <div style="position:relative;width:36px;height:20px">
+          <input type="checkbox" id="agentToggle" checked style="opacity:0;position:absolute;width:100%;height:100%;cursor:pointer;margin:0;z-index:1">
+          <div id="agentTrack" style="
+            position:absolute;inset:0;border-radius:10px;
+            background:rgba(56,189,248,.9);border:1px solid rgba(56,189,248,.4);
+            transition:background .2s;
+          "></div>
+          <div id="agentThumb" style="
+            position:absolute;top:2px;left:18px;
+            width:16px;height:16px;border-radius:50%;background:#fff;
+            transition:left .2s;pointer-events:none;
+          "></div>
+        </div>
+        Agent mode
+      </label>
+      <select id="aiMode" class="input" style="width:auto;min-width:140px">
+        <option value="analyst">Analyst</option>
+        <option value="beginner">Beginner</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Chat history window -->
+  <div id="chatHistory" style="
+    min-height:200px;max-height:500px;overflow-y:auto;
+    display:flex;flex-direction:column;gap:12px;
+    padding:8px 0 16px;
+    scrollbar-width:thin;
+  ">
+    <div id="chatEmpty" style="text-align:center;color:var(--muted);padding:32px 16px">
+      <div style="font-size:15px;font-weight:700;color:var(--text-2);margin-bottom:6px">Agent ready</div>
+      <div style="font-size:13px">Agent mode: Llama searches the web, fetches live data, and verifies before answering.</div>
+      <div style="font-size:12px;margin-top:6px;color:var(--muted)">100% free — Groq + DuckDuckGo + Yahoo Finance</div>
+    </div>
+  </div>
+
+  <!-- Input area -->
+  <div style="border-top:1px solid var(--line);padding-top:14px">
+
+    <!-- Active symbol badge -->
+    <div id="chatSymRow" style="display:none;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:12px;color:var(--muted)">Asking about:</span>
+      <span style="
+        display:inline-flex;align-items:center;gap:6px;
+        font-size:12px;font-weight:700;color:var(--brand);
+        background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2);
+        border-radius:8px;padding:4px 12px;
+      ">
+        <span id="chatSymLabel">—</span>
+        <button onclick="clearCopilotSymbol()" style="
+          background:none;border:none;color:var(--muted);
+          cursor:pointer;font-size:15px;padding:0;margin-left:4px;
+          line-height:1;
+        ">×</button>
+      </span>
+    </div>
+
+    <!-- Text input row -->
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <textarea id="aiChatInput" class="input" rows="2" style="flex:1;resize:none;min-height:52px;max-height:120px"
+        placeholder="Ask anything… order book, what changed, earnings, compare TCS vs INFY, should I buy HDFC Bank…"></textarea>
+      <button id="sendAiChatBtn" onclick="askCopilot()" style="
+        width:48px;height:48px;border-radius:12px;flex-shrink:0;
+        background:linear-gradient(135deg,var(--brand),var(--teal));
+        border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+        transition:transform .15s,filter .15s;
+      " title="Send (Enter)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#04111e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Quick chips -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+      <button class="chip" onclick="chipClick('Order Book — show bid, ask and spread')">Order Book</button>
+      <button class="chip" onclick="chipClick('What changed this week? Give me the 5-day breakdown')">What Changed?</button>
+      <button class="chip" onclick="chipClick('Should I buy this stock right now?')">Buy Signal</button>
+      <button class="chip" onclick="chipClick('Latest news and earnings — any surprises?')">Latest News</button>
+      <button class="chip" onclick="chipClick('Bull case vs bear case — give me both sides')">Bull vs Bear</button>
+      <button class="chip" onclick="chipClick('Full risk analysis — what can go wrong?')">Risk</button>
+      <button class="chip" onclick="deepResearch()">Deep Research</button>
+    </div>
+
+    <!-- Compare row -->
+    <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--muted);flex-shrink:0">Compare:</span>
+      <input class="input" id="compareSymbol1" placeholder="e.g. TCS" style="max-width:100px">
+      <span style="color:var(--muted);font-size:13px">vs</span>
+      <input class="input" id="compareSymbol2" placeholder="e.g. INFY" style="max-width:100px">
+      <button class="ghost" onclick="runAgentCompare()">Run Compare</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .chip {
+    background:rgba(255,255,255,.04);border:1px solid var(--line-2);
+    color:var(--text-2);padding:6px 12px;border-radius:999px;
+    font:600 11px/1 'Space Grotesk',sans-serif;cursor:pointer;
+    transition:all .15s;white-space:nowrap;
+  }
+  .chip:hover {
+    background:rgba(56,189,248,.1);border-color:rgba(56,189,248,.3);color:var(--brand);
+  }
+  .msg { display:flex;gap:10px;align-items:flex-start; }
+  .msg.user { flex-direction:row-reverse; }
+  .msg-avatar {
+    width:30px;height:30px;border-radius:10px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:14px;
+  }
+  .msg.ai   .msg-avatar { background:linear-gradient(135deg,var(--brand),var(--teal)); }
+  .msg.user .msg-avatar { background:rgba(255,255,255,.08);border:1px solid var(--line-2); }
+  .msg-bubble {
+    max-width:86%;padding:12px 16px;border-radius:16px;
+    font-size:13px;line-height:1.75;
+  }
+  .msg.ai   .msg-bubble {
+    background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.15);
+    border-radius:4px 16px 16px 16px;color:var(--text-2);
+  }
+  .msg.user .msg-bubble {
+    background:rgba(255,255,255,.07);border:1px solid var(--line-2);
+    border-radius:16px 4px 16px 16px;color:var(--text);
+  }
+  .msg-bubble h2,
+  .msg-bubble h3 { font-size:14px;font-weight:700;color:var(--text);margin:12px 0 5px; }
+  .msg-bubble h4 { font-size:13px;font-weight:700;color:var(--brand);margin:10px 0 4px; }
+  .msg-bubble strong { color:var(--text);font-weight:700; }
+  .msg-bubble ul,
+  .msg-bubble ol { padding-left:18px;margin:6px 0; }
+  .msg-bubble li { margin:3px 0; }
+  .msg-bubble p  { margin:6px 0; }
+  .msg-meta { font-size:10px;color:var(--muted);margin-top:4px; }
+  .msg.user .msg-meta { text-align:right; }
+  .tool-pills {
+    display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;
+  }
+  .tool-pill {
+    font-size:10px;padding:2px 8px;border-radius:99px;
+    background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.2);
+    color:var(--teal);font-weight:600;
+  }
+  .tool-pill.fail {
+    background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.2);color:var(--red);
+  }
+  .loader-dots::after {
+    content:'';animation:dots 1.2s steps(3,end) infinite;
+  }
+  @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+  #chatHistory::-webkit-scrollbar { width:4px; }
+  #chatHistory::-webkit-scrollbar-thumb { background:rgba(56,189,248,.2);border-radius:99px; }
+</style>
+
+<script>
+/* ─── Agent state ─── */
+const agentState = {
+  history: [],       // [{user, assistant}]
+  copilotSymbol: null,
+  agentMode: true,
+};
+
+/* ─── Toggle wiring ─── */
+document.getElementById('agentToggle').addEventListener('change', function() {
+  agentState.agentMode = this.checked;
+  const track = document.getElementById('agentTrack');
+  const thumb = document.getElementById('agentThumb');
+  const badge = document.getElementById('agentBadge');
+  const sub   = document.getElementById('copilotSubtitle');
+  if (this.checked) {
+    track.style.background = 'rgba(56,189,248,.9)';
+    thumb.style.left = '18px';
+    badge.style.display = 'inline-flex';
+    sub.textContent = 'Agent mode: Llama reasons + searches + verifies — 100% free';
+  } else {
+    track.style.background = 'rgba(255,255,255,.1)';
+    thumb.style.left = '2px';
+    badge.style.display = 'none';
+    sub.textContent = 'Fast mode: direct answer from cached live data';
+  }
+});
+
+/* ─── Symbol pin ─── */
+function setCopilotSymbol(sym) {
+  agentState.copilotSymbol = sym || null;
+  const row = document.getElementById('chatSymRow');
+  const lbl = document.getElementById('chatSymLabel');
+  if (sym) { lbl.textContent = sym; row.style.display = 'flex'; }
+  else { row.style.display = 'none'; }
+}
+function clearCopilotSymbol() { setCopilotSymbol(null); }
+window.setCopilotSymbol = setCopilotSymbol;
+window.clearCopilotSymbol = clearCopilotSymbol;
+
+/* ─── Markdown renderer ─── */
+function md(text) {
+  if (!text) return '';
+  let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  s = s.replace(/^### (.+)$/gm,'<h4>$1</h4>');
+  s = s.replace(/^## (.+)$/gm,'<h3>$1</h3>');
+  s = s.replace(/^# (.+)$/gm,'<h2>$1</h2>');
+  s = s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  s = s.replace(/((?:^[-•*] .+\n?)+)/gm, m => {
+    const items = m.trim().split('\n').map(l=>`<li>${l.replace(/^[-•*] /,'')}</li>`).join('');
+    return `<ul>${items}</ul>`;
+  });
+  s = s.split('\n\n').map(para => {
+    para = para.trim();
+    if (!para) return '';
+    if (para.startsWith('<h') || para.startsWith('<ul') || para.startsWith('<ol')) return para;
+    return `<p>${para.replace(/\n/g,'<br>')}</p>`;
+  }).join('');
+  return s;
+}
+
+function timeStr() {
+  return new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+}
+
+/* ─── Chat bubble helpers ─── */
+function getHistory() { return document.getElementById('chatHistory'); }
+
+function clearEmpty() {
+  const e = document.getElementById('chatEmpty');
+  if (e) e.remove();
+}
+
+function appendMsg(role, text, meta, toolPills) {
+  clearEmpty();
+  const hist = getHistory();
+  const div  = document.createElement('div');
+  div.className = `msg ${role}`;
+  const avatar = role === 'ai' ? '🤖' : '🧑';
+  const bubble = role === 'ai' ? md(text) : `<p>${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`;
+  const pillsHtml = (toolPills && toolPills.length)
+    ? `<div class="tool-pills">${toolPills.map(t=>`<span class="tool-pill ${t.ok?'':'fail'}">${t.tool}</span>`).join('')}</div>`
+    : '';
+  div.innerHTML = `
+    <div class="msg-avatar">${avatar}</div>
+    <div>
+      <div class="msg-bubble">${bubble}${pillsHtml}</div>
+      ${meta ? `<div class="msg-meta">${meta}</div>` : ''}
+    </div>`;
+  hist.appendChild(div);
+  hist.scrollTop = hist.scrollHeight;
+}
+
+function appendLoading(label) {
+  clearEmpty();
+  const hist = getHistory();
+  const div  = document.createElement('div');
+  div.className = 'msg ai';
+  div.id = 'agentLoading';
+  div.innerHTML = `
+    <div class="msg-avatar">🤖</div>
+    <div>
+      <div class="msg-bubble" style="color:var(--muted);font-style:italic">
+        <span class="loader-dots">${label}</span>
+      </div>
+    </div>`;
+  hist.appendChild(div);
+  hist.scrollTop = hist.scrollHeight;
+  return div;
+}
+
+/* ─── Main ask function ─── */
+async function askCopilot() {
+  const inp = document.getElementById('aiChatInput');
+  const message = inp.value.trim();
+  if (!message) return;
+  inp.value = '';
+
+  const symbol = agentState.copilotSymbol || '';
+  const mode   = (document.getElementById('aiMode') || {}).value || 'analyst';
+
+  appendMsg('user', message, timeStr());
+
+  if (agentState.agentMode) {
+    /* ── AGENT MODE ── */
+    const loading = appendLoading('Agent is thinking and searching');
+
+    try {
+      const resp = await fetch('/api/agent-chat', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          message,
+          symbol,
+          mode,
+          history: agentState.history.slice(-4),
+        })
+      });
+      const data = await resp.json();
+      loading.remove();
+
+      if (data.symbol && !agentState.copilotSymbol) setCopilotSymbol(data.symbol);
+
+      const toolsUsed  = (data.tools_called || []);
+      const iters      = data.iterations ? `${data.iterations} steps` : '';
+      const cached     = data.from_cache ? ' · cached' : '';
+      const meta = [
+        data.symbol ? `📌 ${data.symbol}` : '',
+        iters,
+        cached,
+        timeStr(),
+      ].filter(Boolean).join(' · ');
+
+      const answer = data.answer || data.error || 'No answer returned.';
+      appendMsg('ai', answer, meta, toolsUsed);
+
+      agentState.history.push({user: message, assistant: answer});
+      if (agentState.history.length > 10) agentState.history.shift();
+
+    } catch (e) {
+      loading.remove();
+      appendMsg('ai', `**Error:** ${e.message || 'Could not reach agent. Try again.'}`, timeStr());
+    }
+
+  } else {
+    /* ── FAST MODE (existing /api/chat) ── */
+    const loading = appendLoading('Fetching live data');
+    try {
+      const resp = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({message, symbol, mode})
+      });
+      const data = await resp.json();
+      loading.remove();
+      if (data.symbol && !agentState.copilotSymbol) setCopilotSymbol(data.symbol);
+      const meta = [
+        data.symbol ? `📌 ${data.symbol}` : '',
+        (data.data_used||[]).join(', ') || '',
+        timeStr(),
+      ].filter(Boolean).join(' · ');
+      appendMsg('ai', data.answer || 'No answer returned.', meta);
+      agentState.history.push({user: message, assistant: data.answer});
+    } catch (e) {
+      loading.remove();
+      appendMsg('ai', `**Error:** ${e.message}`, timeStr());
+    }
+  }
+}
+
+/* ─── Deep research button ─── */
+async function deepResearch() {
+  const sym = agentState.copilotSymbol
+    || (document.getElementById('searchInput') || {}).value?.trim()?.toUpperCase()
+    || prompt('Enter NSE symbol for deep research (e.g. RELIANCE):','');
+  if (!sym) return;
+
+  appendMsg('user', `Deep research report: ${sym}`, timeStr());
+  const loading = appendLoading(`Running deep agent research on ${sym}`);
+
+  try {
+    const resp = await fetch(`/api/agent-research/${encodeURIComponent(sym)}`);
+    const data = await resp.json();
+    loading.remove();
+    const toolsUsed = data.tools_called || [];
+    const meta = [`📌 ${sym}`, `${data.iterations||0} agent steps`, timeStr()].join(' · ');
+    appendMsg('ai', data.answer || data.error || 'No report generated.', meta, toolsUsed);
+    agentState.history.push({user: `Deep research: ${sym}`, assistant: data.answer});
+  } catch (e) {
+    loading.remove();
+    appendMsg('ai', `**Error:** ${e.message}`, timeStr());
+  }
+}
+window.deepResearch = deepResearch;
+
+/* ─── Compare ─── */
+async function runAgentCompare() {
+  const s1 = (document.getElementById('compareSymbol1').value||'').trim().toUpperCase();
+  const s2 = (document.getElementById('compareSymbol2').value||'').trim().toUpperCase();
+  if (!s1 || !s2) { alert('Enter two symbols to compare.'); return; }
+
+  appendMsg('user', `Compare ${s1} vs ${s2}`, timeStr());
+  const loading = appendLoading(`Agent comparing ${s1} vs ${s2}`);
+
+  try {
+    const resp = await fetch(`/api/agent-compare?symbols=${s1},${s2}`);
+    const data = await resp.json();
+    loading.remove();
+    const meta = [`${s1} vs ${s2}`, `${data.iterations||0} agent steps`, timeStr()].join(' · ');
+    appendMsg('ai', data.answer || data.error || 'No comparison returned.', meta, data.tools_called);
+    agentState.history.push({user: `Compare ${s1} vs ${s2}`, assistant: data.answer});
+  } catch (e) {
+    loading.remove();
+    appendMsg('ai', `**Error:** ${e.message}`, timeStr());
+  }
+}
+
+/* ─── Chips ─── */
+function chipClick(text) {
+  document.getElementById('aiChatInput').value = text;
+  document.getElementById('aiChatInput').focus();
+  askCopilot();
+}
+window.chipClick = chipClick;
+
+/* ─── Enter to send ─── */
+document.getElementById('aiChatInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askCopilot(); }
+});
+/* Expose globally so openStock() can pin symbol to copilot */
+window.askCopilot = askCopilot;
+</script>
+
 
       <div class="copilot-wrap">
         <!-- Chat history -->
