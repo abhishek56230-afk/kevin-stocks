@@ -16,6 +16,7 @@ Key features:
   - Graceful fallbacks - NEVER shows raw errors to users
   - No hard dependency on NSE (blocked on cloud)
 """
+from agent import agent_bp, run_stock_agent
 from flask import Flask, jsonify, send_from_directory, request as freq
 from flask_cors import CORS
 import requests, re, os, time, json, threading, datetime, difflib, uuid
@@ -27,6 +28,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 app = Flask(__name__, static_folder="static", static_url_path="")
+app.register_blueprint(agent_bp)
 CORS(app)
 
 GROQ_API_KEY    = os.environ.get("GROQ_API_KEY", "YOUR_GROQ_KEY_HERE")
