@@ -838,7 +838,7 @@ document.getElementById('aiChatInput').addEventListener('keydown', function(e) {
 });
 /* Expose globally so openStock() can pin symbol to copilot */
 window.askCopilot = askCopilot;
-</script>
+
 
 /* ─── State ─── */
 const state = {
@@ -1698,7 +1698,7 @@ loadBtcPrice();
 // Refresh market status and indices every minute
 setInterval(loadMarketStatus, 60000);
 setInterval(() => { loadIndices(); loadBtcPrice(); }, 90000);
-</script>
+
 </script>
 </body>
 </html>
