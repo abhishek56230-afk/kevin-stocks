@@ -280,6 +280,10 @@
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 999px; }
   </style>
 <body>
+<div id="wakeupBanner" style="display:none;background:rgba(251,191,36,.1);border-bottom:1px solid rgba(251,191,36,.2);padding:8px 20px;text-align:center;font-size:12px;color:#fbbf24;font-family:'Space Grotesk',sans-serif">
+  ⚡ Backend is waking up on Render free tier — this takes 20–50 seconds on first load. APIs will load automatically.
+  <button onclick="document.getElementById('wakeupBanner').style.display='none'" style="background:none;border:none;color:#fbbf24;cursor:pointer;margin-left:8px;font-size:14px">✕</button>
+</div>
 <div class="shell">
 
   <!-- NAV -->
@@ -860,19 +864,31 @@ const fmt    = (v,s='') => (v == null || v === '' || v === 'N/A') ? '—' : v + 
 const timeStr = () => new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
 
 /* ─── API helper ─── */
-async function api(path, opts) {
-  const r = await fetch(path, opts);
-  let d;
+/* ─── API helper with 25s timeout ─── */
+async function api(path, opts, timeoutMs = 25000) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const text = await r.text();
-    if (!text || !text.trim()) throw new Error('Empty response. Try again.');
-    d = JSON.parse(text);
+    const merged = { ...(opts || {}), signal: controller.signal };
+    const r = await fetch(path, merged);
+    clearTimeout(tid);
+    let d;
+    try {
+      const text = await r.text();
+      if (!text || !text.trim()) throw new Error('Empty response.');
+      d = JSON.parse(text);
+    } catch(e) {
+      throw new Error('Server error — ' + (e.message || 'unexpected response'));
+    }
+    if (!r.ok) throw new Error(d.error || 'Request failed');
+    if (d && d.success === false) throw new Error(d.error || 'No data returned');
+    return d;
   } catch(e) {
-    throw new Error('Server error — ' + (e.message || 'unexpected response'));
+    clearTimeout(tid);
+    if (e.name === 'AbortError')
+      throw new Error('Request timed out. Render may be waking up — wait 30s and retry.');
+    throw e;
   }
-  if (!r.ok) throw new Error(d.error || 'Request failed');
-  if (d && d.success === false) throw new Error(d.error || 'No data returned');
-  return d;
 }
 
 /* ─── Markdown renderer ─── */
@@ -939,9 +955,9 @@ function setView(view) {
 /* ─── Watchlist ─── */
 async function loadWatchlist() {
   const wrap = qs('#watchlist');
-  wrap.innerHTML = '<div class="loader"></div>';
+  wrap.innerHTML = '<div class="loader"></div><div style="text-align:center;font-size:11px;color:var(--muted);padding-bottom:8px">Loading… (may take up to 30s on first load)</div>';
   try {
-    const data = await api('/api/watchlist');
+    const data = await api('/api/watchlist', null, 60000);
     renderWatchlistSummary(data.summary);
     wrap.innerHTML = data.stocks.map(stock => {
       const sig = asSig(stock.signal);
@@ -967,7 +983,11 @@ async function loadWatchlist() {
         </div>`;
     }).join('') || '<div class="analysis-empty"><strong>No stocks</strong>Watchlist is empty.</div>';
   } catch(e) {
-    wrap.innerHTML = `<div class="analysis-empty">${e.message}</div>`;
+    wrap.innerHTML = `<div class="analysis-empty">
+      <strong>Could not load watchlist</strong>
+      <div style="margin:8px 0;font-size:12px;color:var(--muted)">${e.message}</div>
+      <button class="ghost" onclick="loadWatchlist()" style="margin-top:8px;font-size:12px">↺ Retry</button>
+    </div>`;
   }
 }
 
@@ -1557,7 +1577,7 @@ function loadMarketStatus() {
 
 async function loadIndices() {
   try {
-    const data = await api('/api/indices');
+    const data = await api('/api/indices', null, 10000);
     // Nifty
     if (data.nifty50 && data.nifty50.price) {
       qs('#tileNiftyVal').textContent = Number(data.nifty50.price).toLocaleString('en-IN',{maximumFractionDigits:0});
@@ -1655,11 +1675,6 @@ qs('#searchInput').addEventListener('keydown', e => {
   if (e.key === 'Escape')    closeSearch();
 });
 
-// Chat input: Enter to send, Shift+Enter for newline
-qs('#aiChatInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askCopilot(); }
-});
-
 document.addEventListener('click', e => { if (!e.target.closest('.search-shell')) closeSearch(); });
 
 window.openStock = openStock;
@@ -1668,7 +1683,15 @@ window.addCurrentToWatchlist = addCurrentToWatchlist;
 window.sendVerdictToMobile = sendVerdictToMobile;
 
 /* ─── Init ─── */
-loadWatchlist();
+// Show wake-up banner after 4s if watchlist still loading
+const _wakeTimer = setTimeout(() => {
+  const wl = qs('#watchlist');
+  if (wl && wl.querySelector('.loader')) {
+    const b = document.getElementById('wakeupBanner');
+    if (b) b.style.display = 'block';
+  }
+}, 4000);
+loadWatchlist().then(() => { clearTimeout(_wakeTimer); const b=document.getElementById('wakeupBanner'); if(b) b.style.display='none'; });
 loadMarketStatus();
 loadIndices();
 loadBtcPrice();
