@@ -278,11 +278,20 @@
     @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 999px; }
+    .tool-pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+    .tool-pill{font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.2);color:var(--teal);font-weight:600}
+    .tool-pill.fail{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.2);color:var(--red)}
+    .loader-dots::after{content:'';animation:dots 1.2s steps(3,end) infinite}
+    @keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
+    #chatHistory::-webkit-scrollbar{width:4px}
+    #chatHistory::-webkit-scrollbar-thumb{background:rgba(56,189,248,.2);border-radius:99px}
   </style>
+</head>
+
 <body>
 <div id="wakeupBanner" style="display:none;background:rgba(251,191,36,.1);border-bottom:1px solid rgba(251,191,36,.2);padding:8px 20px;text-align:center;font-size:12px;color:#fbbf24;font-family:'Space Grotesk',sans-serif">
-  ⚡ Backend is waking up on Render free tier — this takes 20–50 seconds on first load. APIs will load automatically.
-  <button onclick="document.getElementById('wakeupBanner').style.display='none'" style="background:none;border:none;color:#fbbf24;cursor:pointer;margin-left:8px;font-size:14px">✕</button>
+  &#9889; Backend waking up (free Render tier — 20-50s first load). Data loads automatically.
+  <button onclick="document.getElementById('wakeupBanner').style.display='none'" style="background:none;border:none;color:#fbbf24;cursor:pointer;margin-left:8px">&#x2715;</button>
 </div>
 <div class="shell">
 
@@ -380,6 +389,8 @@
       </div>
     </div>
 
+
+    <div style="height:16px"></div>
     <div style="height:16px"></div>
 
     <!--
@@ -516,6 +527,8 @@
     </div>
   </div>
 </div>
+
+  </div><!-- /view-home -->
   </div><!-- /view-home -->
 
   <!-- PORTFOLIO -->
@@ -615,8 +628,7 @@ document.getElementById('agentToggle').addEventListener('change', function() {
 /* ─── Symbol pin ─── */
 function setCopilotSymbol(sym) {
   agentState.copilotSymbol = sym || null;
-  // Keep legacy state in sync so openStock, verdict etc work
-  if (typeof state !== 'undefined') state.copilotSymbol = sym || null;
+  if (typeof state !== "undefined") state.copilotSymbol = sym || null;
   const row = document.getElementById('chatSymRow');
   const lbl = document.getElementById('chatSymLabel');
   if (sym) { lbl.textContent = sym; row.style.display = 'flex'; }
@@ -839,7 +851,6 @@ document.getElementById('aiChatInput').addEventListener('keydown', function(e) {
 /* Expose globally so openStock() can pin symbol to copilot */
 window.askCopilot = askCopilot;
 
-
 /* ─── State ─── */
 const state = {
   searchTimer: null,
@@ -861,20 +872,19 @@ const pct    = v => v == null || isNaN(v) ? '—' : (v > 0 ? '+' : '') + Number(
 const clsFor = s => /BUY/i.test(s) ? 'buy' : /SELL/i.test(s) ? 'sell' : 'hold';
 const asSig  = v => v || 'HOLD';
 const fmt    = (v,s='') => (v == null || v === '' || v === 'N/A') ? '—' : v + s;
-const timeStr = () => new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
 
-/* ─── API helper ─── */
-/* ─── API helper with 25s timeout ─── */
-async function api(path, opts, timeoutMs = 25000) {
-  const controller = new AbortController();
-  const tid = setTimeout(() => controller.abort(), timeoutMs);
+/* ─── API helper with timeout ─── */
+async function api(path, opts, timeoutMs) {
+  timeoutMs = timeoutMs || 25000;
+  var controller = new AbortController();
+  var tid = setTimeout(function(){ controller.abort(); }, timeoutMs);
   try {
-    const merged = { ...(opts || {}), signal: controller.signal };
-    const r = await fetch(path, merged);
+    var merged = Object.assign({}, opts || {}, { signal: controller.signal });
+    var r = await fetch(path, merged);
     clearTimeout(tid);
-    let d;
+    var d;
     try {
-      const text = await r.text();
+      var text = await r.text();
       if (!text || !text.trim()) throw new Error('Empty response.');
       d = JSON.parse(text);
     } catch(e) {
@@ -886,7 +896,7 @@ async function api(path, opts, timeoutMs = 25000) {
   } catch(e) {
     clearTimeout(tid);
     if (e.name === 'AbortError')
-      throw new Error('Request timed out. Render may be waking up — wait 30s and retry.');
+      throw new Error('Request timed out. Render is waking up — wait 30s and retry.');
     throw e;
   }
 }
@@ -955,7 +965,7 @@ function setView(view) {
 /* ─── Watchlist ─── */
 async function loadWatchlist() {
   const wrap = qs('#watchlist');
-  wrap.innerHTML = '<div class="loader"></div><div style="text-align:center;font-size:11px;color:var(--muted);padding-bottom:8px">Loading… (may take up to 30s on first load)</div>';
+  wrap.innerHTML = '<div class="loader"></div>';
   try {
     const data = await api('/api/watchlist', null, 60000);
     renderWatchlistSummary(data.summary);
@@ -983,11 +993,7 @@ async function loadWatchlist() {
         </div>`;
     }).join('') || '<div class="analysis-empty"><strong>No stocks</strong>Watchlist is empty.</div>';
   } catch(e) {
-    wrap.innerHTML = `<div class="analysis-empty">
-      <strong>Could not load watchlist</strong>
-      <div style="margin:8px 0;font-size:12px;color:var(--muted)">${e.message}</div>
-      <button class="ghost" onclick="loadWatchlist()" style="margin-top:8px;font-size:12px">↺ Retry</button>
-    </div>`;
+    wrap.innerHTML = '<div class="analysis-empty"><strong>Could not load watchlist</strong><div style="font-size:12px;color:var(--muted);margin:6px 0">'+e.message+'</div><button class="ghost" onclick="loadWatchlist()" style="margin-top:6px;font-size:12px">↺ Retry</button></div>';
   }
 }
 
@@ -1577,7 +1583,7 @@ function loadMarketStatus() {
 
 async function loadIndices() {
   try {
-    const data = await api('/api/indices', null, 10000);
+    const data = await api('/api/indices');
     // Nifty
     if (data.nifty50 && data.nifty50.price) {
       qs('#tileNiftyVal').textContent = Number(data.nifty50.price).toLocaleString('en-IN',{maximumFractionDigits:0});
@@ -1675,6 +1681,11 @@ qs('#searchInput').addEventListener('keydown', e => {
   if (e.key === 'Escape')    closeSearch();
 });
 
+// Chat input: Enter to send, Shift+Enter for newline
+qs('#aiChatInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askCopilot(); }
+});
+
 document.addEventListener('click', e => { if (!e.target.closest('.search-shell')) closeSearch(); });
 
 window.openStock = openStock;
@@ -1683,15 +1694,14 @@ window.addCurrentToWatchlist = addCurrentToWatchlist;
 window.sendVerdictToMobile = sendVerdictToMobile;
 
 /* ─── Init ─── */
-// Show wake-up banner after 4s if watchlist still loading
-const _wakeTimer = setTimeout(() => {
-  const wl = qs('#watchlist');
+var _wakeTimer = setTimeout(function(){
+  var wl = document.querySelector('#watchlist');
   if (wl && wl.querySelector('.loader')) {
-    const b = document.getElementById('wakeupBanner');
+    var b = document.getElementById('wakeupBanner');
     if (b) b.style.display = 'block';
   }
-}, 4000);
-loadWatchlist().then(() => { clearTimeout(_wakeTimer); const b=document.getElementById('wakeupBanner'); if(b) b.style.display='none'; });
+}, 5000);
+loadWatchlist().then(function(){ clearTimeout(_wakeTimer); var b=document.getElementById('wakeupBanner'); if(b)b.style.display='none'; }).catch(function(){});
 loadMarketStatus();
 loadIndices();
 loadBtcPrice();
