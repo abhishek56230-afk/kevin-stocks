@@ -1746,6 +1746,7 @@ window.addCurrentToWatchlist = addCurrentToWatchlist;
 window.sendVerdictToMobile = sendVerdictToMobile;
 
 /* ─── Options Indicator Tab ─── */
+/* ─── Options Indicator Tab — Premium Design ─── */
 function renderOptionsIndicator(price, tech) {
   if (!price || !tech) {
     qs('.analysis-body').innerHTML = '<div class="analysis-empty"><strong>No data</strong>Select a stock first.</div>';
@@ -1767,356 +1768,411 @@ function renderOptionsIndicator(price, tech) {
   var score  = tech.bull_score || 50;
   var sig    = tech.signal  || 'HOLD';
   var volR   = tech.vol_ratio || 1;
-  var c = function(n){ return Number(n).toFixed(2); };
+  var c2     = function(n){ return Number(n).toFixed(2); };
 
-  // VWAP proxy
-  var vwap     = tech.ma20 || p;
-  var vwapBias = p > vwap ? 'ABOVE' : 'BELOW';
-  var vwapPct  = vwap ? Math.abs((p - vwap) / vwap * 100).toFixed(2) : '0';
-
-  // SuperTrend proxy
-  var superTrend = p > sar ? 'BULLISH' : 'BEARISH';
-
-  // Bollinger position
-  var bbRange = bbu - bbl;
-  var bbPos   = bbRange > 0 ? Math.round((p - bbl) / bbRange * 100) : 50;
-  var bbSignal = bbPos > 80 ? 'Near Upper Band (Overbought zone)' : bbPos < 20 ? 'Near Lower Band (Oversold zone)' : 'Mid-band (Neutral)';
-
-  // Keltner Channels
+  var vwap      = tech.ma20 || p;
+  var vwapBias  = p > vwap ? 'ABOVE' : 'BELOW';
+  var vwapPct   = vwap ? Math.abs((p - vwap) / vwap * 100).toFixed(2) : '0';
+  var superTrend= p > sar ? 'BULLISH' : 'BEARISH';
+  var bbRange   = bbu - bbl;
+  var bbPos     = bbRange > 0 ? Math.round((p - bbl) / bbRange * 100) : 50;
   var keltUpper = ma21 + 2 * atr;
   var keltLower = ma21 - 2 * atr;
-  var keltPos   = p > keltUpper ? 'BREAKOUT' : p < keltLower ? 'BREAKDOWN' : 'INSIDE';
-  var keltDesc  = p > keltUpper ? 'Above Keltner — breakout zone, strong momentum'
-                : p < keltLower ? 'Below Keltner — breakdown zone, strong selling'
-                : 'Inside Keltner — normal range';
-
-  // Volatility Squeeze (BB width < 75% of Keltner width)
-  var bbWidth  = bbu - bbl;
-  var kelWidth = keltUpper - keltLower;
-  var squeeze  = kelWidth > 0 && bbWidth < kelWidth * 0.75;
-  var sqzLabel = squeeze ? 'SQUEEZE ON — Big move brewing!' : 'No squeeze — Normal volatility';
-
-  // Stochastic RSI
-  var stRsiLabel = stoch > 80 ? 'Overbought — watch for pullback'
-                : stoch < 20  ? 'Oversold — watch for bounce'
-                : 'Neutral zone';
-
-  // Hull MA proxy
+  var bbWidth   = bbu - bbl;
+  var kelWidth  = keltUpper - keltLower;
+  var squeeze   = kelWidth > 0 && bbWidth < kelWidth * 0.75;
   var hma       = 2 * ma9 - ma21;
   var hmaUp     = p > hma;
+  var step      = p > 2000 ? 100 : p > 500 ? 50 : p > 100 ? 20 : 10;
+  var atm       = Math.round(p / step) * step;
 
-  // Volume
-  var volLabel = volR > 1.5 ? 'HIGH — Strong confirmation'
-               : volR > 0.8 ? 'Normal'
-               : 'LOW — Weak conviction';
-  var volClass = volR > 1.5 ? 'bull' : volR < 0.8 ? 'bear' : 'neut';
-
-  // ROC proxy
-  var rocLabel = score > 60 ? 'Positive' : score < 40 ? 'Negative' : 'Flat';
-
-  // ── Call / Put Signal Scoring ─────────────────────────────────
+  // ── Scoring ──────────────────────────────────────────────────
   var callPts = 0, putPts = 0;
   if (vwapBias === 'ABOVE') callPts++; else putPts++;
   if (p > ma9 && p > ma21) callPts += 2; else if (p < ma9 && p < ma21) putPts += 2;
   if (macd > 0) callPts++; else putPts++;
-  if (rsi > 55 && rsi < 70) callPts++;
-  else if (rsi < 45 && rsi > 30) putPts++;
-  if (rsi > 70) putPts++;
-  if (rsi < 30) callPts++;
+  if (rsi > 55 && rsi < 70) callPts++; else if (rsi < 45 && rsi > 30) putPts++;
+  if (rsi > 70) putPts++; if (rsi < 30) callPts++;
   if (superTrend === 'BULLISH') callPts += 2; else putPts += 2;
-  if (adx > 25) { if (callPts > putPts) callPts++; else putPts++; }
+  if (adx > 25) { if (callPts >= putPts) callPts++; else putPts++; }
   if (volR > 1.5 && callPts > putPts) callPts++;
   if (volR > 1.5 && putPts > callPts) putPts++;
   if (squeeze) { callPts = Math.max(0, callPts - 1); putPts = Math.max(0, putPts - 1); }
-  if (bbPos > 80) putPts++;
-  if (bbPos < 20) callPts++;
+  if (bbPos > 80) putPts++; if (bbPos < 20) callPts++;
 
   var totalPts  = callPts + putPts || 1;
   var callScore = Math.round(callPts / totalPts * 100);
   var putScore  = 100 - callScore;
+  var bullish   = callScore >= 65;
+  var bearish   = putScore  >= 65;
+  var sqOnly    = squeeze && !bullish && !bearish;
 
-  var recommendation, recClass, recIcon;
-  if (callScore >= 65) {
-    recommendation = 'BUY CALL — Bullish signals dominate';
-    recClass = 'call'; recIcon = '&#9650;';
-  } else if (putScore >= 65) {
-    recommendation = 'BUY PUT — Bearish signals dominate';
-    recClass = 'put'; recIcon = '&#9660;';
-  } else if (squeeze) {
-    recommendation = 'WAIT FOR SQUEEZE FIRE — Big move coming, direction unclear. Consider Straddle.';
-    recClass = 'wait'; recIcon = '&#9889;';
+  var recText, recSub, recColor, recBg;
+  if (bullish) {
+    recText = 'BUY CALL'; recSub = 'Bullish signals dominate — upward move expected';
+    recColor = '#10b981'; recBg = 'rgba(16,185,129,.1)';
+  } else if (bearish) {
+    recText = 'BUY PUT'; recSub = 'Bearish signals dominate — downward move expected';
+    recColor = '#f87171'; recBg = 'rgba(248,113,113,.1)';
+  } else if (sqOnly) {
+    recText = 'STRADDLE'; recSub = 'Squeeze active — big move coming, direction unclear';
+    recColor = '#fbbf24'; recBg = 'rgba(251,191,36,.1)';
   } else {
-    recommendation = 'NO CLEAR SIGNAL — Market sideways. Avoid directional options or use Iron Condor.';
-    recClass = 'wait'; recIcon = '&#9632;';
+    recText = 'WAIT'; recSub = 'No clear edge — market is sideways, avoid options';
+    recColor = '#94a3b8'; recBg = 'rgba(148,163,184,.08)';
   }
 
-  // Strike Price Guide
-  var step   = p > 2000 ? 100 : p > 500 ? 50 : p > 100 ? 20 : 10;
-  var atm    = Math.round(p / step) * step;
-  var callOTM = atm + step, callITM = atm - step;
-  var putOTM  = atm - step, putITM  = atm + step;
+  // Helper: radial gauge SVG
+  function gauge(value, max, color, label, sublabel) {
+    var pct = Math.min(100, Math.max(0, value / max * 100));
+    var r = 28, cx = 36, cy = 36, stroke = 6;
+    var circum = 2 * Math.PI * r;
+    var dash = (pct / 100) * circum * 0.75;
+    var offset = circum * 0.125;
+    var startAngle = 135, sweep = 270;
+    var rad = function(d){ return d * Math.PI / 180; };
+    var x1 = cx + r * Math.cos(rad(startAngle));
+    var y1 = cy + r * Math.sin(rad(startAngle));
+    var x2 = cx + r * Math.cos(rad(startAngle + sweep));
+    var y2 = cy + r * Math.sin(rad(startAngle + sweep));
+    var trackD = 'M '+x1+' '+y1+' A '+r+' '+r+' 0 1 1 '+x2+' '+y2;
+    var valD   = trackD;
+    return '<svg width="72" height="72" viewBox="0 0 72 72">'
+      + '<path d="'+trackD+'" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="'+stroke+'" stroke-linecap="round"/>'
+      + '<path d="'+valD+'" fill="none" stroke="'+color+'" stroke-width="'+stroke+'" stroke-linecap="round"'
+      + ' stroke-dasharray="'+(pct/100 * 2 * Math.PI * r * 0.75)+' '+circum+'"'
+      + ' stroke-dashoffset="-'+(2 * Math.PI * r * 0.125)+'"'
+      + ' style="transition:stroke-dasharray .8s ease"/>'
+      + '<text x="36" y="33" text-anchor="middle" fill="'+color+'" font-size="11" font-weight="700" font-family="DM Mono,monospace">'+label+'</text>'
+      + '<text x="36" y="46" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="8.5" font-family="DM Mono,monospace">'+sublabel+'</text>'
+      + '</svg>';
+  }
 
-  var dotColor = recClass === 'call' ? 'var(--green)' : recClass === 'put' ? 'var(--red)' : 'var(--amber)';
-
-  function card(cls, label, val, valCls, desc) {
-    return '<div class="opt-card ' + cls + '">'
-      + '<div class="opt-label">' + label + '</div>'
-      + '<div class="opt-val ' + (valCls||'') + '">' + val + '</div>'
-      + '<div class="opt-desc">' + desc + '</div>'
+  // Helper: horizontal bar
+  function hbar(pct, color) {
+    return '<div style="height:4px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:6px">'
+      + '<div style="height:100%;width:'+Math.min(100,Math.max(0,pct))+'%;background:'+color+';border-radius:99px;transition:width .8s ease"></div>'
       + '</div>';
   }
 
+  // Helper: signal pill
+  function pill(label, color, bg) {
+    return '<span style="display:inline-block;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.05em;background:'+bg+';color:'+color+';border:1px solid '+color+'40">'+label+'</span>';
+  }
+
+  // Helper: indicator card
+  function indCard(title, value, valColor, barPct, barColor, headline, body, pillLabel, pillColor, pillBg) {
+    return '<div style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px;transition:border-color .2s" onmouseover="this.style.borderColor=\'rgba(56,189,248,.3)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.07)\'">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+      + '<div>'
+      + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:4px">'+title+'</div>'
+      + '<div style="font-size:20px;font-weight:700;font-family:DM Mono,monospace;color:'+valColor+'">'+value+'</div>'
+      + '</div>'
+      + pill(pillLabel, pillColor, pillBg)
+      + '</div>'
+      + hbar(barPct, barColor)
+      + '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)">'
+      + '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.8);margin-bottom:4px">'+headline+'</div>'
+      + '<div style="font-size:11px;line-height:1.6;color:rgba(255,255,255,.4)">'+body+'</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  // Helper: section header
+  function secHead(icon, title, subtitle) {
+    return '<div style="display:flex;align-items:center;gap:10px;margin:20px 0 12px">'
+      + '<div style="width:32px;height:32px;border-radius:8px;background:rgba(56,189,248,.12);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">'+icon+'</div>'
+      + '<div><div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.9)">'+title+'</div>'
+      + '<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:1px">'+subtitle+'</div>'
+      + '</div></div>';
+  }
+
+  // ── RSI zone color ─────────────────────────────────────────────
+  var rsiColor = rsi > 70 ? '#f87171' : rsi < 30 ? '#10b981' : rsi > 55 ? '#34d399' : rsi < 45 ? '#fb7185' : '#94a3b8';
+  var rsiPill  = rsi > 70 ? 'OVERBOUGHT' : rsi < 30 ? 'OVERSOLD' : rsi > 55 ? 'BULLISH' : rsi < 45 ? 'BEARISH' : 'NEUTRAL';
+  var rsiPC    = rsi > 70 ? '#f87171' : rsi < 30 ? '#10b981' : rsi > 55 ? '#10b981' : '#f87171';
+  var rsiPBg   = rsi > 70 ? 'rgba(248,113,113,.1)' : rsi < 30 ? 'rgba(16,185,129,.1)' : rsi > 55 ? 'rgba(16,185,129,.1)' : 'rgba(248,113,113,.1)';
+
+  // ── ADX color ──────────────────────────────────────────────────
+  var adxColor = adx > 40 ? '#38bdf8' : adx > 25 ? '#34d399' : adx > 15 ? '#fbbf24' : '#94a3b8';
+  var adxPill  = adx > 40 ? 'VERY STRONG' : adx > 25 ? 'STRONG' : adx > 15 ? 'WEAK' : 'NO TREND';
+  var adxPC    = adxColor; var adxPBg = adx > 25 ? 'rgba(56,189,248,.1)' : 'rgba(251,191,36,.1)';
+
+  // ── MACD ───────────────────────────────────────────────────────
+  var macdColor= macd > 0.5 ? '#10b981' : macd > 0 ? '#34d399' : macd < -0.5 ? '#f87171' : '#fb7185';
+  var macdPill = macd > 0.5 ? 'STRONG BULL' : macd > 0 ? 'MILD BULL' : macd < -0.5 ? 'STRONG BEAR' : 'MILD BEAR';
+  var macdPC   = macd >= 0 ? '#10b981' : '#f87171'; var macdPBg = macd >= 0 ? 'rgba(16,185,129,.1)' : 'rgba(248,113,113,.1)';
+
+  // ── Volume ─────────────────────────────────────────────────────
+  var volColor = volR > 1.5 ? '#38bdf8' : volR > 0.8 ? '#94a3b8' : '#fbbf24';
+  var volPill  = volR > 1.5 ? 'HIGH' : volR > 0.8 ? 'NORMAL' : 'LOW';
+  var volPC    = volColor; var volPBg = volR > 1.5 ? 'rgba(56,189,248,.1)' : 'rgba(148,163,184,.1)';
+
+  // ── EMA ────────────────────────────────────────────────────────
+  var emaUp    = p > ma9 && p > ma21;
+  var emaDown  = p < ma9 && p < ma21;
+  var emaColor = emaUp ? '#10b981' : emaDown ? '#f87171' : '#fbbf24';
+  var emaPill  = emaUp ? 'BULLISH' : emaDown ? 'BEARISH' : 'MIXED';
+  var emaPC    = emaColor; var emaPBg = emaUp ? 'rgba(16,185,129,.1)' : emaDown ? 'rgba(248,113,113,.1)' : 'rgba(251,191,36,.1)';
+
+  // ── Bollinger ──────────────────────────────────────────────────
+  var bbColor  = bbPos > 80 ? '#f87171' : bbPos < 20 ? '#10b981' : '#94a3b8';
+  var bbPill   = bbPos > 80 ? 'UPPER BAND' : bbPos < 20 ? 'LOWER BAND' : 'MID BAND';
+  var bbPC     = bbColor; var bbPBg = bbPos > 80 ? 'rgba(248,113,113,.1)' : bbPos < 20 ? 'rgba(16,185,129,.1)' : 'rgba(148,163,184,.1)';
+
+  // ── Squeeze ────────────────────────────────────────────────────
+  var sqColor  = squeeze ? '#fbbf24' : '#34d399';
+  var sqPill   = squeeze ? 'SQUEEZE ON' : 'RELAXED';
+  var sqPC     = sqColor; var sqPBg = squeeze ? 'rgba(251,191,36,.1)' : 'rgba(52,211,153,.1)';
+
+  // ── SuperTrend ─────────────────────────────────────────────────
+  var stColor  = superTrend === 'BULLISH' ? '#10b981' : '#f87171';
+  var stPC     = stColor; var stPBg = superTrend === 'BULLISH' ? 'rgba(16,185,129,.1)' : 'rgba(248,113,113,.1)';
+
+  // ── Stochastic ─────────────────────────────────────────────────
+  var stRsiColor = stoch > 80 ? '#f87171' : stoch < 20 ? '#10b981' : '#94a3b8';
+  var stRsiPill  = stoch > 80 ? 'OVERBOUGHT' : stoch < 20 ? 'OVERSOLD' : 'NEUTRAL';
+  var stRsiPC    = stRsiColor; var stRsiPBg = stoch > 80 ? 'rgba(248,113,113,.1)' : stoch < 20 ? 'rgba(16,185,129,.1)' : 'rgba(148,163,184,.1)';
+
+  var g1 = gauge(callScore, 100, recColor, callScore+'%', 'CALL');
+  var g2 = gauge(rsi, 100, rsiColor, c2(rsi), 'RSI');
+  var g3 = gauge(adx, 60, adxColor, c2(adx), 'ADX');
+  var g4 = gauge(Math.min(100, volR * 50), 100, volColor, c2(volR)+'x', 'VOL');
+
+  var strikeStep = step;
+  var atm1 = atm - strikeStep, atm2 = atm + strikeStep;
+
   qs('.analysis-body').innerHTML =
-    // ── Summary ──
-    '<div class="opt-summary">'
-    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px">Options Signal Recommendation</div>'
-    + '<div class="opt-signal-bar ' + recClass + '" style="margin-bottom:10px">'
-    + '<div class="opt-dot" style="background:' + dotColor + '"></div>'
-    + '<strong style="font-size:14px">' + recIcon + ' ' + recommendation + '</strong>'
-    + '</div>'
-    + '<div style="display:flex;gap:12px;font-size:12px;margin-bottom:6px">'
-    + '<span style="color:var(--green)">CALL score: <strong>' + callScore + '%</strong></span>'
-    + '<span style="color:var(--red)">PUT score: <strong>' + putScore + '%</strong></span>'
-    + (squeeze ? '<span style="color:var(--amber)">&#9889; SQUEEZE ACTIVE</span>' : '')
-    + '</div>'
-    + '<div style="display:flex;gap:0;height:8px;border-radius:99px;overflow:hidden">'
-    + '<div style="width:' + callScore + '%;background:var(--green);transition:width .6s"></div>'
-    + '<div style="width:' + putScore + '%;background:var(--red);transition:width .6s"></div>'
-    + '</div>'
-    + '<div style="font-size:11px;color:var(--muted);margin-top:6px">Based on ' + totalPts + ' weighted signals &nbsp;·&nbsp; ATM Strike: ' + money(atm) + ' &nbsp;·&nbsp; Lot step: ' + step + '</div>'
-    + '</div>'
 
-    // ── Core Set ──
-    + '<div class="opt-section">'
-    + '<div class="opt-section-title">&#128205; Core Set — 80% of your edge (VWAP · Volume · EMA · RSI · MACD · ADX)</div>'
-    + '<div class="opt-grid">'
-    + card(
-        vwapBias === 'ABOVE' ? 'bull' : 'bear',
-        'VWAP (Volume Weighted Avg)',
-        vwapBias,
-        vwapBias === 'ABOVE' ? 'up' : 'down',
-        'Price is ' + vwapPct + '% ' + (vwapBias === 'ABOVE' ? 'above' : 'below') + ' VWAP (' + money(vwap) + '). '
-        + (vwapBias === 'ABOVE'
-          ? 'Buyers are in control. This means the average person who traded today is in profit — bullish for calls.'
-          : 'Sellers are in control. The average trader is at a loss — bearish, favours puts.')
-      )
-    + card(
-        volClass,
-        'Volume + Spikes',
-        volLabel,
-        volR > 1.5 ? 'up' : '',
-        'Volume ratio: ' + c(volR) + 'x average. '
-        + (volR > 1.5
-          ? 'High volume confirms today\'s move is real — not a fake-out. Trust the direction.'
-          : volR < 0.8
-          ? 'Low volume means this move may reverse. Don\'t buy options on a low-volume move.'
-          : 'Volume is average. Move is okay but not fully confirmed.')
-      )
-    + card(
-        p > ma9 && p > ma21 ? 'bull' : p < ma9 && p < ma21 ? 'bear' : 'neut',
-        'EMA 9 &amp; EMA 21',
-        p > ma9 && p > ma21 ? 'BULLISH' : p < ma9 && p < ma21 ? 'BEARISH' : 'MIXED',
-        p > ma9 && p > ma21 ? 'up' : p < ma9 && p < ma21 ? 'down' : '',
-        'EMA9 ≈ ' + money(ma9) + ' &nbsp; EMA21 ≈ ' + money(ma21) + '. '
-        + (p > ma9 && p > ma21
-          ? 'Price is above both fast and medium EMAs — the short-term trend is up. Good for calls.'
-          : p < ma9 && p < ma21
-          ? 'Price is below both EMAs — short-term trend is down. Good for puts.'
-          : 'Price is between the two EMAs — trend is uncertain. Wait for a clear breakout before buying options.')
-      )
-    + card(
-        rsi > 70 ? 'bear' : rsi < 30 ? 'bull' : 'neut',
-        'RSI (Momentum Indicator)',
-        c(rsi),
-        rsi > 70 ? 'down' : rsi < 30 ? 'up' : '',
-        rsi > 70
-          ? 'OVERBOUGHT! The stock has risen too fast too soon. Dangerous time to buy calls — sellers may step in. Better to look at puts or wait for a pullback.'
-          : rsi < 30
-          ? 'OVERSOLD! The stock has fallen very hard. The crowd is panicking — but this is often when smart money buys. Watch for a bounce and consider calls.'
-          : rsi > 55
-          ? 'RSI in bullish zone (55-70). Momentum is with buyers — calls are reasonable.'
-          : rsi < 45
-          ? 'RSI in bearish zone (30-45). Momentum is with sellers — puts are reasonable.'
-          : 'RSI is neutral (45-55). No strong momentum. Wait for RSI to break above 55 for calls or below 45 for puts.'
-      )
-    + card(
-        macd > 0 ? 'bull' : 'bear',
-        'MACD Histogram',
-        c(macd),
-        macd > 0 ? 'up' : 'down',
-        macd > 0.5
-          ? 'MACD histogram is positive AND rising — strong bullish momentum building. Great confirmation for calls.'
-          : macd > 0
-          ? 'Weakly positive MACD — mild bullish bias. Calls okay but don\'t bet big.'
-          : macd < -0.5
-          ? 'MACD histogram is negative AND falling — strong bearish momentum. Great confirmation for puts.'
-          : 'Weakly negative MACD — mild bearish bias. Puts okay but keep size small.'
-      )
-    + card(
-        adx > 25 ? 'bull' : 'neut',
-        'ADX (Trend Strength)',
-        c(adx),
-        '',
-        adx > 40
-          ? 'ADX above 40 — VERY strong trend. High confidence directional trade. Ride the trend with calls or puts (depending on direction above).'
-          : adx > 25
-          ? 'ADX above 25 — trend is confirmed and healthy. Directional options have good probability of working.'
-          : adx > 15
-          ? 'ADX 15-25 — weak trend. Market is choppy. Options are riskier here. Use smaller size and tighter stops.'
-          : 'ADX below 15 — no real trend at all. Market is ranging. Avoid directional options entirely. Consider Iron Condor instead.'
-      )
-    + '</div></div>'
+  // ══ HEADER RECOMMENDATION CARD ═══════════════════════════════
+  '<div style="border-radius:18px;padding:20px 22px;margin-bottom:20px;background:'+recBg+';border:1.5px solid '+recColor+'40;position:relative;overflow:hidden">'
+  + '<div style="position:absolute;right:-10px;top:-10px;width:100px;height:100px;border-radius:50%;background:'+recColor+'08;pointer-events:none"></div>'
+  + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">'
+  + '<div>'
+  + '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:'+recColor+'99;margin-bottom:6px">Options Signal</div>'
+  + '<div style="font-size:26px;font-weight:800;font-family:DM Mono,monospace;color:'+recColor+';letter-spacing:-.02em">'+recText+'</div>'
+  + '<div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:4px">'+recSub+'</div>'
+  + '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
+  + pill('CALL '+callScore+'%', '#10b981', 'rgba(16,185,129,.12)')
+  + pill('PUT '+putScore+'%', '#f87171', 'rgba(248,113,113,.12)')
+  + (squeeze ? pill('⚡ SQUEEZE', '#fbbf24', 'rgba(251,191,36,.12)') : '')
+  + '</div>'
+  + '</div>'
+  // 4 gauges
+  + '<div style="display:flex;gap:4px;flex-wrap:wrap">'
+  + g1 + g2 + g3 + g4
+  + '</div>'
+  + '</div>'
+  // Score bar
+  + '<div style="margin-top:14px">'
+  + '<div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,.3);margin-bottom:4px;font-family:DM Mono,monospace"><span>PUT ← '+putScore+'%</span><span>'+callScore+'% → CALL</span></div>'
+  + '<div style="height:6px;border-radius:99px;overflow:hidden;background:rgba(248,113,113,.2);display:flex">'
+  + '<div style="width:'+putScore+'%;background:#f87171;transition:width .8s ease"></div>'
+  + '<div style="width:'+callScore+'%;background:#10b981;transition:width .8s ease"></div>'
+  + '</div>'
+  + '<div style="font-size:10px;color:rgba(255,255,255,.25);margin-top:6px;font-family:DM Mono,monospace">ATM Strike: '+money(atm)+' &nbsp;·&nbsp; Step: ₹'+strikeStep+' &nbsp;·&nbsp; Based on '+totalPts+' weighted signals</div>'
+  + '</div></div>'
 
-    // ── Trend + Entry ──
-    + '<div class="opt-section">'
-    + '<div class="opt-section-title">&#9889; Trend + Entry Signals (SuperTrend · Hull MA · Overall Score)</div>'
-    + '<div class="opt-grid">'
-    + card(
-        superTrend === 'BULLISH' ? 'bull' : 'bear',
-        'SuperTrend (SAR proxy)',
-        superTrend,
-        superTrend === 'BULLISH' ? 'up' : 'down',
-        'SAR at ' + money(sar) + '. '
-        + (superTrend === 'BULLISH'
-          ? 'Price is above the stop-and-reverse level — uptrend is intact. Stay bullish with calls as long as price holds above SAR (' + money(sar) + ').'
-          : 'Price is below SAR — downtrend is intact. Stay bearish with puts as long as price stays below SAR (' + money(sar) + ').')
-      )
-    + card(
-        hmaUp ? 'bull' : 'bear',
-        'Hull Moving Average (HMA)',
-        hmaUp ? 'BULLISH' : 'BEARISH',
-        hmaUp ? 'up' : 'down',
-        'HMA ≈ ' + money(hma.toFixed(0)) + '. '
-        + (hmaUp
-          ? 'Price is above HMA — bullish. HMA reacts faster than regular moving averages, making it excellent for short-term option timing.'
-          : 'Price is below HMA — bearish. HMA reacts faster than regular MAs — use it for precise put entries.')
-      )
-    + card(
-        score >= 57 ? 'bull' : score <= 43 ? 'bear' : 'neut',
-        'Overall Signal Score',
-        score + '%',
-        score >= 57 ? 'up' : score <= 43 ? 'down' : '',
-        'Technical score: <strong>' + sig + '</strong>. '
-        + (score >= 70
-          ? 'Strong buy signal — multiple indicators aligned bullish. High probability setup for calls.'
-          : score >= 57
-          ? 'Mild buy signal — more bulls than bears. Calls with strict stop below support.'
-          : score <= 30
-          ? 'Strong sell signal — multiple indicators aligned bearish. High probability setup for puts.'
-          : score <= 43
-          ? 'Mild sell signal — more bears than bulls. Puts with strict stop above resistance.'
-          : 'Neutral score — no clear directional bias. Wait for score to break decisively above 57 or below 43.')
-      )
-    + '</div></div>'
+  // ══ SECTION 1 — CORE SET ═════════════════════════════════════
+  + secHead('📍','Core Set — 80% of Your Edge','VWAP · Volume · EMA · RSI · MACD · ADX')
+  + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">'
 
-    // ── Volatility ──
-    + '<div class="opt-section">'
-    + '<div class="opt-section-title">&#128165; Volatility + Breakout (Bollinger · ATR · Keltner · Squeeze)</div>'
-    + '<div class="opt-grid">'
-    + card(
-        bbPos > 80 ? 'bear' : bbPos < 20 ? 'bull' : 'neut',
-        'Bollinger Bands Position',
-        bbPos + '% in band',
-        '',
-        'Upper: ' + money(bbu) + ' &nbsp; Lower: ' + money(bbl) + '. ' + bbSignal + '. '
-        + (bbPos > 80
-          ? 'Price is hugging the upper band — stock is stretched. Mean reversion likely. Good time for puts or call exits.'
-          : bbPos < 20
-          ? 'Price is hugging the lower band — stock is beaten down. Bounce likely. Good time for calls or put exits.'
-          : 'Price is in the middle of the band — no extreme. Wait for price to reach the bands before acting.')
-      )
-    + card(
-        'neut',
-        'ATR (Expected Daily Range)',
-        money(atr),
-        '',
-        'Expected daily move: ' + money(atr) + ' (' + (p ? c(atr / p * 100) : '—') + '% of price). '
-        + 'This tells you how much the stock typically moves in a day. '
-        + 'Set your option target at least ' + money((atr * 1.5).toFixed(0)) + ' from entry (1.5x ATR). Stop loss: ' + money((atr * 0.8).toFixed(0)) + ' (0.8x ATR).'
-      )
-    + card(
-        squeeze ? 'neut' : 'neut',
-        'Volatility Squeeze (BB+KC)',
-        squeeze ? 'SQUEEZE ON' : 'NO SQUEEZE',
-        squeeze ? '' : 'up',
-        sqzLabel + '. '
-        + (squeeze
-          ? 'BB width ' + money(bbWidth.toFixed(0)) + ' has compressed inside Keltner width ' + money(kelWidth.toFixed(0)) + '. This is like a coiled spring — when it fires, the move is sharp and fast. Best play: buy BOTH call and put (straddle) before it fires.'
-          : 'Bollinger bands are wider than Keltner channels — volatility is normal. Safe to trade directional options.')
-      )
-    + card(
-        keltPos === 'BREAKOUT' ? 'bull' : keltPos === 'BREAKDOWN' ? 'bear' : 'neut',
-        'Keltner Channel',
-        keltPos,
-        keltPos === 'BREAKOUT' ? 'up' : keltPos === 'BREAKDOWN' ? 'down' : '',
-        'Upper: ' + money(keltUpper.toFixed(0)) + ' &nbsp; Lower: ' + money(keltLower.toFixed(0)) + '. ' + keltDesc + '. '
-        + (keltPos === 'BREAKOUT'
-          ? 'Price has broken above Keltner — strong momentum trade. Ride with calls, trail stop.'
-          : keltPos === 'BREAKDOWN'
-          ? 'Price has broken below Keltner — strong selling. Ride with puts, trail stop.'
-          : 'Price inside channel. Wait for a Keltner breakout for a high-confidence options trade.')
-      )
-    + '</div></div>'
+  // VWAP
+  + indCard('VWAP — Market Fairness',
+      money(vwap), vwapBias==='ABOVE'?'#34d399':'#fb7185',
+      vwapBias==='ABOVE'?75:25, vwapBias==='ABOVE'?'#10b981':'#f87171',
+      'Price is '+vwapBias+' VWAP by '+vwapPct+'%',
+      'VWAP = average price weighted by volume. Think of it as the "fair price" most people traded at. When price is ABOVE VWAP, the crowd is in profit and feeling confident — bullish. Below VWAP, most traders are losing — bearish. Professional traders use VWAP as their main intraday reference level.',
+      vwapBias, vwapBias==='ABOVE'?'#10b981':'#f87171', vwapBias==='ABOVE'?'rgba(16,185,129,.12)':'rgba(248,113,113,.12)')
 
-    // ── Momentum ──
-    + '<div class="opt-section">'
-    + '<div class="opt-section-title">&#129504; Momentum + Reversal (Stochastic RSI · ROC · Support &amp; Resistance)</div>'
-    + '<div class="opt-grid">'
-    + card(
-        stoch > 80 ? 'bear' : stoch < 20 ? 'bull' : 'neut',
-        'Stochastic RSI',
-        c(stoch),
-        stoch > 80 ? 'down' : stoch < 20 ? 'up' : '',
-        stRsiLabel + '. '
-        + (stoch > 80
-          ? 'Stochastic RSI above 80 means the stock is very overbought on a short-term basis. Even if the trend is up, expect a brief pullback. Avoid entering new calls. Consider taking profits or buying puts for a quick trade.'
-          : stoch < 20
-          ? 'Stochastic RSI below 20 means the stock is very oversold short-term. Even in a downtrend, expect a short bounce. Take put profits or look for call entries on confirmation.'
-          : 'Stochastic RSI in neutral territory — follow the primary trend direction from other indicators.')
-      )
-    + card(
-        rocLabel === 'Positive' ? 'bull' : rocLabel === 'Negative' ? 'bear' : 'neut',
-        'Rate of Change (ROC)',
-        rocLabel + ' momentum',
-        rocLabel === 'Positive' ? 'up' : rocLabel === 'Negative' ? 'down' : '',
-        rocLabel === 'Positive'
-          ? 'Positive ROC means the price is accelerating upward — calls have momentum behind them. The move is gaining speed.'
-          : rocLabel === 'Negative'
-          ? 'Negative ROC means the price is losing ground faster — puts have momentum. The sell-off is accelerating.'
-          : 'Flat ROC — price is moving but not accelerating in either direction. Not the best time for momentum plays.'
-      )
-    + card(
-        p > (tech.resistance || p) * 0.98 ? 'bear' : p < (tech.support || p) * 1.02 ? 'bull' : 'neut',
-        'Support &amp; Resistance',
-        money(tech.support) + ' / ' + money(tech.resistance),
-        '',
-        'Support at ' + money(tech.support) + ' — buyers historically step in here. Resistance at ' + money(tech.resistance) + ' — sellers historically appear here. '
-        + (p > (tech.resistance || p) * 0.98
-          ? 'Price is near resistance — dangerous to buy calls here (high rejection risk). Better to wait for a breakout above resistance before entering.'
-          : p < (tech.support || p) * 1.02
-          ? 'Price is near support — dangerous to buy puts here (high bounce risk). Wait for support to break before entering puts.'
-          : 'Price is in the middle — both directions are possible. Enter on a clear move toward either level.')
-      )
-    + '</div></div>'
+  // Volume
+  + indCard('Volume — Conviction Meter',
+      c2(volR)+'× avg', volColor,
+      Math.min(100, volR * 50), volColor,
+      volR > 1.5 ? 'Strong buying/selling activity' : volR < 0.8 ? 'Weak conviction — be careful' : 'Normal trading activity',
+      'Volume tells you HOW MANY people are participating. A move with high volume = real, confirmed, trustworthy. A move with low volume = fake, could reverse. Rule: Always check if volume is above average before entering an option. A price rise on LOW volume is a warning sign — it may not last.',
+      volPill, volPC, volPBg)
 
-    // ── Strike Price Table ──
-    + '<div class="opt-section">'
-    + '<div class="opt-section-title">&#127919; Strike Price Guide — Weekly Expiry</div>'
-    + '<div style="overflow-x:auto"><table class="opt-table">'
-    + '<thead><tr><th>Type</th><th>Strike</th><th>Moneyness</th><th>When to use</th></tr></thead>'
-    + '<tbody>'
-    + '<tr><td class="up">CALL ITM</td><td>' + money(callITM) + '</td><td>In-the-Money</td><td>High confidence bullish. Costs more but has higher win rate. Use when very sure.</td></tr>'
-    + '<tr style="background:rgba(16,185,129,.06)"><td class="up" style="font-weight:700">CALL ATM &#9733;</td><td style="font-weight:700">' + money(atm) + '</td><td>At-the-Money</td><td>Most popular choice. Balanced cost and reward. Best for beginners.</td></tr>'
-    + '<tr><td class="up">CALL OTM</td><td>' + money(callOTM) + '</td><td>Out-of-Money</td><td>Cheap but needs a big move to profit. High risk, high reward. Advanced traders only.</td></tr>'
-    + '<tr><td style="opacity:.3">──</td><td style="opacity:.3">──</td><td style="opacity:.3">──</td><td style="opacity:.3">──</td></tr>'
-    + '<tr><td class="down">PUT ITM</td><td>' + money(putITM) + '</td><td>In-the-Money</td><td>High confidence bearish. More expensive but higher win rate.</td></tr>'
-    + '<tr style="background:rgba(248,113,113,.06)"><td class="down" style="font-weight:700">PUT ATM &#9733;</td><td style="font-weight:700">' + money(atm) + '</td><td>At-the-Money</td><td>Most popular put choice. Balanced risk/reward. Start here.</td></tr>'
-    + '<tr><td class="down">PUT OTM</td><td>' + money(putOTM) + '</td><td>Out-of-Money</td><td>Cheap put, needs big fall to profit. Very high risk, only for experienced traders.</td></tr>'
-    + '</tbody></table></div>'
-    + '<div style="font-size:11px;color:var(--muted);margin-top:10px;padding:8px 12px;background:rgba(251,191,36,.06);border-radius:8px;border:1px solid rgba(251,191,36,.15)">'
-    + '&#9888; Educational only. Options carry unlimited risk. Always use strict stop-losses (suggested: ' + money((atr * 0.8).toFixed(0)) + ' below entry). Never risk more than 1-2% of capital per trade.'
-    + '</div></div>';
+  // EMA 9/21
+  + indCard('EMA 9 &amp; 21 — Trend Compass',
+      emaUp?'BULLISH':emaDown?'BEARISH':'MIXED', emaColor,
+      emaUp?80:emaDown?20:50, emaColor,
+      'EMA9='+money(ma9)+' EMA21='+money(ma21),
+      'EMA = Exponential Moving Average. It follows the price with more weight on recent moves. EMA9 is the fast line (short-term trend), EMA21 is the slow line (medium-term). When EMA9 crosses ABOVE EMA21 (Golden Cross) — strong bullish signal. When it crosses BELOW (Death Cross) — strong bearish. When both are below price: buy calls. Both above price: buy puts.',
+      emaPill, emaPC, emaPBg)
+
+  // RSI
+  + indCard('RSI — Momentum Thermometer',
+      c2(rsi), rsiColor,
+      rsi, rsiColor,
+      rsi > 70 ? 'Overbought — reversal risk' : rsi < 30 ? 'Oversold — bounce likely' : 'Normal zone',
+      'RSI (Relative Strength Index) measures HOW FAST and HOW MUCH the price has moved. Scale 0-100. Above 70 = overbought (stock rose too fast, expect a pullback — dangerous for calls). Below 30 = oversold (stock fell too fast, expect a bounce — dangerous for puts). RSI DIVERGENCE is the advanced use: price makes new high but RSI does not — reversal warning.',
+      rsiPill, rsiPC, rsiPBg)
+
+  // MACD
+  + indCard('MACD — Momentum Accelerator',
+      c2(macd), macdColor,
+      macd > 0 ? Math.min(100, 50 + macd * 10) : Math.max(0, 50 + macd * 10), macdColor,
+      macd > 0 ? 'Histogram positive — momentum rising' : 'Histogram negative — momentum falling',
+      'MACD histogram shows whether momentum is BUILDING or DYING. A rising histogram (bars getting taller) = acceleration — great for calls. A shrinking histogram (bars getting shorter even if positive) = deceleration — exit calls soon. When histogram crosses zero from below = fresh BUY signal. When it crosses zero from above = fresh SELL signal.',
+      macdPill, macdPC, macdPBg)
+
+  // ADX
+  + indCard('ADX — Trend Strength Scanner',
+      c2(adx), adxColor,
+      Math.min(100, adx / 60 * 100), adxColor,
+      adx > 40 ? 'Very strong trend — high conviction' : adx > 25 ? 'Solid trend — safe to trade' : adx > 15 ? 'Weak trend — choppy market' : 'No trend — avoid directional options',
+      'ADX measures how STRONG the current trend is (NOT direction). Above 25 = trend is real, directional options work well. Below 15 = market is flat/choppy, options premiums decay fast, avoid buying calls/puts. Above 40 = explosive trend — ride it with confidence. Critical rule: Check ADX BEFORE entering any option. Low ADX = most options expire worthless.',
+      adxPill, adxPC, adxPBg)
+
+  + '</div>'
+
+  // ══ SECTION 2 — TREND + ENTRY ════════════════════════════════
+  + secHead('⚡','Trend + Entry Signals','SuperTrend · EMA Cross · Hull MA')
+  + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">'
+
+  // SuperTrend
+  + indCard('SuperTrend — Clear Directional Signal',
+      superTrend, stColor,
+      superTrend==='BULLISH'?80:20, stColor,
+      'SAR = '+money(sar)+' · Price = '+money(p),
+      'SuperTrend flips between BULLISH and BEARISH and gives you a clear line to follow. When it turns BULLISH (green line below price) — buy calls. When it turns BEARISH (red line above price) — buy puts. Use SAR (Stop and Reverse) as your stop-loss: if bullish, close calls if price falls below SAR. Simple, powerful, one of the best trend-following tools.',
+      superTrend, stPC, stPBg)
+
+  // Moving Average Confluence
+  + indCard('MA Confluence (20/50)',
+      p > ma21 ? 'ABOVE MA50' : 'BELOW MA50', p>ma21?'#34d399':'#fb7185',
+      p>ma21?70:30, p>ma21?'#10b981':'#f87171',
+      'MA20='+money(ma9)+' MA50='+money(ma21),
+      'When multiple moving averages STACK (price > MA9 > MA21 > MA50) it means every timeframe trend is up — the most powerful bullish setup. The space between moving averages shows trend health: wide gap = strong trend, narrowing gap = trend weakening. Key insight: MA50 is the institutional benchmark — large funds buy/sell when price touches MA50.',
+      p>ma21?'ABOVE MA50':'BELOW MA50', p>ma21?'#10b981':'#f87171', p>ma21?'rgba(16,185,129,.1)':'rgba(248,113,113,.1)')
+
+  // Hull MA
+  + indCard('Hull Moving Average (HMA)',
+      hmaUp?'BULLISH':'BEARISH', hmaUp?'#10b981':'#f87171',
+      hmaUp?75:25, hmaUp?'#10b981':'#f87171',
+      'HMA ≈ '+money(hma.toFixed(0)),
+      'HMA was designed to reduce lag while maintaining smoothness. It reacts 2-3 candles faster than a regular EMA of the same period. This makes it ideal for option entries where timing is everything. When price is above HMA and HMA is rising — buy calls. When below and falling — buy puts. Great for 5-minute and 15-minute charts.',
+      hmaUp?'ABOVE HMA':'BELOW HMA', hmaUp?'#10b981':'#f87171', hmaUp?'rgba(16,185,129,.1)':'rgba(248,113,113,.1)')
+
+  + '</div>'
+
+  // ══ SECTION 3 — VOLATILITY ═══════════════════════════════════
+  + secHead('💥','Volatility + Breakout','Bollinger · ATR · Keltner · Squeeze')
+  + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">'
+
+  // Bollinger
+  + indCard('Bollinger Bands — Price Extremes',
+      bbPos+'% in band', bbColor,
+      bbPos, bbColor,
+      'Upper: '+money(bbu)+' Lower: '+money(bbl),
+      'Bollinger Bands are like rubber bands around price. When price touches the UPPER band (bbPos >80) — overbought, expect a snap back — consider puts or close calls. When price touches the LOWER band (bbPos <20) — oversold, expect a bounce — consider calls or close puts. Band WIDTH matters: when bands are WIDE = high volatility. When bands NARROW = low volatility and a BIG move is coming (squeeze setup).',
+      bbPill, bbPC, bbPBg)
+
+  // ATR
+  + indCard('ATR — Daily Move Budget',
+      money(atr), '#38bdf8',
+      Math.min(100, (atr / (p * 0.05)) * 100), '#38bdf8',
+      'Expected daily range · '+c2(atr/p*100)+'% of price',
+      'ATR = Average True Range. It tells you how much a stock TYPICALLY moves in one day. This is your "budget" for targets and stop-losses. Rule: Set your call/put target at 1.5× ATR away ('+money((atr*1.5).toFixed(0))+'). Set your stop-loss at 0.7× ATR away ('+money((atr*0.7).toFixed(0))+'). If ATR is large, buy slightly OTM options — they will go in-the-money quickly. If ATR is small, stick to ATM or ITM.',
+      'ATR: '+money(atr), '#38bdf8', 'rgba(56,189,248,.1)')
+
+  // Squeeze
+  + indCard('Volatility Squeeze (BB+KC)',
+      squeeze?'SQUEEZE ACTIVE':'NO SQUEEZE', sqColor,
+      squeeze?70:30, sqColor,
+      'BB width: '+money(bbWidth.toFixed(0))+' vs Keltner: '+money(kelWidth.toFixed(0)),
+      'This is one of the most POWERFUL setups in options. When Bollinger Bands compress INSIDE Keltner Channels, it means volatility has collapsed — the market is coiling like a spring. When it fires (BB expands outside KC), the move is explosive. Best play: BUY A STRADDLE (both call + put at ATM) before the squeeze fires. You profit from the BIG MOVE regardless of direction. Watch for the squeeze to fire with high volume for confirmation.',
+      sqPill, sqPC, sqPBg)
+
+  // Keltner
+  + indCard('Keltner Channel — Breakout Zone',
+      p>keltUpper?'BREAKOUT':p<keltLower?'BREAKDOWN':'INSIDE', p>keltUpper?'#10b981':p<keltLower?'#f87171':'#94a3b8',
+      p>keltUpper?85:p<keltLower?15:50, p>keltUpper?'#10b981':p<keltLower?'#f87171':'#94a3b8',
+      'Upper: '+money(keltUpper.toFixed(0))+' Lower: '+money(keltLower.toFixed(0)),
+      'Keltner Channels use ATR to draw bands around an EMA. When price BREAKS above the upper channel — this is a genuine breakout with momentum, buy calls with a trailing stop. When price BREAKS below — genuine breakdown, buy puts. The key difference from Bollinger: Keltner uses ATR (actual volatility) so it is more reliable for breakout confirmation. Bollinger gives false breakouts more often.',
+      p>keltUpper?'BREAKOUT':p<keltLower?'BREAKDOWN':'INSIDE', p>keltUpper?'#10b981':p<keltLower?'#f87171':'#94a3b8', p>keltUpper?'rgba(16,185,129,.1)':p<keltLower?'rgba(248,113,113,.1)':'rgba(148,163,184,.1)')
+
+  + '</div>'
+
+  // ══ SECTION 4 — MOMENTUM ═════════════════════════════════════
+  + secHead('🧠','Momentum + Reversal','Stochastic RSI · ROC · Support &amp; Resistance')
+  + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">'
+
+  // Stoch RSI
+  + indCard('Stochastic RSI — Timing Precision',
+      c2(stoch), stRsiColor,
+      stoch, stRsiColor,
+      stoch > 80 ? 'Very overbought short-term' : stoch < 20 ? 'Very oversold short-term' : 'Neutral zone',
+      'Stochastic RSI is RSI of RSI — it reacts even faster to price changes. It is the best tool for PRECISE entry timing. When it drops below 20 and turns up — enter calls. When it rises above 80 and turns down — enter puts. KEY RULE: Never fight the primary trend with Stoch RSI. Use it ONLY to time entries in the direction of the trend. In an uptrend, buy calls when Stoch RSI dips below 20 — it is the best possible entry.',
+      stRsiPill, stRsiPC, stRsiPBg)
+
+  // Support/Resistance
+  + indCard('Support &amp; Resistance — Battlefield',
+      money(tech.support)+'/'+money(tech.resistance), '#c4b5fd',
+      ((p - (tech.support||p)) / ((tech.resistance||p+1) - (tech.support||p)) * 100) || 50, '#c4b5fd',
+      'Support: '+money(tech.support)+' · Resistance: '+money(tech.resistance),
+      'Support is where BUYERS historically step in (floor). Resistance is where SELLERS historically appear (ceiling). Key option strategies: Buy CALLS when price bounces off support with volume. Buy PUTS when price rejects resistance with volume. BREAKOUT play: If price BREAKS resistance with a big candle and volume — buy calls immediately. If price BREAKS support — buy puts. These are the highest-probability option setups.',
+      p>(tech.resistance||p)*0.98?'NEAR RESISTANCE':p<(tech.support||p)*1.02?'NEAR SUPPORT':'MID RANGE',
+      '#c4b5fd', 'rgba(196,181,253,.1)')
+
+  // Score
+  + indCard('Overall Bull Score — Final Verdict',
+      score+'%', score>=57?'#34d399':score<=43?'#fb7185':'#94a3b8',
+      score, score>=57?'#10b981':score<=43?'#f87171':'#94a3b8',
+      sig+' signal · '+totalPts+' indicators analysed',
+      'This score combines all technical indicators into one number. Above 70% = strong bullish alignment, high-confidence calls. 57-70% = mild bullish, calls with tight stop. 43-57% = neutral, avoid directional options. 30-43% = mild bearish, puts with tight stop. Below 30% = strong bearish alignment, high-confidence puts. Always use this as your final confirmation before entering any option position.',
+      sig, score>=57?'#10b981':score<=43?'#f87171':'#94a3b8', score>=57?'rgba(16,185,129,.1)':score<=43?'rgba(248,113,113,.1)':'rgba(148,163,184,.1)')
+
+  + '</div>'
+
+  // ══ SECTION 5 — PRICE ACTION ═════════════════════════════════
+  + secHead('🎯','Price Action Levels — Non-Negotiable Foundation','Candlestick patterns · Trendlines · Breakout levels')
+  + '<div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px;margin-bottom:20px">'
+  + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px">'
+  + '<div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">52W High</div><div style="font-size:16px;font-weight:700;font-family:DM Mono,monospace;color:#f87171">'+money(price.week52_high)+'</div></div>'
+  + '<div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Resistance</div><div style="font-size:16px;font-weight:700;font-family:DM Mono,monospace;color:#f87171">'+money(tech.resistance)+'</div></div>'
+  + '<div style="text-align:center;border:1px solid rgba(56,189,248,.3);border-radius:8px;padding:6px"><div style="font-size:10px;color:rgba(56,189,248,.7);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Current Price</div><div style="font-size:18px;font-weight:800;font-family:DM Mono,monospace;color:#38bdf8">'+money(p)+'</div></div>'
+  + '<div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Support</div><div style="font-size:16px;font-weight:700;font-family:DM Mono,monospace;color:#10b981">'+money(tech.support)+'</div></div>'
+  + '<div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">52W Low</div><div style="font-size:16px;font-weight:700;font-family:DM Mono,monospace;color:#10b981">'+money(price.week52_low)+'</div></div>'
+  + '</div>'
+  + (tech.patterns && tech.patterns.length ? '<div style="border-top:1px solid rgba(255,255,255,.06);padding-top:12px"><div style="font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Candlestick Patterns Detected</div>'
+    + tech.patterns.map(function(p){ return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:5px 12px;margin:3px;font-size:11px;color:rgba(255,255,255,.7)">📊 '+p+'</div>'; }).join('')
+    + '</div>' : '')
+  + '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;line-height:1.7;color:rgba(255,255,255,.35)">'
+  + '<strong style="color:rgba(255,255,255,.5)">Why price action matters most:</strong> All indicators are DERIVED from price. Price action is the raw truth. A bullish engulfing candle at support + RSI oversold + high volume = the highest-confidence call entry possible. Always wait for a candlestick confirmation before entering an option — never enter on an indicator alone.'
+  + '</div></div>'
+
+  // ══ SECTION 6 — STRIKE PRICE TABLE ═══════════════════════════
+  + '<div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden;margin-bottom:20px">'
+  + '<div style="padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:8px">'
+  + '<div style="width:6px;height:6px;border-radius:50%;background:#38bdf8"></div>'
+  + '<span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.8)">Strike Price Guide — Weekly Expiry</span>'
+  + '<span style="font-size:10px;color:rgba(255,255,255,.3);margin-left:auto">Current: '+money(p)+' · ATM: '+money(atm)+'</span>'
+  + '</div>'
+  + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+  + '<thead><tr style="background:rgba(255,255,255,.03)">'
+  + '<th style="padding:8px 14px;text-align:left;font-size:10px;color:rgba(255,255,255,.3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">Type</th>'
+  + '<th style="padding:8px 14px;text-align:right;font-size:10px;color:rgba(255,255,255,.3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">Strike</th>'
+  + '<th style="padding:8px 14px;text-align:left;font-size:10px;color:rgba(255,255,255,.3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">Type</th>'
+  + '<th style="padding:8px 14px;text-align:left;font-size:10px;color:rgba(255,255,255,.3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">Best used when</th>'
+  + '</tr></thead>'
+  + '<tbody>'
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#34d399">CALL ITM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm-strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(52,211,153,.1);color:#34d399;border:1px solid rgba(52,211,153,.2);padding:2px 8px;border-radius:99px">IN THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">High confidence — costly but high win rate</td></tr>'
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04);background:rgba(16,185,129,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#10b981;font-weight:700">CALL ATM ★</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:800;color:#10b981">'+money(atm)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);padding:2px 8px;border-radius:99px">AT THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.6)">Best balance of cost vs probability — start here</td></tr>'
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#6ee7b7">CALL OTM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm+strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1);padding:2px 8px;border-radius:99px">OUT OF MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">Cheap but needs big move — advanced only</td></tr>'
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.08)"><td colspan="4" style="padding:4px 14px;background:rgba(255,255,255,.02)"></td></tr>'
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#fca5a5">PUT ITM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm+strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(252,165,165,.1);color:#fca5a5;border:1px solid rgba(252,165,165,.2);padding:2px 8px;border-radius:99px">IN THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">High confidence bearish — costly but reliable</td></tr>'
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04);background:rgba(248,113,113,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#f87171;font-weight:700">PUT ATM ★</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:800;color:#f87171">'+money(atm)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.3);padding:2px 8px;border-radius:99px">AT THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.6)">Best bearish balance — most popular put entry</td></tr>'
+  + '<tr><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#fda4af">PUT OTM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm-strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1);padding:2px 8px;border-radius:99px">OUT OF MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">Speculative — needs sharp fall to work</td></tr>'
+  + '</tbody></table></div>'
+
+  // ══ RISK FOOTER ════════════════════════════════════════════════
+  + '<div style="border-radius:12px;padding:12px 16px;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.15);font-size:11px;line-height:1.7;color:rgba(251,191,36,.6)">'
+  + '<strong style="color:rgba(251,191,36,.9)">⚠ Risk Reminder:</strong> Suggested stop-loss: '+money((atr*0.8).toFixed(0))+' (0.8× ATR). Target: '+money((atr*1.5).toFixed(0))+' (1.5× ATR). Risk:Reward = 1:1.8. Never risk more than 1-2% of total capital per trade. Options can expire worthless — only trade with money you can afford to lose. This analysis is educational only.'
+  + '</div>';
 }
+
 
 /* ─── Init ─── */
 var _wakeTimer = setTimeout(function(){
