@@ -285,6 +285,26 @@
     @keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
     #chatHistory::-webkit-scrollbar{width:4px}
     #chatHistory::-webkit-scrollbar-thumb{background:rgba(56,189,248,.2);border-radius:99px}
+
+    .opt-section{margin-bottom:20px}
+    .opt-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--brand);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+    .opt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+    .opt-card{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+    .opt-card.bull{border-left:3px solid var(--green)}.opt-card.bear{border-left:3px solid var(--red)}.opt-card.neut{border-left:3px solid var(--amber)}
+    .opt-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
+    .opt-val{font-size:17px;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:3px}
+    .opt-desc{font-size:11px;color:var(--muted);line-height:1.4}
+    .opt-signal-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;font-size:13px;margin-bottom:8px}
+    .opt-signal-bar.call{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2)}
+    .opt-signal-bar.put{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2)}
+    .opt-signal-bar.wait{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2)}
+    .opt-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .opt-summary{background:rgba(56,189,248,.05);border:1px solid rgba(56,189,248,.15);border-radius:14px;padding:16px 18px;margin-bottom:16px}
+    .opt-table{width:100%;border-collapse:collapse;font-size:12px}
+    .opt-table th{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 10px;border-bottom:1px solid var(--line);text-align:left}
+    .opt-table td{padding:8px 10px;border-bottom:1px solid var(--line);font-family:'DM Mono',monospace}
+    .opt-table tr:last-child td{border-bottom:none}
+    @media(max-width:700px){.opt-grid{grid-template-columns:1fr 1fr}}
   </style>
 </head>
 
@@ -983,11 +1003,11 @@ async function loadWatchlist() {
           <div class="stock-bottom" style="margin-top:10px">
             <div>
               <div class="price">${stock.live_price ? money(stock.live_price) : '—'}</div>
-              <div class="${(stock.change_pct||0)>=0?'up':'down'}" style="font-size:11px;font-weight:700;margin-top:4px;font-family:'DM Mono',monospace">${pct(stock.change_pct)}</div>
+              <div class="${(stock.change_pct||0)>=0?'up':'down'}" style="font-size:11px;font-weight:700;margin-top:4px;font-family:\"DM Mono\",monospace">${pct(stock.change_pct)}</div>
             </div>
             <div style="text-align:right">
               <div class="muted-text" style="font-size:11px">ref ${money(stock.ref_price)}</div>
-              <div class="${(stock.pnl_pct||0)>=0?'up':'down'}" style="font-size:11px;font-weight:700;margin-top:4px;font-family:'DM Mono',monospace">P&L ${pct(stock.pnl_pct)}</div>
+              <div class="${(stock.pnl_pct||0)>=0?'up':'down'}" style="font-size:11px;font-weight:700;margin-top:4px;font-family:\"DM Mono\",monospace">P&L ${pct(stock.pnl_pct)}</div>
             </div>
           </div>
         </div>`;
@@ -1105,6 +1125,7 @@ async function openStock(symbol) {
       <button class="tab" data-tab="bullbear">Bull/Bear</button>
       <button class="tab" data-tab="risk">Risk</button>
       <button class="tab" data-tab="changed">What Changed?</button>
+      <button class="tab" data-tab="options">&#9889; Options</button>
     </div>
     <div class="analysis-body"><div class="loader"></div></div>`;
   bindTabs();
@@ -1122,7 +1143,7 @@ function bindTabs() {
 
 async function getAnalysis(symbol, tab) {
   const key = symbol + ':' + tab;
-  const noCache = ['news','orderbook','changes'];
+  const noCache = ['news','orderbook','changes','options'];
   if (!noCache.includes(tab) && state.analysisCache[key]) return state.analysisCache[key];
   const eps = {
     overview:    ['/api/price/', '/api/technical/'],
@@ -1137,6 +1158,7 @@ async function getAnalysis(symbol, tab) {
     bullbear:    ['/api/bull-bear/'],
     risk:        ['/api/risk/'],
     changed:     ['/api/what-changed/'],
+    options:  ['/api/price/', '/api/technical/'],
   };
   const aiMode = encodeURIComponent((qs('#aiMode')||{}).value || 'analyst');
   const suffix = tab === 'news'
@@ -1165,6 +1187,7 @@ async function renderTab(tab) {
     else if (tab === 'bullbear')    renderAiText('Bull vs Bear', data[0].analysis || data[0].summary, data[0].data_used);
     else if (tab === 'risk')        renderAiText('Risk Analysis', data[0].risk_report || data[0].analysis, data[0].data_used);
     else if (tab === 'changed')     renderAiText('What Changed?', data[0].summary || data[0].analysis, data[0].data_used);
+    else if (tab === 'options')     renderOptionsIndicator(data[0], data[1]);
   } catch(e) {
     body.innerHTML = '<div class="analysis-empty"><strong>Error</strong>' + e.message + '</div>';
   }
@@ -1231,9 +1254,9 @@ function renderOrderbook(ob) {
       <div class="metric"><div class="metric-label">Spread</div><div class="metric-value">${spread!=null?'₹'+Number(spread).toFixed(2):'—'}</div><div class="metric-note">${spreadPct?spreadPct+'% of price':''} · Tighter = better liquidity</div></div>
     </div>
     <div class="spread-badge">
-      <span style="color:var(--green);font-weight:700;font-family:'DM Mono',monospace">${ob.bid?money(ob.bid):'—'}</span>
+      <span style="color:var(--green);font-weight:700;font-family:\"DM Mono\",monospace">${ob.bid?money(ob.bid):'—'}</span>
       <span style="color:var(--muted)">←&nbsp;SPREAD&nbsp;→</span>
-      <span style="color:var(--red);font-weight:700;font-family:'DM Mono',monospace">${ob.ask?money(ob.ask):'—'}</span>
+      <span style="color:var(--red);font-weight:700;font-family:\"DM Mono\",monospace">${ob.ask?money(ob.ask):'—'}</span>
       ${spreadPct?`<span style="font-size:11px;color:var(--muted)">(${spreadPct}%)</span>`:''}
     </div>
     <div class="ob-grid">
@@ -1301,7 +1324,7 @@ function renderTechnical(t) {
       <div class="metric">
         <div class="section-title">Moving Averages</div>
         <div class="list">
-          ${[['MA 20', t.ma20],['MA 50', t.ma50],['MA 200', t.ma200],['BB Upper', t.bb_upper],['BB Lower', t.bb_lower],['SAR', t.sar]].map(([k,v])=>`<div class="list-item"><div class="split"><strong>${k}</strong><span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600">${money(v)}</span></div></div>`).join('')}
+          ${[['MA 20', t.ma20],['MA 50', t.ma50],['MA 200', t.ma200],['BB Upper', t.bb_upper],['BB Lower', t.bb_lower],['SAR', t.sar]].map(([k,v])=>`<div class="list-item"><div class="split"><strong>${k}</strong><span style="font-family:\"DM Mono\",monospace;font-size:13px;font-weight:600">${money(v)}</span></div></div>`).join('')}
         </div>
       </div>
       <div class="metric">
@@ -1338,7 +1361,7 @@ function renderFundamental(f) {
     ['FII %',fp(f.fii),'Foreign institutional'],['DII %',fp(f.dii),'Domestic institutional'],
   ];
   var src=f.source?`<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Source: ${f.source}</div>`:'';
-  qs('.analysis-body').innerHTML=src+'<div class="list">'+rows.map(r=>`<div class="list-item"><div class="split"><strong>${r[0]}</strong><span style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${r[1]?'var(--text)':'var(--muted)'}">${r[1]||'—'}</span></div><small>${r[2]}</small></div>`).join('')+'</div>';
+  qs('.analysis-body').innerHTML=src+'<div class="list">'+rows.map(r=>`<div class="list-item"><div class="split"><strong>${r[0]}</strong><span style="font-size:14px;font-weight:600;font-family:\"DM Mono\",monospace;color:${r[1]?'var(--text)':'var(--muted)'}">${r[1]||'—'}</span></div><small>${r[2]}</small></div>`).join('')+'</div>';
 }
 
 function renderSentiment(s) {
@@ -1373,26 +1396,55 @@ function renderNews(n) {
 }
 
 function renderVerdict(v) {
-  qs('.analysis-body').innerHTML = `
-    <div class="grid-2" style="margin-bottom:12px">
-      <div class="metric">
-        <div class="section-title">AI Verdict</div>
-        <div class="metric-value ${clsFor(v.verdict)==='buy'?'up':clsFor(v.verdict)==='sell'?'down':''}">${v.verdict||v.signal||'HOLD'}</div>
-        <div class="metric-note">Confidence ${v.confidence||'N/A'} · Risk ${v.risk||'N/A'} · Best for ${v.best_for||'N/A'}</div>
-      </div>
-      <div class="metric">
-        <div class="section-title">AI Price Targets</div>
-        <div class="list">
-          <div class="list-item"><div class="split"><strong>3M Target</strong><small class="up">${v.target_3m?money(v.target_3m):'—'}</small></div></div>
-          <div class="list-item"><div class="split"><strong>12M Target</strong><small class="up">${v.target_12m?money(v.target_12m):'—'}</small></div></div>
-          <div class="list-item"><div class="split"><strong>Stop Loss</strong><small class="down">${v.stop_loss?money(v.stop_loss):'—'}</small></div></div>
-        </div>
-      </div>
-    </div>
-    <div class="metric">
-      <div class="section-title">Reasoning</div>
-      <div class="list">${(v.reasoning||[]).map(line=>`<div class="list-item"><strong>${line}</strong></div>`).join('')||`<div class="list-item" style="white-space:pre-line;color:var(--text-2)">${v.full_text||'No reasoning returned'}</div>`}</div>
-    </div>`;
+  var vCls  = clsFor(v.verdict)==='buy'?'up':clsFor(v.verdict)==='sell'?'down':'';
+  var vIcon = clsFor(v.verdict)==='buy'?'&#9650;':clsFor(v.verdict)==='sell'?'&#9660;':'&#9654;';
+  var riskColor = (v.risk||'').toLowerCase()==='low'?'var(--green)':(v.risk||'').toLowerCase()==='high'?'var(--red)':'var(--amber)';
+  var lines = (v.reasoning||[]).filter(function(l){return l&&l.trim().length>5;});
+  function iconFor(line) {
+    var l = line.toLowerCase();
+    if (l.includes('rsi')||l.includes('overbought')||l.includes('oversold')) return '&#128200;';
+    if (l.includes('macd')||l.includes('momentum')||l.includes('bullish signal')||l.includes('bearish signal')) return '&#9889;';
+    if (l.includes('bollinger')||l.includes('band')||l.includes('volatility')) return '&#128308;';
+    if (l.includes('volume')) return '&#128202;';
+    if (l.includes('support')||l.includes('resistance')||l.includes('level')) return '&#128204;';
+    if (l.includes('target')||l.includes('stop')) return '&#127919;';
+    if (l.includes('fundamental')||l.includes('pe')||l.includes('roe')) return '&#127981;';
+    if (l.includes('score')||l.includes('signal')) return '&#9881;';
+    if (l.includes('uptrend')||l.includes('downtrend')||l.includes('trend')) return '&#128200;';
+    return '&#8226;';
+  }
+  function explainLine(line) {
+    return '<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)">'
+      + '<span style="font-size:16px;flex-shrink:0;margin-top:1px">'+iconFor(line)+'</span>'
+      + '<span style="font-size:13px;line-height:1.6;color:var(--text-2)">'+line+'</span>'
+      + '</div>';
+  }
+  var reasoningHtml;
+  if (lines.length >= 2) {
+    reasoningHtml = lines.map(explainLine).join('');
+  } else if (v.full_text) {
+    reasoningHtml = v.full_text.split('\n').filter(function(l){return l.trim().length>10;}).map(explainLine).join('');
+  } else {
+    reasoningHtml = '<div style="color:var(--muted);font-size:13px;padding:12px 0">No detailed reasoning returned.</div>';
+  }
+  qs('.analysis-body').innerHTML =
+    '<div class="grid-2" style="margin-bottom:14px">'
+    + '<div class="metric" style="position:relative;overflow:hidden">'
+    + '<div style="position:absolute;top:12px;right:14px;font-size:36px;opacity:.07">'+vIcon+'</div>'
+    + '<div class="section-title">AI Verdict</div>'
+    + '<div class="metric-value '+vCls+'" style="font-size:28px;margin:6px 0">'+(v.verdict||v.signal||'HOLD')+'</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
+    + '<span style="font-size:12px;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid var(--line)">Confidence '+(v.confidence||'N/A')+'</span>'
+    + '<span style="font-size:12px;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:'+riskColor+'">Risk '+(v.risk||'N/A')+'</span>'
+    + '<span style="font-size:12px;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid var(--line)">Best for '+(v.best_for||'N/A')+'</span>'
+    + '</div></div>'
+    + '<div class="metric"><div class="section-title">AI Price Targets</div><div class="list">'
+    + '<div class="list-item"><div class="split"><strong>3M Target</strong><small class="up" style="font-size:14px;font-weight:700;font-family:\"DM Mono\",monospace">'+(v.target_3m?money(v.target_3m):'—')+'</small></div><small style="color:var(--muted)">Short-term price goal</small></div>'
+    + '<div class="list-item"><div class="split"><strong>12M Target</strong><small class="up" style="font-size:14px;font-weight:700;font-family:\"DM Mono\",monospace">'+(v.target_12m?money(v.target_12m):'—')+'</small></div><small style="color:var(--muted)">Long-term price goal</small></div>'
+    + '<div class="list-item"><div class="split"><strong>Stop Loss</strong><small class="down" style="font-size:14px;font-weight:700;font-family:\"DM Mono\",monospace">'+(v.stop_loss?money(v.stop_loss):'—')+'</small></div><small style="color:var(--muted)">Exit if price falls here</small></div>'
+    + '</div></div></div>'
+    + '<div class="metric"><div class="section-title">Why the AI says this — in plain English</div>'
+    + '<div style="margin-top:4px">'+reasoningHtml+'</div></div>';
 }
 
 function renderAiText(title, text, dataUsed) {
@@ -1459,7 +1511,7 @@ async function loadPortfolio() {
         <div class="split">
           <div><strong>${h.symbol}</strong><small>${h.name||''}</small></div>
           <div style="text-align:right">
-            <strong class="${(h.pnl||0)>=0?'up':'down'}" style="font-family:'DM Mono',monospace">${money(h.pnl||0)}</strong>
+            <strong class="${(h.pnl||0)>=0?'up':'down'}" style="font-family:\"DM Mono\",monospace">${money(h.pnl||0)}</strong>
             <small class="${(h.pnl_pct||0)>=0?'up':'down'}">${pct(h.pnl_pct||0)}</small>
           </div>
         </div>
@@ -1510,16 +1562,16 @@ async function runScreener() {
       stocks.map(s =>
         `<div class="scr-table-row" onclick="setView('home');openStock('${s.symbol}')">
           <div><strong>${s.symbol}</strong></div>
-          <div style="font-family:'DM Mono',monospace">${money(s.price)}</div>
-          <div style="font-family:'DM Mono',monospace">${fmt(s.pe)}</div>
-          <div style="font-family:'DM Mono',monospace">${fmt(s.peg)}</div>
-          <div class="${s.roe>=15?'up':''}" style="font-family:'DM Mono',monospace">${fmt(s.roe,'%')}</div>
-          <div style="font-family:'DM Mono',monospace">${fmt(s.debt_equity)}</div>
-          <div style="font-family:'DM Mono',monospace">${mcapFmt(s.mcap_cr)}</div>
-          <div style="font-family:'DM Mono',monospace">${fmt(s.promoter,'%')}</div>
-          <div style="font-family:'DM Mono',monospace">${fmt(s.fii,'%')}</div>
-          <div style="font-family:'DM Mono',monospace">${fmt(s.dii,'%')}</div>
-          <div style="font-family:'DM Mono',monospace">${fmt(s.public,'%')}</div>
+          <div style="font-family:\"DM Mono\",monospace">${money(s.price)}</div>
+          <div style="font-family:\"DM Mono\",monospace">${fmt(s.pe)}</div>
+          <div style="font-family:\"DM Mono\",monospace">${fmt(s.peg)}</div>
+          <div class="${s.roe>=15?'up':''}" style="font-family:\"DM Mono\",monospace">${fmt(s.roe,'%')}</div>
+          <div style="font-family:\"DM Mono\",monospace">${fmt(s.debt_equity)}</div>
+          <div style="font-family:\"DM Mono\",monospace">${mcapFmt(s.mcap_cr)}</div>
+          <div style="font-family:\"DM Mono\",monospace">${fmt(s.promoter,'%')}</div>
+          <div style="font-family:\"DM Mono\",monospace">${fmt(s.fii,'%')}</div>
+          <div style="font-family:\"DM Mono\",monospace">${fmt(s.dii,'%')}</div>
+          <div style="font-family:\"DM Mono\",monospace">${fmt(s.public,'%')}</div>
         </div>`
       ).join('') +
       `<div style="padding:10px 16px;font-size:12px;color:var(--muted)">Updated ${new Date(data.fetched_at).toLocaleString()}</div>`;
@@ -1539,7 +1591,7 @@ async function loadAlerts() {
         <div class="split">
           <div><strong>${a.symbol}</strong><small>${a.status||'Watching'}</small></div>
           <div style="text-align:right">
-            <strong style="font-family:'DM Mono',monospace">${a.current_price?money(a.current_price):'—'}</strong>
+            <strong style="font-family:\"DM Mono\",monospace">${a.current_price?money(a.current_price):'—'}</strong>
             <small>${a.triggered?'<span class="up">Triggered ✓</span>':'Active'}</small>
           </div>
         </div>
@@ -1692,6 +1744,379 @@ window.openStock = openStock;
 window.chooseSuggestion = chooseSuggestion;
 window.addCurrentToWatchlist = addCurrentToWatchlist;
 window.sendVerdictToMobile = sendVerdictToMobile;
+
+/* ─── Options Indicator Tab ─── */
+function renderOptionsIndicator(price, tech) {
+  if (!price || !tech) {
+    qs('.analysis-body').innerHTML = '<div class="analysis-empty"><strong>No data</strong>Select a stock first.</div>';
+    return;
+  }
+  setHeadPrice(price.price, price.pct);
+
+  var p      = price.price  || 0;
+  var rsi    = tech.rsi     || 50;
+  var atr    = tech.atr     || 0;
+  var adx    = tech.adx     || 0;
+  var macd   = tech.macd_hist || 0;
+  var ma9    = tech.ma20    || p;
+  var ma21   = tech.ma50    || p;
+  var bbu    = tech.bb_upper || p;
+  var bbl    = tech.bb_lower || p;
+  var sar    = tech.sar     || p;
+  var stoch  = tech.stoch_k || 50;
+  var score  = tech.bull_score || 50;
+  var sig    = tech.signal  || 'HOLD';
+  var volR   = tech.vol_ratio || 1;
+  var c = function(n){ return Number(n).toFixed(2); };
+
+  // VWAP proxy
+  var vwap     = tech.ma20 || p;
+  var vwapBias = p > vwap ? 'ABOVE' : 'BELOW';
+  var vwapPct  = vwap ? Math.abs((p - vwap) / vwap * 100).toFixed(2) : '0';
+
+  // SuperTrend proxy
+  var superTrend = p > sar ? 'BULLISH' : 'BEARISH';
+
+  // Bollinger position
+  var bbRange = bbu - bbl;
+  var bbPos   = bbRange > 0 ? Math.round((p - bbl) / bbRange * 100) : 50;
+  var bbSignal = bbPos > 80 ? 'Near Upper Band (Overbought zone)' : bbPos < 20 ? 'Near Lower Band (Oversold zone)' : 'Mid-band (Neutral)';
+
+  // Keltner Channels
+  var keltUpper = ma21 + 2 * atr;
+  var keltLower = ma21 - 2 * atr;
+  var keltPos   = p > keltUpper ? 'BREAKOUT' : p < keltLower ? 'BREAKDOWN' : 'INSIDE';
+  var keltDesc  = p > keltUpper ? 'Above Keltner — breakout zone, strong momentum'
+                : p < keltLower ? 'Below Keltner — breakdown zone, strong selling'
+                : 'Inside Keltner — normal range';
+
+  // Volatility Squeeze (BB width < 75% of Keltner width)
+  var bbWidth  = bbu - bbl;
+  var kelWidth = keltUpper - keltLower;
+  var squeeze  = kelWidth > 0 && bbWidth < kelWidth * 0.75;
+  var sqzLabel = squeeze ? 'SQUEEZE ON — Big move brewing!' : 'No squeeze — Normal volatility';
+
+  // Stochastic RSI
+  var stRsiLabel = stoch > 80 ? 'Overbought — watch for pullback'
+                : stoch < 20  ? 'Oversold — watch for bounce'
+                : 'Neutral zone';
+
+  // Hull MA proxy
+  var hma       = 2 * ma9 - ma21;
+  var hmaUp     = p > hma;
+
+  // Volume
+  var volLabel = volR > 1.5 ? 'HIGH — Strong confirmation'
+               : volR > 0.8 ? 'Normal'
+               : 'LOW — Weak conviction';
+  var volClass = volR > 1.5 ? 'bull' : volR < 0.8 ? 'bear' : 'neut';
+
+  // ROC proxy
+  var rocLabel = score > 60 ? 'Positive' : score < 40 ? 'Negative' : 'Flat';
+
+  // ── Call / Put Signal Scoring ─────────────────────────────────
+  var callPts = 0, putPts = 0;
+  if (vwapBias === 'ABOVE') callPts++; else putPts++;
+  if (p > ma9 && p > ma21) callPts += 2; else if (p < ma9 && p < ma21) putPts += 2;
+  if (macd > 0) callPts++; else putPts++;
+  if (rsi > 55 && rsi < 70) callPts++;
+  else if (rsi < 45 && rsi > 30) putPts++;
+  if (rsi > 70) putPts++;
+  if (rsi < 30) callPts++;
+  if (superTrend === 'BULLISH') callPts += 2; else putPts += 2;
+  if (adx > 25) { if (callPts > putPts) callPts++; else putPts++; }
+  if (volR > 1.5 && callPts > putPts) callPts++;
+  if (volR > 1.5 && putPts > callPts) putPts++;
+  if (squeeze) { callPts = Math.max(0, callPts - 1); putPts = Math.max(0, putPts - 1); }
+  if (bbPos > 80) putPts++;
+  if (bbPos < 20) callPts++;
+
+  var totalPts  = callPts + putPts || 1;
+  var callScore = Math.round(callPts / totalPts * 100);
+  var putScore  = 100 - callScore;
+
+  var recommendation, recClass, recIcon;
+  if (callScore >= 65) {
+    recommendation = 'BUY CALL — Bullish signals dominate';
+    recClass = 'call'; recIcon = '&#9650;';
+  } else if (putScore >= 65) {
+    recommendation = 'BUY PUT — Bearish signals dominate';
+    recClass = 'put'; recIcon = '&#9660;';
+  } else if (squeeze) {
+    recommendation = 'WAIT FOR SQUEEZE FIRE — Big move coming, direction unclear. Consider Straddle.';
+    recClass = 'wait'; recIcon = '&#9889;';
+  } else {
+    recommendation = 'NO CLEAR SIGNAL — Market sideways. Avoid directional options or use Iron Condor.';
+    recClass = 'wait'; recIcon = '&#9632;';
+  }
+
+  // Strike Price Guide
+  var step   = p > 2000 ? 100 : p > 500 ? 50 : p > 100 ? 20 : 10;
+  var atm    = Math.round(p / step) * step;
+  var callOTM = atm + step, callITM = atm - step;
+  var putOTM  = atm - step, putITM  = atm + step;
+
+  var dotColor = recClass === 'call' ? 'var(--green)' : recClass === 'put' ? 'var(--red)' : 'var(--amber)';
+
+  function card(cls, label, val, valCls, desc) {
+    return '<div class="opt-card ' + cls + '">'
+      + '<div class="opt-label">' + label + '</div>'
+      + '<div class="opt-val ' + (valCls||'') + '">' + val + '</div>'
+      + '<div class="opt-desc">' + desc + '</div>'
+      + '</div>';
+  }
+
+  qs('.analysis-body').innerHTML =
+    // ── Summary ──
+    '<div class="opt-summary">'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px">Options Signal Recommendation</div>'
+    + '<div class="opt-signal-bar ' + recClass + '" style="margin-bottom:10px">'
+    + '<div class="opt-dot" style="background:' + dotColor + '"></div>'
+    + '<strong style="font-size:14px">' + recIcon + ' ' + recommendation + '</strong>'
+    + '</div>'
+    + '<div style="display:flex;gap:12px;font-size:12px;margin-bottom:6px">'
+    + '<span style="color:var(--green)">CALL score: <strong>' + callScore + '%</strong></span>'
+    + '<span style="color:var(--red)">PUT score: <strong>' + putScore + '%</strong></span>'
+    + (squeeze ? '<span style="color:var(--amber)">&#9889; SQUEEZE ACTIVE</span>' : '')
+    + '</div>'
+    + '<div style="display:flex;gap:0;height:8px;border-radius:99px;overflow:hidden">'
+    + '<div style="width:' + callScore + '%;background:var(--green);transition:width .6s"></div>'
+    + '<div style="width:' + putScore + '%;background:var(--red);transition:width .6s"></div>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:6px">Based on ' + totalPts + ' weighted signals &nbsp;·&nbsp; ATM Strike: ' + money(atm) + ' &nbsp;·&nbsp; Lot step: ' + step + '</div>'
+    + '</div>'
+
+    // ── Core Set ──
+    + '<div class="opt-section">'
+    + '<div class="opt-section-title">&#128205; Core Set — 80% of your edge (VWAP · Volume · EMA · RSI · MACD · ADX)</div>'
+    + '<div class="opt-grid">'
+    + card(
+        vwapBias === 'ABOVE' ? 'bull' : 'bear',
+        'VWAP (Volume Weighted Avg)',
+        vwapBias,
+        vwapBias === 'ABOVE' ? 'up' : 'down',
+        'Price is ' + vwapPct + '% ' + (vwapBias === 'ABOVE' ? 'above' : 'below') + ' VWAP (' + money(vwap) + '). '
+        + (vwapBias === 'ABOVE'
+          ? 'Buyers are in control. This means the average person who traded today is in profit — bullish for calls.'
+          : 'Sellers are in control. The average trader is at a loss — bearish, favours puts.')
+      )
+    + card(
+        volClass,
+        'Volume + Spikes',
+        volLabel,
+        volR > 1.5 ? 'up' : '',
+        'Volume ratio: ' + c(volR) + 'x average. '
+        + (volR > 1.5
+          ? 'High volume confirms today\'s move is real — not a fake-out. Trust the direction.'
+          : volR < 0.8
+          ? 'Low volume means this move may reverse. Don\'t buy options on a low-volume move.'
+          : 'Volume is average. Move is okay but not fully confirmed.')
+      )
+    + card(
+        p > ma9 && p > ma21 ? 'bull' : p < ma9 && p < ma21 ? 'bear' : 'neut',
+        'EMA 9 &amp; EMA 21',
+        p > ma9 && p > ma21 ? 'BULLISH' : p < ma9 && p < ma21 ? 'BEARISH' : 'MIXED',
+        p > ma9 && p > ma21 ? 'up' : p < ma9 && p < ma21 ? 'down' : '',
+        'EMA9 ≈ ' + money(ma9) + ' &nbsp; EMA21 ≈ ' + money(ma21) + '. '
+        + (p > ma9 && p > ma21
+          ? 'Price is above both fast and medium EMAs — the short-term trend is up. Good for calls.'
+          : p < ma9 && p < ma21
+          ? 'Price is below both EMAs — short-term trend is down. Good for puts.'
+          : 'Price is between the two EMAs — trend is uncertain. Wait for a clear breakout before buying options.')
+      )
+    + card(
+        rsi > 70 ? 'bear' : rsi < 30 ? 'bull' : 'neut',
+        'RSI (Momentum Indicator)',
+        c(rsi),
+        rsi > 70 ? 'down' : rsi < 30 ? 'up' : '',
+        rsi > 70
+          ? 'OVERBOUGHT! The stock has risen too fast too soon. Dangerous time to buy calls — sellers may step in. Better to look at puts or wait for a pullback.'
+          : rsi < 30
+          ? 'OVERSOLD! The stock has fallen very hard. The crowd is panicking — but this is often when smart money buys. Watch for a bounce and consider calls.'
+          : rsi > 55
+          ? 'RSI in bullish zone (55-70). Momentum is with buyers — calls are reasonable.'
+          : rsi < 45
+          ? 'RSI in bearish zone (30-45). Momentum is with sellers — puts are reasonable.'
+          : 'RSI is neutral (45-55). No strong momentum. Wait for RSI to break above 55 for calls or below 45 for puts.'
+      )
+    + card(
+        macd > 0 ? 'bull' : 'bear',
+        'MACD Histogram',
+        c(macd),
+        macd > 0 ? 'up' : 'down',
+        macd > 0.5
+          ? 'MACD histogram is positive AND rising — strong bullish momentum building. Great confirmation for calls.'
+          : macd > 0
+          ? 'Weakly positive MACD — mild bullish bias. Calls okay but don\'t bet big.'
+          : macd < -0.5
+          ? 'MACD histogram is negative AND falling — strong bearish momentum. Great confirmation for puts.'
+          : 'Weakly negative MACD — mild bearish bias. Puts okay but keep size small.'
+      )
+    + card(
+        adx > 25 ? 'bull' : 'neut',
+        'ADX (Trend Strength)',
+        c(adx),
+        '',
+        adx > 40
+          ? 'ADX above 40 — VERY strong trend. High confidence directional trade. Ride the trend with calls or puts (depending on direction above).'
+          : adx > 25
+          ? 'ADX above 25 — trend is confirmed and healthy. Directional options have good probability of working.'
+          : adx > 15
+          ? 'ADX 15-25 — weak trend. Market is choppy. Options are riskier here. Use smaller size and tighter stops.'
+          : 'ADX below 15 — no real trend at all. Market is ranging. Avoid directional options entirely. Consider Iron Condor instead.'
+      )
+    + '</div></div>'
+
+    // ── Trend + Entry ──
+    + '<div class="opt-section">'
+    + '<div class="opt-section-title">&#9889; Trend + Entry Signals (SuperTrend · Hull MA · Overall Score)</div>'
+    + '<div class="opt-grid">'
+    + card(
+        superTrend === 'BULLISH' ? 'bull' : 'bear',
+        'SuperTrend (SAR proxy)',
+        superTrend,
+        superTrend === 'BULLISH' ? 'up' : 'down',
+        'SAR at ' + money(sar) + '. '
+        + (superTrend === 'BULLISH'
+          ? 'Price is above the stop-and-reverse level — uptrend is intact. Stay bullish with calls as long as price holds above SAR (' + money(sar) + ').'
+          : 'Price is below SAR — downtrend is intact. Stay bearish with puts as long as price stays below SAR (' + money(sar) + ').')
+      )
+    + card(
+        hmaUp ? 'bull' : 'bear',
+        'Hull Moving Average (HMA)',
+        hmaUp ? 'BULLISH' : 'BEARISH',
+        hmaUp ? 'up' : 'down',
+        'HMA ≈ ' + money(hma.toFixed(0)) + '. '
+        + (hmaUp
+          ? 'Price is above HMA — bullish. HMA reacts faster than regular moving averages, making it excellent for short-term option timing.'
+          : 'Price is below HMA — bearish. HMA reacts faster than regular MAs — use it for precise put entries.')
+      )
+    + card(
+        score >= 57 ? 'bull' : score <= 43 ? 'bear' : 'neut',
+        'Overall Signal Score',
+        score + '%',
+        score >= 57 ? 'up' : score <= 43 ? 'down' : '',
+        'Technical score: <strong>' + sig + '</strong>. '
+        + (score >= 70
+          ? 'Strong buy signal — multiple indicators aligned bullish. High probability setup for calls.'
+          : score >= 57
+          ? 'Mild buy signal — more bulls than bears. Calls with strict stop below support.'
+          : score <= 30
+          ? 'Strong sell signal — multiple indicators aligned bearish. High probability setup for puts.'
+          : score <= 43
+          ? 'Mild sell signal — more bears than bulls. Puts with strict stop above resistance.'
+          : 'Neutral score — no clear directional bias. Wait for score to break decisively above 57 or below 43.')
+      )
+    + '</div></div>'
+
+    // ── Volatility ──
+    + '<div class="opt-section">'
+    + '<div class="opt-section-title">&#128165; Volatility + Breakout (Bollinger · ATR · Keltner · Squeeze)</div>'
+    + '<div class="opt-grid">'
+    + card(
+        bbPos > 80 ? 'bear' : bbPos < 20 ? 'bull' : 'neut',
+        'Bollinger Bands Position',
+        bbPos + '% in band',
+        '',
+        'Upper: ' + money(bbu) + ' &nbsp; Lower: ' + money(bbl) + '. ' + bbSignal + '. '
+        + (bbPos > 80
+          ? 'Price is hugging the upper band — stock is stretched. Mean reversion likely. Good time for puts or call exits.'
+          : bbPos < 20
+          ? 'Price is hugging the lower band — stock is beaten down. Bounce likely. Good time for calls or put exits.'
+          : 'Price is in the middle of the band — no extreme. Wait for price to reach the bands before acting.')
+      )
+    + card(
+        'neut',
+        'ATR (Expected Daily Range)',
+        money(atr),
+        '',
+        'Expected daily move: ' + money(atr) + ' (' + (p ? c(atr / p * 100) : '—') + '% of price). '
+        + 'This tells you how much the stock typically moves in a day. '
+        + 'Set your option target at least ' + money((atr * 1.5).toFixed(0)) + ' from entry (1.5x ATR). Stop loss: ' + money((atr * 0.8).toFixed(0)) + ' (0.8x ATR).'
+      )
+    + card(
+        squeeze ? 'neut' : 'neut',
+        'Volatility Squeeze (BB+KC)',
+        squeeze ? 'SQUEEZE ON' : 'NO SQUEEZE',
+        squeeze ? '' : 'up',
+        sqzLabel + '. '
+        + (squeeze
+          ? 'BB width ' + money(bbWidth.toFixed(0)) + ' has compressed inside Keltner width ' + money(kelWidth.toFixed(0)) + '. This is like a coiled spring — when it fires, the move is sharp and fast. Best play: buy BOTH call and put (straddle) before it fires.'
+          : 'Bollinger bands are wider than Keltner channels — volatility is normal. Safe to trade directional options.')
+      )
+    + card(
+        keltPos === 'BREAKOUT' ? 'bull' : keltPos === 'BREAKDOWN' ? 'bear' : 'neut',
+        'Keltner Channel',
+        keltPos,
+        keltPos === 'BREAKOUT' ? 'up' : keltPos === 'BREAKDOWN' ? 'down' : '',
+        'Upper: ' + money(keltUpper.toFixed(0)) + ' &nbsp; Lower: ' + money(keltLower.toFixed(0)) + '. ' + keltDesc + '. '
+        + (keltPos === 'BREAKOUT'
+          ? 'Price has broken above Keltner — strong momentum trade. Ride with calls, trail stop.'
+          : keltPos === 'BREAKDOWN'
+          ? 'Price has broken below Keltner — strong selling. Ride with puts, trail stop.'
+          : 'Price inside channel. Wait for a Keltner breakout for a high-confidence options trade.')
+      )
+    + '</div></div>'
+
+    // ── Momentum ──
+    + '<div class="opt-section">'
+    + '<div class="opt-section-title">&#129504; Momentum + Reversal (Stochastic RSI · ROC · Support &amp; Resistance)</div>'
+    + '<div class="opt-grid">'
+    + card(
+        stoch > 80 ? 'bear' : stoch < 20 ? 'bull' : 'neut',
+        'Stochastic RSI',
+        c(stoch),
+        stoch > 80 ? 'down' : stoch < 20 ? 'up' : '',
+        stRsiLabel + '. '
+        + (stoch > 80
+          ? 'Stochastic RSI above 80 means the stock is very overbought on a short-term basis. Even if the trend is up, expect a brief pullback. Avoid entering new calls. Consider taking profits or buying puts for a quick trade.'
+          : stoch < 20
+          ? 'Stochastic RSI below 20 means the stock is very oversold short-term. Even in a downtrend, expect a short bounce. Take put profits or look for call entries on confirmation.'
+          : 'Stochastic RSI in neutral territory — follow the primary trend direction from other indicators.')
+      )
+    + card(
+        rocLabel === 'Positive' ? 'bull' : rocLabel === 'Negative' ? 'bear' : 'neut',
+        'Rate of Change (ROC)',
+        rocLabel + ' momentum',
+        rocLabel === 'Positive' ? 'up' : rocLabel === 'Negative' ? 'down' : '',
+        rocLabel === 'Positive'
+          ? 'Positive ROC means the price is accelerating upward — calls have momentum behind them. The move is gaining speed.'
+          : rocLabel === 'Negative'
+          ? 'Negative ROC means the price is losing ground faster — puts have momentum. The sell-off is accelerating.'
+          : 'Flat ROC — price is moving but not accelerating in either direction. Not the best time for momentum plays.'
+      )
+    + card(
+        p > (tech.resistance || p) * 0.98 ? 'bear' : p < (tech.support || p) * 1.02 ? 'bull' : 'neut',
+        'Support &amp; Resistance',
+        money(tech.support) + ' / ' + money(tech.resistance),
+        '',
+        'Support at ' + money(tech.support) + ' — buyers historically step in here. Resistance at ' + money(tech.resistance) + ' — sellers historically appear here. '
+        + (p > (tech.resistance || p) * 0.98
+          ? 'Price is near resistance — dangerous to buy calls here (high rejection risk). Better to wait for a breakout above resistance before entering.'
+          : p < (tech.support || p) * 1.02
+          ? 'Price is near support — dangerous to buy puts here (high bounce risk). Wait for support to break before entering puts.'
+          : 'Price is in the middle — both directions are possible. Enter on a clear move toward either level.')
+      )
+    + '</div></div>'
+
+    // ── Strike Price Table ──
+    + '<div class="opt-section">'
+    + '<div class="opt-section-title">&#127919; Strike Price Guide — Weekly Expiry</div>'
+    + '<div style="overflow-x:auto"><table class="opt-table">'
+    + '<thead><tr><th>Type</th><th>Strike</th><th>Moneyness</th><th>When to use</th></tr></thead>'
+    + '<tbody>'
+    + '<tr><td class="up">CALL ITM</td><td>' + money(callITM) + '</td><td>In-the-Money</td><td>High confidence bullish. Costs more but has higher win rate. Use when very sure.</td></tr>'
+    + '<tr style="background:rgba(16,185,129,.06)"><td class="up" style="font-weight:700">CALL ATM &#9733;</td><td style="font-weight:700">' + money(atm) + '</td><td>At-the-Money</td><td>Most popular choice. Balanced cost and reward. Best for beginners.</td></tr>'
+    + '<tr><td class="up">CALL OTM</td><td>' + money(callOTM) + '</td><td>Out-of-Money</td><td>Cheap but needs a big move to profit. High risk, high reward. Advanced traders only.</td></tr>'
+    + '<tr><td style="opacity:.3">──</td><td style="opacity:.3">──</td><td style="opacity:.3">──</td><td style="opacity:.3">──</td></tr>'
+    + '<tr><td class="down">PUT ITM</td><td>' + money(putITM) + '</td><td>In-the-Money</td><td>High confidence bearish. More expensive but higher win rate.</td></tr>'
+    + '<tr style="background:rgba(248,113,113,.06)"><td class="down" style="font-weight:700">PUT ATM &#9733;</td><td style="font-weight:700">' + money(atm) + '</td><td>At-the-Money</td><td>Most popular put choice. Balanced risk/reward. Start here.</td></tr>'
+    + '<tr><td class="down">PUT OTM</td><td>' + money(putOTM) + '</td><td>Out-of-Money</td><td>Cheap put, needs big fall to profit. Very high risk, only for experienced traders.</td></tr>'
+    + '</tbody></table></div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:10px;padding:8px 12px;background:rgba(251,191,36,.06);border-radius:8px;border:1px solid rgba(251,191,36,.15)">'
+    + '&#9888; Educational only. Options carry unlimited risk. Always use strict stop-losses (suggested: ' + money((atr * 0.8).toFixed(0)) + ' below entry). Never risk more than 1-2% of capital per trade.'
+    + '</div></div>';
+}
 
 /* ─── Init ─── */
 var _wakeTimer = setTimeout(function(){
