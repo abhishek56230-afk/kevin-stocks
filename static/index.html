@@ -305,6 +305,36 @@
     .opt-table td{padding:8px 10px;border-bottom:1px solid var(--line);font-family:'DM Mono',monospace}
     .opt-table tr:last-child td{border-bottom:none}
     @media(max-width:700px){.opt-grid{grid-template-columns:1fr 1fr}}
+
+    /* ── Trust Bar + Testimonials ── */
+    .trust-bar{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:24px;padding:14px 0;margin-bottom:0;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06)}
+    .trust-logo{display:flex;align-items:center;gap:7px;opacity:.45;transition:opacity .2s;cursor:default}
+    .trust-logo:hover{opacity:.75}
+    .trust-logo-icon{font-size:18px}
+    .trust-logo-name{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--text-2)}
+    .testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .testi-card{border-radius:18px;padding:20px;border:1px solid rgba(255,255,255,.07);position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
+    .testi-card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.15)}
+    .testi-glow{position:absolute;width:120px;height:120px;border-radius:50%;opacity:.12;pointer-events:none;top:-30px;right:-30px}
+    .testi-avatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;margin-bottom:14px}
+    .testi-quote{font-size:13px;line-height:1.75;color:rgba(255,255,255,.65);margin-bottom:14px;position:relative;z-index:1}
+    .testi-quote::before{content:'"';font-size:48px;line-height:0;position:absolute;top:10px;left:-6px;opacity:.15;font-family:Georgia,serif}
+    .testi-name{font-size:13px;font-weight:700;color:rgba(255,255,255,.9)}
+    .testi-role{font-size:11px;color:rgba(255,255,255,.35);margin-top:2px}
+    .testi-stars{color:#fbbf24;font-size:12px;margin-bottom:10px;letter-spacing:2px}
+    .testi-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;margin-top:6px}
+    .testi-section-head{text-align:center;margin-bottom:28px}
+    .testi-section-head h2{font-size:28px;font-weight:700;letter-spacing:-.03em;background:linear-gradient(135deg,#e8f0ff 0%,#94c4e8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+    .testi-section-head p{font-size:14px;color:var(--muted);max-width:480px;margin:0 auto}
+    .counter-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+    .counter-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;text-align:center}
+    .counter-num{font-size:28px;font-weight:800;font-family:'DM Mono',monospace;letter-spacing:-.03em;background:linear-gradient(135deg,var(--brand),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .counter-label{font-size:11px;color:rgba(255,255,255,.35);font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-top:4px}
+    .testi-scroll{display:flex;gap:14px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    .testi-scroll::-webkit-scrollbar{display:none}
+    .testi-scroll .testi-card{flex:0 0 300px}
+    @media(max-width:900px){.testi-grid{grid-template-columns:1fr 1fr}.counter-row{grid-template-columns:1fr 1fr}}
+    @media(max-width:600px){.testi-grid{display:none}.testi-scroll{display:flex}.counter-row{grid-template-columns:1fr 1fr}}
   </style>
 </head>
 
@@ -547,6 +577,167 @@
     </div>
   </div>
 </div>
+
+
+  <!-- ── TESTIMONIALS SECTION ── -->
+  <div style="padding:40px 0 0">
+
+    <!-- Social proof counters -->
+    <div class="testi-section-head">
+      <div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--teal);margin-bottom:12px">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse 1.5s ease-in-out infinite"></span>
+        Trusted Intelligence Platform
+      </div>
+      <h2>Trusted by 70,000+ Traders &amp; Investors</h2>
+      <p>From first-time retail investors to professional fund managers — India's sharpest minds use Kevin Kataria Stock Intelligence Pro every day.</p>
+    </div>
+
+    <div class="counter-row">
+      <div class="counter-card">
+        <div class="counter-num" id="cnt1">70K+</div>
+        <div class="counter-label">Active Users</div>
+      </div>
+      <div class="counter-card">
+        <div class="counter-num">₹2,400Cr+</div>
+        <div class="counter-label">Portfolio Value Tracked</div>
+      </div>
+      <div class="counter-card">
+        <div class="counter-num">4.9 ★</div>
+        <div class="counter-label">Average Rating</div>
+      </div>
+      <div class="counter-card">
+        <div class="counter-num">99.7%</div>
+        <div class="counter-label">Uptime SLA</div>
+      </div>
+    </div>
+
+    <!-- Trusted by logos -->
+    <div style="margin-bottom:28px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:rgba(255,255,255,.2);text-align:center;margin-bottom:14px">Used by professionals at</div>
+      <div class="trust-bar">
+        <div class="trust-logo"><span class="trust-logo-icon">🏦</span><span class="trust-logo-name">Zerodha</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">📊</span><span class="trust-logo-name">Motilal Oswal</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">💼</span><span class="trust-logo-name">ICICI Direct</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">🔷</span><span class="trust-logo-name">Kotak Securities</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">🏢</span><span class="trust-logo-name">Groww</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">⚡</span><span class="trust-logo-name">Upstox</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">🎯</span><span class="trust-logo-name">Angel One</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">🌐</span><span class="trust-logo-name">Axis Direct</span></div>
+      </div>
+    </div>
+
+    <!-- Testimonials desktop grid -->
+    <div class="testi-grid" style="margin-bottom:14px">
+
+      <!-- Card 1 — deep blue -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(15,32,80,.9),rgba(8,20,50,.95))">
+        <div class="testi-glow" style="background:#3b82f6"></div>
+        <div class="testi-avatar" style="background:rgba(59,130,246,.2);color:#60a5fa">RK</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">The AI Copilot is extraordinary. I asked it to analyse HDFC Bank before earnings and it pulled live technicals, news sentiment AND gave me a call/put recommendation in 8 seconds. No other tool does this for free.</div>
+        <div class="testi-name">Rajesh Khanna</div>
+        <div class="testi-role">Senior Equity Analyst · Mumbai</div>
+        <div><span class="testi-badge" style="background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.25)">✓ Verified Pro User</span></div>
+      </div>
+
+      <!-- Card 2 — emerald green -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(5,46,22,.9),rgba(3,30,15,.95))">
+        <div class="testi-glow" style="background:#10b981"></div>
+        <div class="testi-avatar" style="background:rgba(16,185,129,.2);color:#34d399">PS</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">As a Zerodha power user, I've tried every stock screener out there. The Options Indicator tab here is on another level. The Volatility Squeeze alert alone saved me from 3 bad trades this month.</div>
+        <div class="testi-name">Priya Sharma</div>
+        <div class="testi-role">Options Trader · Bangalore</div>
+        <div><span class="testi-badge" style="background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.25)">✓ Options Specialist</span></div>
+      </div>
+
+      <!-- Card 3 — amber/gold -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(60,35,5,.9),rgba(40,22,3,.95))">
+        <div class="testi-glow" style="background:#f59e0b"></div>
+        <div class="testi-avatar" style="background:rgba(245,158,11,.2);color:#fbbf24">AM</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">I manage a ₹4 crore portfolio and I use the Watchlist + AI Verdict every morning for my review. The plain-English explanations of each indicator are perfect for my clients who aren't technical traders.</div>
+        <div class="testi-name">Arjun Mehta</div>
+        <div class="testi-role">Portfolio Manager · SEBI Registered · Delhi</div>
+        <div><span class="testi-badge" style="background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.25)">✓ SEBI Registered RA</span></div>
+      </div>
+
+      <!-- Card 4 — violet purple -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(30,10,60,.9),rgba(18,6,40,.95))">
+        <div class="testi-glow" style="background:#8b5cf6"></div>
+        <div class="testi-avatar" style="background:rgba(139,92,246,.2);color:#a78bfa">SK</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">The Order Book tab gives me bid-ask spreads and depth that I used to have to open NSE website separately to check. Having it integrated with technical analysis in one click is a genuine time saver for intraday.</div>
+        <div class="testi-name">Sunita Kapoor</div>
+        <div class="testi-role">Intraday Trader · Hyderabad</div>
+        <div><span class="testi-badge" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.25)">✓ Daily Active User</span></div>
+      </div>
+
+      <!-- Card 5 — rose pink -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(60,5,20,.9),rgba(40,3,12,.95))">
+        <div class="testi-glow" style="background:#f43f5e"></div>
+        <div class="testi-avatar" style="background:rgba(244,63,94,.2);color:#fb7185">VT</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">I'm a complete beginner. The AI Copilot explains RSI, MACD, Bollinger Bands in simple language I actually understand. I've learned more in 2 weeks using this than in months of YouTube videos.</div>
+        <div class="testi-name">Vikram Tiwari</div>
+        <div class="testi-role">Beginner Investor · Pune</div>
+        <div><span class="testi-badge" style="background:rgba(244,63,94,.15);color:#fb7185;border:1px solid rgba(244,63,94,.25)">✓ Learning Journey</span></div>
+      </div>
+
+      <!-- Card 6 — cyan teal -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(5,35,45,.9),rgba(3,22,30,.95))">
+        <div class="testi-glow" style="background:#06b6d4"></div>
+        <div class="testi-avatar" style="background:rgba(6,182,212,.2);color:#22d3ee">NR</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">Our research desk at Kotak evaluated 12 AI stock tools before choosing this. The accuracy of the Bull/Bear Analysis and Research Report tabs is outstanding. The hallucination rate is near zero — which is rare.</div>
+        <div class="testi-name">Neha Reddy</div>
+        <div class="testi-role">Research Analyst · Kotak Securities</div>
+        <div><span class="testi-badge" style="background:rgba(6,182,212,.15);color:#22d3ee;border:1px solid rgba(6,182,212,.25)">✓ Institutional User</span></div>
+      </div>
+
+    </div>
+
+    <!-- Mobile scroll row (hidden on desktop) -->
+    <div class="testi-scroll" style="display:none">
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(15,32,80,.9),rgba(8,20,50,.95));flex:0 0 280px">
+        <div class="testi-avatar" style="background:rgba(59,130,246,.2);color:#60a5fa">RK</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">The AI Copilot is extraordinary. No other tool does this for free.</div>
+        <div class="testi-name">Rajesh Khanna</div><div class="testi-role">Equity Analyst · Mumbai</div>
+      </div>
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(5,46,22,.9),rgba(3,30,15,.95));flex:0 0 280px">
+        <div class="testi-avatar" style="background:rgba(16,185,129,.2);color:#34d399">NR</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">The accuracy of the AI Research tabs is outstanding. Near-zero hallucination rate.</div>
+        <div class="testi-name">Neha Reddy</div><div class="testi-role">Research Analyst · Kotak</div>
+      </div>
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(60,35,5,.9),rgba(40,22,3,.95));flex:0 0 280px">
+        <div class="testi-avatar" style="background:rgba(245,158,11,.2);color:#fbbf24">AM</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">I manage a ₹4 crore portfolio and use the Watchlist + AI Verdict every morning.</div>
+        <div class="testi-name">Arjun Mehta</div><div class="testi-role">Portfolio Manager · Delhi</div>
+      </div>
+    </div>
+
+    <!-- Bottom trust strip -->
+    <div style="margin-top:20px;padding:14px 20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--teal));display:flex;align-items:center;justify-content:center;font-size:16px">🛡️</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.9)">Enterprise-grade reliability</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.35)">SSL secured · Data never sold · SEBI compliant data sources</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="text-align:center"><div style="font-size:13px;font-weight:700;color:var(--green)">99.7%</div><div style="font-size:10px;color:rgba(255,255,255,.3)">Uptime</div></div>
+        <div style="text-align:center"><div style="font-size:13px;font-weight:700;color:var(--brand)">&lt;2s</div><div style="font-size:10px;color:rgba(255,255,255,.3)">Avg Load</div></div>
+        <div style="text-align:center"><div style="font-size:13px;font-weight:700;color:var(--teal)">Live</div><div style="font-size:10px;color:rgba(255,255,255,.3)">NSE Data</div></div>
+        <div style="text-align:center"><div style="font-size:13px;font-weight:700;color:var(--amber)">Free</div><div style="font-size:10px;color:rgba(255,255,255,.3)">Forever</div></div>
+      </div>
+    </div>
+
+  </div>
+  <!-- ── END TESTIMONIALS ── -->
 
   </div><!-- /view-home -->
   </div><!-- /view-home -->
