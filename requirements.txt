@@ -5,3 +5,5 @@ gunicorn
 nsefin
 pandas
 duckduckgo-search
+reportlab
+python-docx
