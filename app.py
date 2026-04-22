@@ -26,10 +26,17 @@ from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from access_logger import register_logging, log_search, log_error
+from search_engine import global_search, warm_popular_cache, get_trending_stocks, resolve_symbol
+from report_generator import register_report_routes
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 app.register_blueprint(agent_bp)
 CORS(app)
+
+register_logging(app)
+import threading as _t
+_t.Thread(target=warm_popular_cache, daemon=True).start()
 
 GROQ_API_KEY    = os.environ.get("GROQ_API_KEY", "YOUR_GROQ_KEY_HERE")
 ALERT_THRESHOLD = 500_000
@@ -2731,68 +2738,42 @@ def _rank_search_results(raw_q, limit=30):
 
 @app.route("/api/search")
 def search_stocks():
-    raw_q = (freq.args.get("q") or "").strip()
-
-    try:
-        limit = int(freq.args.get("limit", 10) or 10)
-    except Exception:
-        limit = 10
-
-    limit = min(max(limit, 1), 50)
-    enrich = str(freq.args.get("enrich", "0")).lower() in ("1", "true", "yes")
+    raw_q  = (freq.args.get("q") or "").strip()
+    try:    limit = int(freq.args.get("limit", 12) or 12)
+    except: limit = 12
+    limit  = min(max(limit, 1), 30)
+    enrich = str(freq.args.get("enrich", "1")).lower() in ("1","true","yes")
 
     if not raw_q:
         return jsonify({"success": True, "query": "", "count": 0, "results": []})
 
+    ip = (freq.headers.get("X-Forwarded-For") or freq.remote_addr or "").split(",")[0].strip()
+
     try:
-        results = _rank_search_results(raw_q, limit=limit)
+        results = global_search(raw_q, limit=limit, enrich=enrich)
     except Exception as e:
+        log_error(ip, "/api/search", 500, str(e))
         return jsonify({
-            "success": False,
-            "query": raw_q,
-            "count": 0,
-            "results": [],
-            "error": f"Search failed safely: {str(e)[:120]}"
+            "success": False, "query": raw_q, "count": 0, "results": [],
+            "error": "Search temporarily unavailable. Please try again."
         }), 200
 
+    log_search(ip, raw_q, len(results), [r.get("symbol","") for r in results])
+
     if not results:
+        suggestions = []
+        try:
+            suggestions = global_search(raw_q[:3], limit=4, enrich=False)
+        except Exception:
+            pass
         return jsonify({
-            "success": True,
-            "query": raw_q,
-            "count": 0,
-            "results": [],
-            "message": "No exact match found. Try company name or NSE symbol."
+            "success":     True,
+            "query":       raw_q,
+            "count":       0,
+            "results":     [],
+            "suggestions": [{"symbol": r["symbol"], "name": r.get("name","")} for r in suggestions],
+            "hint": "Supported: NSE (RELIANCE), BSE (RELIANCE.BO), US (TSLA, AAPL, NVDA, MSFT)"
         })
-
-    if enrich:
-        def fetch_change(item):
-            sym = item["symbol"]
-            cached = cache_get(f"price:{sym}")
-            if cached:
-                item["price"] = cached.get("price")
-                item["change_pct"] = cached.get("pct")
-                return item
-            try:
-                r = http_get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}.NS?interval=1d&range=2d", headers=YFH, timeout=4)
-                if r.ok:
-                    meta = r.json()["chart"]["result"][0]["meta"]
-                    p = meta.get("regularMarketPrice", 0)
-                    prev = meta.get("chartPreviousClose", 0)
-                    item["price"] = round(p, 2) if p else None
-                    item["change_pct"] = round((p - prev) / prev * 100, 2) if prev else 0
-                else:
-                    item["price"] = None
-                    item["change_pct"] = None
-            except Exception:
-                item["price"] = None
-                item["change_pct"] = None
-            return item
-
-        top = results[:8]
-        rest = results[8:]
-        with ThreadPoolExecutor(max_workers=6) as pool:
-            top = list(pool.map(fetch_change, top))
-        results = top + rest
 
     return jsonify({"success": True, "query": raw_q, "count": len(results), "results": results})
 
@@ -4260,6 +4241,59 @@ def recent_changes(symbol):
     }
     cache_set(f"changes:{sym}", data, ttl=300)
     return jsonify(data)
+# ── Trending stocks ──────────────────────────────────────────────────────────
+@app.route("/api/trending")
+def trending_stocks():
+    cached = cache_get("trending_full")
+    if cached:
+        return jsonify(cached)
+    try:
+        trending = get_trending_stocks()
+        results  = []
+        for item in trending[:12]:
+            sym = item.get("symbol", "")
+            if not sym:
+                continue
+            try:
+                r = http_get(
+                    f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=2d",
+                    headers=YFH, timeout=4
+                )
+                if r.ok:
+                    meta = r.json()["chart"]["result"][0]["meta"]
+                    p    = meta.get("regularMarketPrice", 0)
+                    prev = meta.get("chartPreviousClose", 0)
+                    name = meta.get("longName") or meta.get("shortName", sym)
+                    pct  = round((p - prev) / prev * 100, 2) if prev else 0
+                    results.append({
+                        "symbol":     sym,
+                        "name":       name,
+                        "price":      round(p, 2),
+                        "change_pct": pct,
+                        "market":     item.get("market", "NSE"),
+                    })
+            except Exception:
+                continue
+        data = {"success": True, "count": len(results), "stocks": results}
+        cache_set("trending_full", data, ttl=600)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "stocks": []}), 200
+
+
+# ── Resolve symbol ────────────────────────────────────────────────────────────
+@app.route("/api/resolve/<symbol>")
+def resolve_stock_symbol(symbol):
+    sym = symbol.upper().strip()
+    try:
+        result = resolve_symbol(sym)
+        return jsonify({"success": True, **result})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "symbol": sym}), 200
+
+
+# ── PDF / DOCX report download ────────────────────────────────────────────────
+register_report_routes(app, build_stock_context)
 
 if __name__ == "__main__":
     os.makedirs("static", exist_ok=True)
