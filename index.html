@@ -579,6 +579,22 @@
 </div>
 
 
+
+  <!-- ── TRENDING STOCKS SECTION ── -->
+  <div id="trendingSection" style="display:none;margin-top:16px" class="card panel">
+    <div class="panel-head">
+      <div>
+        <h2 style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:18px">&#128293;</span> Trending Now
+        </h2>
+        <div class="sub">Most-watched stocks on Yahoo Finance right now</div>
+      </div>
+      <button class="ghost" onclick="loadTrending()">&#8634; Refresh</button>
+    </div>
+    <div id="trendingGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;padding-top:8px"></div>
+  </div>
+  <!-- ── END TRENDING ── -->
+
   <!-- ── TESTIMONIALS SECTION ── -->
   <div style="padding:40px 0 0">
 
@@ -1251,7 +1267,12 @@ function renderSearchResults(query, total) {
   query = query || ''; total = total || 0;
   const drop = qs('#searchDrop');
   if (!state.searchResults.length) {
-    drop.innerHTML = '<div class="suggestion"><div><strong>No match found</strong><span>Try company name, NSE symbol, or another spelling</span></div></div>';
+    drop.innerHTML = '<div class="suggestion" style="flex-direction:column;align-items:flex-start;gap:6px">'
+    + '<div><strong style="color:var(--text)">No exact match found</strong>'
+    + '<span style="display:block;margin-top:4px;color:var(--muted)">Try: company name (Reliance Industries), NSE symbol (RELIANCE), BSE (.BO suffix), US ticker (TSLA, AAPL, NVDA)</span></div>'
+    + '<div style="font-size:11px;color:var(--muted);background:rgba(56,189,248,.05);border:1px solid rgba(56,189,248,.1);border-radius:8px;padding:6px 10px">'
+    + '✓ NSE &nbsp;·&nbsp; ✓ BSE &nbsp;·&nbsp; ✓ NYSE &nbsp;·&nbsp; ✓ NASDAQ &nbsp;·&nbsp; ✓ Dow Jones &nbsp;·&nbsp; ✓ S&P500 &nbsp;·&nbsp; ✓ All global markets</div>'
+    + '</div>';
     drop.classList.add('open'); return;
   }
   const Q = query.toUpperCase();
@@ -1300,6 +1321,8 @@ async function openStock(symbol) {
       <div class="action-stack">
         <button class="action-btn" onclick="addCurrentToWatchlist()">+ Add to Watchlist</button>
         <button class="action-btn" onclick="sendVerdictToMobile()">Send AI Verdict</button>
+        <button class="action-btn" onclick="downloadReport(state.selectedSymbol,'pdf')" style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2)">&#11015; PDF</button>
+        <button class="action-btn" onclick="downloadReport(state.selectedSymbol,'docx')" style="background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.2)">&#11015; Word</button>
         <div class="hero-price">Loading…</div>
       </div>
     </div>
@@ -2366,6 +2389,50 @@ function renderOptionsIndicator(price, tech) {
 
 
 /* ─── Init ─── */
+
+/* ─── Download Report ─── */
+function downloadReport(symbol, format) {
+  if (!symbol) return alert('Select a stock first.');
+  format = format || 'pdf';
+  var url = '/api/report/' + encodeURIComponent(symbol) + '?format=' + format;
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = symbol + '_report.' + format;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ document.body.removeChild(a); }, 500);
+}
+window.downloadReport = downloadReport;
+
+/* ─── Trending stocks ─── */
+async function loadTrending() {
+  try {
+    const data = await api('/api/trending', null, 15000);
+    if (!data.stocks || !data.stocks.length) return;
+    const el = document.getElementById('trendingSection');
+    const grid = document.getElementById('trendingGrid');
+    if (!el || !grid) return;
+    el.style.display = 'block';
+    grid.innerHTML = data.stocks.map(function(s) {
+      var up  = (s.change_pct||0) >= 0;
+      var sym = (s.symbol||'').replace('.NS','').replace('.BO','');
+      var priceStr = s.price
+        ? (s.symbol.indexOf('.')===-1 && !s.symbol.endsWith('S') ? '$' : '\u20B9') + Number(s.price).toLocaleString('en-IN',{maximumFractionDigits:2})
+        : '—';
+      return '<div class="stock-item" onclick="openStock(\'' + sym + '\')" style="cursor:pointer">'
+        + '<div class="stock-top"><div>'
+        + '<div class="stock-symbol">' + s.symbol + '</div>'
+        + '<div class="stock-name" style="font-size:11px;margin-top:2px">' + (s.name||'').slice(0,22) + '</div>'
+        + '</div><div class="badge ' + (up?'buy':'sell') + '">' + (up?'&#9650;':'&#9660;') + '</div></div>'
+        + '<div class="price" style="margin-top:8px;font-size:16px">' + priceStr + '</div>'
+        + '<div class="' + (up?'up':'down') + '" style="font-size:11px;font-family:\"DM Mono\",monospace;margin-top:3px">'
+        + (up?'+':'') + (s.change_pct||0).toFixed(2) + '%</div>'
+        + '</div>';
+    }).join('');
+  } catch(e) {}
+}
+window.loadTrending = loadTrending;
+
 var _wakeTimer = setTimeout(function(){
   var wl = document.querySelector('#watchlist');
   if (wl && wl.querySelector('.loader')) {
@@ -2373,6 +2440,7 @@ var _wakeTimer = setTimeout(function(){
     if (b) b.style.display = 'block';
   }
 }, 5000);
+loadTrending();
 loadWatchlist().then(function(){ clearTimeout(_wakeTimer); var b=document.getElementById('wakeupBanner'); if(b)b.style.display='none'; }).catch(function(){});
 loadMarketStatus();
 loadIndices();
