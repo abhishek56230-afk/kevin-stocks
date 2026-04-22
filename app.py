@@ -26,17 +26,38 @@ from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from access_logger import register_logging, log_search, log_error
-from search_engine import global_search, warm_popular_cache, get_trending_stocks, resolve_symbol
-from report_generator import register_report_routes
+
+# ── New modules (drop access_logger.py, search_engine.py, report_generator.py next to app.py) ──
+try:
+    from access_logger import register_logging, log_search, log_error as log_err
+    _LOGGER_OK = True
+except ImportError:
+    _LOGGER_OK = False
+    def log_search(*a, **k): pass
+    def log_err(*a, **k): pass
+
+try:
+    from search_engine import global_search, warm_popular_cache, get_trending_stocks, resolve_symbol
+    _SEARCH_OK = True
+except ImportError:
+    _SEARCH_OK = False
+
+try:
+    from report_generator import register_report_routes
+    _REPORT_OK = True
+except ImportError:
+    _REPORT_OK = False
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 app.register_blueprint(agent_bp)
 CORS(app)
 
-register_logging(app)
-import threading as _t
-_t.Thread(target=warm_popular_cache, daemon=True).start()
+if _LOGGER_OK:
+    register_logging(app)
+
+if _SEARCH_OK:
+    import threading as _t
+    _t.Thread(target=warm_popular_cache, daemon=True).start()
 
 GROQ_API_KEY    = os.environ.get("GROQ_API_KEY", "YOUR_GROQ_KEY_HERE")
 ALERT_THRESHOLD = 500_000
@@ -156,13 +177,26 @@ def sma(d, p):
     return sum(d[-p:])/p if len(d) >= p else None
 
 def yf_get(sym, range_="1y", interval="1d"):
-    """Yahoo Finance chart - tries query1 then query2"""
-    for base in ["query1","query2"]:
-        try:
-            url = f"https://{base}.finance.yahoo.com/v8/finance/chart/{sym}.NS?interval={interval}&range={range_}"
-            r = requests.get(url, headers=YFH, timeout=10)
-            if r.ok: return r.json()["chart"]["result"][0]
-        except: continue
+    """Yahoo Finance chart — supports NSE (.NS), BSE (.BO), and US stocks (no suffix)."""
+    sym = sym.upper().strip()
+    # Build candidate list: if already has suffix use as-is, else try NSE then US then BSE
+    if sym.endswith(".NS") or sym.endswith(".BO"):
+        candidates = [sym]
+    else:
+        candidates = [sym + ".NS", sym, sym + ".BO"]
+    for ticker in candidates:
+        for base in ["query1", "query2"]:
+            try:
+                url = (f"https://{base}.finance.yahoo.com/v8/finance/chart/"
+                       f"{ticker}?interval={interval}&range={range_}")
+                r = requests.get(url, headers=YFH, timeout=10)
+                if r.ok:
+                    result = r.json().get("chart", {}).get("result")
+                    if result:
+                        result[0]["_ticker_used"] = ticker
+                        return result[0]
+            except Exception:
+                continue
     return None
 
 def nse_session_get(url, timeout=10):
@@ -229,26 +263,53 @@ def price(symbol):
     sym = symbol.upper().strip()
     cached = cache_get(f"price:{sym}")
     if cached: return jsonify(cached)
-    for base in ["query1","query2"]:
-        try:
-            r = http_get(f"https://{base}.finance.yahoo.com/v8/finance/chart/{sym}.NS",
-                             headers=YFH, timeout=8)
-            if not r.ok: continue
-            meta = r.json()["chart"]["result"][0]["meta"]
-            prev = meta.get("chartPreviousClose",0); p = meta.get("regularMarketPrice",0)
-            data = {"success":True,"source":"Yahoo Finance","symbol":sym,
-                    "name":  meta.get("longName") or meta.get("shortName",sym),
-                    "price": p, "prev_close": prev,
-                    "change": round(p-prev,2), "pct": round((p-prev)/prev*100,2) if prev else 0,
-                    "high":   meta.get("regularMarketDayHigh",0),
-                    "low":    meta.get("regularMarketDayLow",0),
-                    "week52_high": meta.get("fiftyTwoWeekHigh",0),
-                    "week52_low":  meta.get("fiftyTwoWeekLow",0),
-                    "volume": meta.get("regularMarketVolume",0)}
-            cache_set(f"price:{sym}", data, ttl=60)
-            return jsonify(data)
-        except: continue
-    return jsonify({"success":False,"error":f"Could not fetch price for {sym}. Check the NSE symbol is correct (e.g. RELIANCE, HCLTECH, ADANIPOWER)"})
+    # Try NSE first, then US (no suffix), then BSE
+    if sym.endswith(".NS") or sym.endswith(".BO"):
+        ticker_list = [sym]
+    else:
+        ticker_list = [sym + ".NS", sym, sym + ".BO"]
+    for ticker in ticker_list:
+        for base in ["query1", "query2"]:
+            try:
+                r = http_get(
+                    f"https://{base}.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d",
+                    headers=YFH, timeout=8)
+                if not r.ok: continue
+                result = r.json().get("chart", {}).get("result")
+                if not result: continue
+                meta = result[0]["meta"]
+                prev = meta.get("chartPreviousClose", 0)
+                p    = meta.get("regularMarketPrice", 0)
+                if not p: continue
+                data = {
+                    "success":    True,
+                    "source":     "Yahoo Finance",
+                    "symbol":     sym,
+                    "ticker":     ticker,
+                    "market":     "US" if not ticker.endswith((".NS",".BO")) else ("NSE" if ticker.endswith(".NS") else "BSE"),
+                    "name":       meta.get("longName") or meta.get("shortName", sym),
+                    "price":      round(p, 2),
+                    "prev_close": round(prev, 2),
+                    "change":     round(p - prev, 2),
+                    "pct":        round((p - prev) / prev * 100, 2) if prev else 0,
+                    "high":       meta.get("regularMarketDayHigh", 0),
+                    "low":        meta.get("regularMarketDayLow", 0),
+                    "week52_high": meta.get("fiftyTwoWeekHigh", 0),
+                    "week52_low":  meta.get("fiftyTwoWeekLow", 0),
+                    "volume":     meta.get("regularMarketVolume", 0),
+                    "currency":   meta.get("currency", "INR"),
+                }
+                cache_set(f"price:{sym}", data, ttl=60)
+                return jsonify(data)
+            except Exception:
+                continue
+    return jsonify({
+        "success": False,
+        "error": f"Could not fetch price for '{sym}'. "
+                 f"For NSE try: RELIANCE, TCS, HDFCBANK. "
+                 f"For US try: AAPL, TSLA, PLTR, NVDA. "
+                 f"For BSE try: RELIANCE.BO"
+    })
 
 # ============================================================
 # TECHNICAL - Yahoo Finance (never blocked on cloud)
@@ -2749,34 +2810,61 @@ def search_stocks():
 
     ip = (freq.headers.get("X-Forwarded-For") or freq.remote_addr or "").split(",")[0].strip()
 
-    try:
-        results = global_search(raw_q, limit=limit, enrich=enrich)
-    except Exception as e:
-        log_error(ip, "/api/search", 500, str(e))
-        return jsonify({
-            "success": False, "query": raw_q, "count": 0, "results": [],
-            "error": "Search temporarily unavailable. Please try again."
-        }), 200
-
-    log_search(ip, raw_q, len(results), [r.get("symbol","") for r in results])
-
-    if not results:
-        suggestions = []
+    # Use global Yahoo Finance search if available, else fall back to old system
+    if _SEARCH_OK:
         try:
-            suggestions = global_search(raw_q[:3], limit=4, enrich=False)
-        except Exception:
-            pass
-        return jsonify({
-            "success":     True,
-            "query":       raw_q,
-            "count":       0,
-            "results":     [],
-            "suggestions": [{"symbol": r["symbol"], "name": r.get("name","")} for r in suggestions],
-            "hint": "Supported: NSE (RELIANCE), BSE (RELIANCE.BO), US (TSLA, AAPL, NVDA, MSFT)"
-        })
+            results = global_search(raw_q, limit=limit, enrich=enrich)
+        except Exception as e:
+            log_err(ip, "/api/search", 500, str(e))
+            results = []
+        log_search(ip, raw_q, len(results), [r.get("symbol","") for r in results])
+        if not results:
+            # suggest via shorter query
+            suggestions = []
+            try:
+                if len(raw_q) >= 3:
+                    suggestions = global_search(raw_q[:3], limit=4, enrich=False)
+            except Exception:
+                pass
+            return jsonify({
+                "success":     True,
+                "query":       raw_q,
+                "count":       0,
+                "results":     [],
+                "suggestions": [{"symbol": r["symbol"], "name": r.get("name","")} for r in suggestions],
+                "hint": "Try: NSE symbol (RELIANCE), US ticker (AAPL, TSLA, PLTR), or company name"
+            })
+        return jsonify({"success": True, "query": raw_q, "count": len(results), "results": results})
 
+    # Legacy fallback (original hardcoded search)
+    try:
+        results = _rank_search_results(raw_q, limit=limit)
+    except Exception as e:
+        return jsonify({"success": False, "query": raw_q, "count": 0, "results": [],
+                        "error": f"Search failed: {str(e)[:120]}"}), 200
+    if not results:
+        return jsonify({"success": True, "query": raw_q, "count": 0, "results": [],
+                        "message": "No exact match. Try NSE symbol or company name."})
+    if enrich:
+        def fetch_change(item):
+            s = item["symbol"]
+            cached = cache_get(f"price:{s}")
+            if cached:
+                item["price"] = cached.get("price"); item["change_pct"] = cached.get("pct"); return item
+            try:
+                r = http_get(f"https://query1.finance.yahoo.com/v8/finance/chart/{s}.NS?interval=1d&range=2d",
+                             headers=YFH, timeout=4)
+                if r.ok:
+                    meta = r.json()["chart"]["result"][0]["meta"]
+                    p = meta.get("regularMarketPrice",0); prev = meta.get("chartPreviousClose",0)
+                    item["price"] = round(p,2) if p else None
+                    item["change_pct"] = round((p-prev)/prev*100,2) if prev else 0
+                else: item["price"] = None; item["change_pct"] = None
+            except: item["price"] = None; item["change_pct"] = None
+            return item
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            results = list(pool.map(fetch_change, results[:8])) + results[8:]
     return jsonify({"success": True, "query": raw_q, "count": len(results), "results": results})
-
 
 
 @app.route("/api/screener")
@@ -4241,59 +4329,61 @@ def recent_changes(symbol):
     }
     cache_set(f"changes:{sym}", data, ttl=300)
     return jsonify(data)
+
 # ── Trending stocks ──────────────────────────────────────────────────────────
 @app.route("/api/trending")
 def trending_stocks():
     cached = cache_get("trending_full")
-    if cached:
-        return jsonify(cached)
-    try:
-        trending = get_trending_stocks()
-        results  = []
-        for item in trending[:12]:
-            sym = item.get("symbol", "")
-            if not sym:
-                continue
-            try:
-                r = http_get(
-                    f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=2d",
-                    headers=YFH, timeout=4
-                )
-                if r.ok:
-                    meta = r.json()["chart"]["result"][0]["meta"]
-                    p    = meta.get("regularMarketPrice", 0)
-                    prev = meta.get("chartPreviousClose", 0)
-                    name = meta.get("longName") or meta.get("shortName", sym)
-                    pct  = round((p - prev) / prev * 100, 2) if prev else 0
-                    results.append({
-                        "symbol":     sym,
-                        "name":       name,
-                        "price":      round(p, 2),
-                        "change_pct": pct,
-                        "market":     item.get("market", "NSE"),
-                    })
-            except Exception:
-                continue
-        data = {"success": True, "count": len(results), "stocks": results}
-        cache_set("trending_full", data, ttl=600)
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e), "stocks": []}), 200
+    if cached: return jsonify(cached)
+    stocks = []
+    if _SEARCH_OK:
+        try:
+            trending = get_trending_stocks()
+            for item in trending[:12]:
+                sym = item.get("symbol", "")
+                if not sym: continue
+                try:
+                    r = http_get(
+                        f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=2d",
+                        headers=YFH, timeout=4)
+                    if r.ok:
+                        res = r.json().get("chart",{}).get("result")
+                        if res:
+                            meta = res[0]["meta"]
+                            p    = meta.get("regularMarketPrice", 0)
+                            prev = meta.get("chartPreviousClose", 0)
+                            stocks.append({
+                                "symbol":     sym,
+                                "name":       meta.get("longName") or meta.get("shortName", sym),
+                                "price":      round(p, 2),
+                                "change_pct": round((p-prev)/prev*100,2) if prev else 0,
+                                "market":     item.get("market","NSE"),
+                            })
+                except Exception:
+                    continue
+        except Exception:
+            pass
+    data = {"success": True, "count": len(stocks), "stocks": stocks}
+    cache_set("trending_full", data, ttl=600)
+    return jsonify(data)
 
 
-# ── Resolve symbol ────────────────────────────────────────────────────────────
 @app.route("/api/resolve/<symbol>")
 def resolve_stock_symbol(symbol):
     sym = symbol.upper().strip()
-    try:
-        result = resolve_symbol(sym)
-        return jsonify({"success": True, **result})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e), "symbol": sym}), 200
+    if _SEARCH_OK:
+        try:
+            result = resolve_symbol(sym)
+            return jsonify({"success": True, **result})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e), "symbol": sym}), 200
+    return jsonify({"success": True, "symbol": sym + ".NS", "market": "NSE"})
 
 
-# ── PDF / DOCX report download ────────────────────────────────────────────────
-register_report_routes(app, build_stock_context)
+# Wire up PDF/DOCX report download routes
+if _REPORT_OK:
+    register_report_routes(app, build_stock_context)
+
 
 if __name__ == "__main__":
     os.makedirs("static", exist_ok=True)
