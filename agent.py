@@ -819,3 +819,19 @@ def agent_status():
         "cache_keys":   len(_agent_cache),
         "cost":         "$0.00 — 100% free stack",
     })
+# === PASTE AT THE VERY BOTTOM OF agent.py ===
+
+@agent_bp.route("/api/agent/5year/<symbol>")
+def agent_5year_history(symbol):
+    sym = symbol.upper().strip()
+    question = (
+        f"Act as a Senior Equity Analyst. Analyze the last 5 years of history for {sym}. "
+        f"1. Overall 5-year performance (growth/decline). "
+        f"2. Major structural changes, corporate actions, leadership changes, or product shifts. "
+        f"3. Detailed reasons behind these changes and their impact on the stock price. "
+        f"Format the output beautifully using Markdown with clear headings and bullet points."
+    )
+    # Uses your existing Groq + DuckDuckGo setup
+    from agent import run_stock_agent
+    result = run_stock_agent(question=question, symbol=sym, mode="analyst")
+    return jsonify(result)
