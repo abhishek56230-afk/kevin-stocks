@@ -1192,37 +1192,76 @@ function setView(view) {
 /* ─── Watchlist ─── */
 async function loadWatchlist() {
   const wrap = qs('#watchlist');
-  wrap.innerHTML = '<div class="loader"></div>';
+  wrap.innerHTML = '<div class="loader"></div><div style="text-align:center;font-size:11px;color:var(--muted);padding-bottom:8px">Loading… first load may take 30s</div>';
   try {
-    const data = await api('/api/watchlist', null, 60000);
-    renderWatchlistSummary(data.summary);
-    wrap.innerHTML = data.stocks.map(stock => {
-      const sig = asSig(stock.signal);
-      return `
-        <div class="stock-item" onclick="openStock('${stock.symbol}')">
-          <div class="stock-top">
-            <div>
-              <div class="stock-symbol">${stock.symbol}</div>
-              <div class="stock-name">${stock.name}</div>
-            </div>
-            <div class="badge ${clsFor(sig)}">${sig}</div>
-          </div>
-          <div class="stock-bottom" style="margin-top:10px">
-            <div>
-              <div class="price">${stock.live_price ? money(stock.live_price) : '—'}</div>
-              <div class="${(stock.change_pct||0)>=0?'up':'down'}" style="font-size:11px;font-weight:700;margin-top:4px;font-family:\"DM Mono\",monospace">${pct(stock.change_pct)}</div>
-            </div>
-            <div style="text-align:right">
-              <div class="muted-text" style="font-size:11px">ref ${money(stock.ref_price)}</div>
-              <div class="${(stock.pnl_pct||0)>=0?'up':'down'}" style="font-size:11px;font-weight:700;margin-top:4px;font-family:\"DM Mono\",monospace">P&L ${pct(stock.pnl_pct)}</div>
-            </div>
-          </div>
-        </div>`;
-    }).join('') || '<div class="analysis-empty"><strong>No stocks</strong>Watchlist is empty.</div>';
+    // ── Get localStorage symbols (user additions, always present) ────────────
+    var lsSyms = [];
+    try { lsSyms = JSON.parse(localStorage.getItem('wl_symbols') || '[]'); } catch(e) {}
+
+    // ── Fetch server watchlist ────────────────────────────────────────────────
+    var data = null;
+    try { data = await api('/api/watchlist', null, 60000); } catch(e) {}
+
+    // ── Merge: server results first, then localStorage additions ─────────────
+    var serverSyms = new Set();
+    var allStocks  = [];
+    if (data && data.stocks) {
+      data.stocks.forEach(function(s) { serverSyms.add(s.symbol); allStocks.push(s); });
+    }
+
+    // Any localStorage symbol not on server — fetch via sync endpoint
+    var extraSyms = lsSyms.filter(function(s) { return !serverSyms.has(s); });
+    if (extraSyms.length > 0) {
+      try {
+        var syncRes = await api('/api/watchlist/sync', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ symbols: extraSyms })
+        }, 20000);
+        if (syncRes && syncRes.results) {
+          syncRes.results.forEach(function(s) { if (s.price) allStocks.push(s); });
+        }
+      } catch(e) {}
+    }
+
+    if (!allStocks.length && lsSyms.length === 0) {
+      wrap.innerHTML = '<div class="analysis-empty"><strong>No stocks</strong>Watchlist is empty. Search a stock and click + Add to Watchlist.</div>';
+      renderWatchlistSummary({});
+      return;
+    }
+
+    if (!allStocks.length && lsSyms.length > 0) {
+      wrap.innerHTML = '<div class="analysis-empty"><strong>Backend loading…</strong>Your ' + lsSyms.length + ' saved stocks will appear shortly. <button class="ghost" onclick="loadWatchlist()" style="margin-top:8px;font-size:12px">↺ Retry</button></div>';
+      return;
+    }
+
+    renderWatchlistSummary(data && data.summary ? data.summary : {});
+
+    wrap.innerHTML = allStocks.map(function(s) {
+      var up  = (s.pct||s.change_pct||0) >= 0;
+      var pct = s.pct || s.change_pct || 0;
+      var sig = s.signal || '—';
+      var sigCls = sig.toLowerCase().includes('buy') ? 'buy' : sig.toLowerCase().includes('sell') ? 'sell' : 'hold';
+      return '<div class="stock-item" onclick="openStock('' + (s.symbol||'').replace('.NS','').replace('.BO','') + '')">'
+        + '<div class="stock-top">'
+        + '<div><div class="stock-symbol">' + (s.symbol||'') + '</div>'
+        + '<div class="stock-name">' + (s.name||'') + '</div></div>'
+        + '<div class="badge ' + sigCls + '">' + sig + '</div>'
+        + '</div>'
+        + '<div class="price">₹' + (s.price ? Number(s.price).toLocaleString('en-IN',{maximumFractionDigits:2}) : '—') + '</div>'
+        + '<div class="' + (up?'up':'down') + '" style="font-size:11px;font-family:\"DM Mono\",monospace">'
+        + (up?'+':'') + Number(pct).toFixed(2) + '%'
+        + (s.ref_price ? ' &nbsp;<span style="color:var(--muted);font-size:10px">ref ₹'+Number(s.ref_price).toLocaleString('en-IN')+'</span>' : '')
+        + '</div>'
+        + (s.pl !== undefined ? '<div class="' + (s.pl>=0?'up':'down') + '" style="font-size:10px">P&L ' + (s.pl>=0?'+':'') + Number(s.pl).toFixed(2) + '%</div>' : '')
+        + '</div>';
+    }).join('');
+
   } catch(e) {
     wrap.innerHTML = '<div class="analysis-empty"><strong>Could not load watchlist</strong><div style="font-size:12px;color:var(--muted);margin:6px 0">'+e.message+'</div><button class="ghost" onclick="loadWatchlist()" style="margin-top:6px;font-size:12px">↺ Retry</button></div>';
   }
 }
+
 
 function renderWatchlistSummary(s) {
   s = s || {};
