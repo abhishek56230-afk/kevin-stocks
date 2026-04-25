@@ -108,73 +108,58 @@ def cache_ts(key):
         return item["ts"] if item else None
 
 
-# ── Watchlist: SQLite-backed storage (survives Render restarts) ──────────────
-_watchlist_lock = threading.Lock()
-_WL_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", "watchlist.db")
-
-def _init_watchlist_db():
-    os.makedirs(os.path.dirname(_WL_DB), exist_ok=True)
-    conn = sqlite3.connect(_WL_DB)
-    conn.execute("""CREATE TABLE IF NOT EXISTS user_watchlist (
-        symbol TEXT PRIMARY KEY,
-        name   TEXT,
-        ref_price REAL DEFAULT 0,
-        promoter  REAL DEFAULT 0,
-        added_at  TEXT
-    )""")
-    conn.commit(); conn.close()
-
-try:
-    import sqlite3 as _sqlite3_wl
-    _init_watchlist_db()
-    _WL_SQLITE_OK = True
-except Exception:
-    _WL_SQLITE_OK = False
-
-def _load_user_watchlist():
-    if _WL_SQLITE_OK:
+# --------------------------------------------------------------
+# User watchlist persistence
+# --------------------------------------------------------------
+# Render's free tier has an EPHEMERAL filesystem — anything written next
+# to app.py is wiped on every redeploy/restart. To survive restarts:
+#
+#   1. Set env var WATCHLIST_PATH to a path on a Render persistent disk
+#      (e.g. /var/data/user_watchlist.json), OR
+#   2. Mount a disk at /var/data — auto-detected below, OR
+#   3. Rely on the localStorage sync we added in index.html: the browser
+#      re-uploads the user's saved symbols on page load via
+#      /api/watchlist/sync, so the server-side cache repopulates itself
+#      even when the JSON file is gone.
+# --------------------------------------------------------------
+def _resolve_watchlist_path():
+    env_path = os.environ.get("WATCHLIST_PATH", "").strip()
+    if env_path:
         try:
-            conn = _sqlite3_wl.connect(_WL_DB)
-            rows = conn.execute("SELECT symbol,name,ref_price,promoter FROM user_watchlist").fetchall()
-            conn.close()
-            return [{"symbol": r[0], "name": r[1], "ref_price": r[2] or 0, "promoter": r[3] or 0} for r in rows]
+            os.makedirs(os.path.dirname(env_path) or ".", exist_ok=True)
         except Exception:
             pass
-    # Fallback: try old JSON file
-    old_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_watchlist.json")
+        return env_path
+    # Render persistent disk default mount
+    if os.path.isdir("/var/data"):
+        return "/var/data/user_watchlist.json"
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_watchlist.json")
+
+WATCHLIST_FILE = _resolve_watchlist_path()
+_watchlist_lock = threading.Lock()
+
+def _load_user_watchlist():
     try:
-        if os.path.exists(old_file):
-            with open(old_file, "r", encoding="utf-8") as f:
+        if os.path.exists(WATCHLIST_FILE):
+            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if isinstance(data, list): return data
+                if isinstance(data, list):
+                    return data
     except Exception:
         pass
     return []
 
 def _save_user_watchlist(items):
-    if _WL_SQLITE_OK:
+    try:
+        tmp = WATCHLIST_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(items, f, indent=2, ensure_ascii=False)
+        os.replace(tmp, WATCHLIST_FILE)
+    except Exception as e:
         try:
-            conn = _sqlite3_wl.connect(_WL_DB)
-            conn.execute("DELETE FROM user_watchlist")
-            import datetime as _dt
-            now = _dt.datetime.utcnow().isoformat()
-            for item in items:
-                sym = str(item.get("symbol","")).upper().strip()
-                if sym:
-                    conn.execute(
-                        "INSERT OR REPLACE INTO user_watchlist VALUES (?,?,?,?,?)",
-                        (sym, item.get("name", sym), item.get("ref_price", 0), item.get("promoter", 0), now)
-                    )
-            conn.commit(); conn.close()
-            return
+            print(f"[watchlist] save failed for {WATCHLIST_FILE}: {e}")
         except Exception:
             pass
-    # Fallback JSON
-    try:
-        with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
-            json.dump(items, f, indent=2, ensure_ascii=False)
-    except Exception:
-        pass
 
 USER_WATCHLIST = _load_user_watchlist()
 
@@ -505,126 +490,263 @@ def technical(symbol):
 # ============================================================
 # FUNDAMENTAL - Screener.in + Yahoo fallback
 # ============================================================
+def _yahoo_live_price(sym):
+    """Cheap live-price probe (no crumb required)."""
+    for base in ("query1", "query2"):
+        for ticker in (f"{sym}.NS", sym, f"{sym}.BO"):
+            try:
+                pr = http_get(
+                    f"https://{base}.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d",
+                    headers=YFH, timeout=5)
+                if pr.ok:
+                    meta = (pr.json().get("chart", {}).get("result") or [{}])[0].get("meta", {})
+                    p = meta.get("regularMarketPrice")
+                    if p: return p
+            except Exception:
+                continue
+    return None
+
+def _empty_fund_payload(sym, source="Unavailable", note=""):
+    """Skeleton response so the Fundamentals tab always renders."""
+    return {
+        "success": True, "source": source, "partial": True, "note": note,
+        "price": None,
+        "mcap": "N/A", "pe": "N/A", "fwd_pe": "N/A", "peg": "N/A",
+        "pb": "N/A", "eps": "N/A", "book_value": "N/A", "dividend": "N/A",
+        "revenue": "N/A", "rev_growth": "N/A", "earnings_growth": "N/A",
+        "profit_margin": "N/A", "operating_margin": "N/A",
+        "roe": "N/A", "roce": "N/A", "roa": "N/A",
+        "debt_equity": "N/A", "current_ratio": "N/A", "free_cashflow": "N/A",
+        "cagr_5y": "N/A", "sales_cagr": "N/A", "profit_cagr": "N/A",
+        "promoter": "N/A", "public": "N/A", "fii": "N/A", "dii": "N/A",
+        "insider_holding": "N/A", "institution_holding": "N/A", "short_ratio": "N/A",
+    }
+
 @app.route("/api/fundamental/<symbol>")
 def fundamental(symbol):
     sym = symbol.upper().strip()
     cached = cache_get(f"fund:{sym}")
     if cached: return jsonify(cached)
 
+    # ---------- Screener.in parsing (more resilient) ----------
     def parse_screener(html):
+        # Strip script/style blocks first to avoid noisy matches
+        clean = re.sub(r"<script[\s\S]*?</script>", " ", html, flags=re.I)
+        clean = re.sub(r"<style[\s\S]*?</style>",  " ", clean, flags=re.I)
+
         def fv(label):
-            # Try multiple patterns — Screener.in HTML structure varies
             patterns = [
-                # li/span pattern (most common on Screener.in)
-                r'<li[^>]*>\s*<span[^>]*>\s*' + re.escape(label) + r'\s*</span>\s*<span[^>]*>\s*([\d,\.]+)',
-                # span followed by another span
-                re.escape(label) + r'[^<]{0,80}</span>\s*<span[^>]*>\s*([\d,\.]+)',
+                # Most common Screener.in markup: <li ...><span class="name">Label</span>... <span class="number">123 <span class="unit">%</span></span>
+                r'<span[^>]*class="[^"]*name[^"]*"[^>]*>\s*' + re.escape(label) + r'\s*</span>[\s\S]{0,250}?<span[^>]*class="[^"]*(?:number|value)[^"]*"[^>]*>\s*([\-\d,\.]+)',
+                # li followed by spans (no class assumption)
+                r'<li[^>]*>\s*<span[^>]*>\s*' + re.escape(label) + r'\s*</span>[\s\S]{0,250}?<span[^>]*>\s*([\-\d,\.]+)',
+                # generic name-span -> number-span pattern
+                re.escape(label) + r'\s*</span>[\s\S]{0,200}?<span[^>]*>\s*([\-\d,\.]+)',
                 # table cell pattern
-                re.escape(label) + r'[^<]*</td>\s*<td[^>]*>\s*([\d,\.]+)',
-                # data attribute or value after colon
-                re.escape(label) + r'[^<]{0,20}:\s*([\d,\.]+)',
-                # number within 100 chars (tighter to avoid wrong matches)
-                re.escape(label) + r'[\s\S]{0,100}?([\d]+(?:[,\.]\d+)+)',
+                re.escape(label) + r'\s*</td>\s*<td[^>]*>\s*([\-\d,\.]+)',
+                # last-resort proximity match
+                re.escape(label) + r'[\s\S]{0,160}?([\-\d]+(?:[,\.]\d+)+)',
             ]
             for pat in patterns:
                 try:
-                    m = re.search(pat, html, re.IGNORECASE | re.DOTALL)
+                    m = re.search(pat, clean, re.IGNORECASE)
                     if m:
-                        val = m.group(1).replace(",","").strip()
-                        if val and float(val) != 0:
-                            return val
-                except: pass
+                        val = m.group(1).replace(",", "").strip().rstrip(".")
+                        if not val or val in ("-", "."): continue
+                        try:
+                            if float(val) == 0: continue
+                        except ValueError:
+                            continue
+                        return val
+                except re.error:
+                    continue
             return "N/A"
-        def fc(metric):
-            for period in ["5 Years","5 Yrs"]:
-                m=re.search(metric+r'.*?'+period+r'.*?([\d.]+)%',html,re.IGNORECASE|re.DOTALL)
-                if m: return m.group(1)+"%"
-            return "N/A"
-        def fh(label):
-            m=re.search(label+r'[^%<]{0,80}([\d.]+)\s*%',html,re.IGNORECASE)
-            return m.group(1)+"%" if m else "N/A"
-        r={"pe":fv("Stock P/E"),"mcap":fv("Market Cap"),"pb":fv("Price to Book"),
-           "div":fv("Dividend Yield"),"roe":fv("Return on equity"),"roce":fv("ROCE"),
-           "debt":fv("Debt to equity"),"cr":fv("Current ratio"),"eps":fv("EPS in Rs"),
-           "sc5":fc("Sales"),"pc5":fc("Profit"),
-           "promoter":fh("Promoter"),"public":fh("Public"),"fii":fh("FII"),"dii":fh("DII")}
-        if all(v=="N/A" for v in r.values()): return None
-        def pf(v): return (v+"%") if v!="N/A" else "N/A"
-        # Fetch live price via Yahoo for the price field
-        live_price = None
-        try:
-            pr = requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}.NS?interval=1d&range=2d", headers=YFH, timeout=5)
-            if pr.ok:
-                live_price = pr.json()["chart"]["result"][0]["meta"].get("regularMarketPrice")
-        except: pass
-        return {"success":True,"source":"Screener.in",
-            "price": live_price,
-            "mcap":(r["mcap"]+" Cr") if r["mcap"]!="N/A" else "N/A",
-            "pe":r["pe"],"fwd_pe":"N/A","peg":"N/A","pb":r["pb"],"eps":r["eps"],
-            "book_value":"N/A","dividend":pf(r["div"]),
-            "revenue":"N/A","rev_growth":"N/A","earnings_growth":"N/A",
-            "profit_margin":"N/A","operating_margin":"N/A",
-            "roe":pf(r["roe"]),"roce":pf(r["roce"]),
-            "roa":"N/A","debt_equity":r["debt"],"current_ratio":r["cr"],
-            "free_cashflow":"N/A","cagr_5y":r["sc5"],"sales_cagr":r["sc5"],"profit_cagr":r["pc5"],
-            "promoter":r["promoter"],"public":r["public"],"fii":r["fii"],"dii":r["dii"],
-            "insider_holding":r["promoter"],"institution_holding":"N/A","short_ratio":"N/A"}
 
-    for suffix in ["/consolidated/","/"]:
+        def fc(metric):
+            # Compounded growth rows (5 Years column)
+            for period in ["5 Years", "5 Yrs"]:
+                m = re.search(metric + r'[\s\S]{0,800}?' + period + r'[\s\S]{0,80}?([\-\d.]+)\s*%',
+                              clean, re.IGNORECASE)
+                if m:
+                    return m.group(1) + "%"
+            return "N/A"
+
+        def fh(label):
+            # Shareholding section: "FII   4.32%"
+            m = re.search(re.escape(label) + r'[^%<]{0,120}?([\-\d.]+)\s*%', clean, re.IGNORECASE)
+            return (m.group(1) + "%") if m else "N/A"
+
+        r = {
+            "pe":   fv("Stock P/E"),       "mcap": fv("Market Cap"),
+            "pb":   fv("Price to Book"),   "div":  fv("Dividend Yield"),
+            "roe":  fv("Return on equity"),"roce": fv("ROCE"),
+            "debt": fv("Debt to equity"),  "cr":   fv("Current ratio"),
+            "eps":  fv("EPS"),             "bv":   fv("Book Value"),
+            "sc5":  fc("Sales"),           "pc5":  fc("Profit"),
+            "promoter": fh("Promoter"),    "public": fh("Public"),
+            "fii": fh("FII"),              "dii": fh("DII"),
+        }
+        if all(v == "N/A" for v in r.values()):
+            return None
+
+        def pf(v): return (v + "%") if v != "N/A" else "N/A"
+
+        live_price = _yahoo_live_price(sym)
+
+        return {
+            "success": True, "source": "Screener.in", "partial": False,
+            "price": live_price,
+            "mcap": (r["mcap"] + " Cr") if r["mcap"] != "N/A" else "N/A",
+            "pe": r["pe"], "fwd_pe": "N/A", "peg": "N/A", "pb": r["pb"], "eps": r["eps"],
+            "book_value": r["bv"], "dividend": pf(r["div"]),
+            "revenue": "N/A", "rev_growth": "N/A", "earnings_growth": "N/A",
+            "profit_margin": "N/A", "operating_margin": "N/A",
+            "roe": pf(r["roe"]), "roce": pf(r["roce"]),
+            "roa": "N/A", "debt_equity": r["debt"], "current_ratio": r["cr"],
+            "free_cashflow": "N/A", "cagr_5y": r["sc5"],
+            "sales_cagr": r["sc5"], "profit_cagr": r["pc5"],
+            "promoter": r["promoter"], "public": r["public"],
+            "fii": r["fii"], "dii": r["dii"],
+            "insider_holding": r["promoter"], "institution_holding": "N/A",
+            "short_ratio": "N/A",
+        }
+
+    for suffix in ["/consolidated/", "/"]:
         try:
-            r=http_get(f"https://www.screener.in/company/{sym}{suffix}",headers=SCH,timeout=12)
-            if r.status_code==200 and len(r.text)>5000:
-                result=parse_screener(r.text)
+            r = http_get(f"https://www.screener.in/company/{sym}{suffix}",
+                         headers=SCH, timeout=12)
+            if r.status_code == 200 and len(r.text) > 5000:
+                result = parse_screener(r.text)
                 if result:
                     cache_set(f"fund:{sym}", result, ttl=3600)
                     return jsonify(result)
-        except: continue
+        except Exception:
+            continue
 
-    # Try NSE (.NS), then US (no suffix), then BSE (.BO)
-    _fund_tickers = ([sym] if sym.endswith((".NS",".BO")) else [sym+".NS", sym, sym+".BO"])
-    for _ticker in _fund_tickers:
-      for base in ["query1","query2"]:
+    # ---------- Yahoo v11 quoteSummary (best when not blocked) ----------
+    for base in ["query1", "query2"]:
         try:
-            url=f"https://{base}.finance.yahoo.com/v11/finance/quoteSummary/{_ticker}?modules=defaultKeyStatistics%2CfinancialData%2CsummaryDetail%2CmajorHoldersBreakdown"
-            r=http_get(url,headers=YFH,timeout=8)
-            if not r.ok: continue
-            res=r.json()["quoteSummary"]["result"][0]
-            fd=res.get("financialData",{}); sd=res.get("summaryDetail",{})
-            ks=res.get("defaultKeyStatistics",{}); mh=res.get("majorHoldersBreakdown",{})
-            def fv2(d,k):
-                v=d.get(k)
-                if isinstance(v,dict): return v.get("fmt",str(v.get("raw","N/A")))
-                return str(v) if v not in (None,"") else "N/A"
-            def pv(d,k):
-                v=d.get(k)
-                if isinstance(v,dict):
-                    raw=v.get("raw")
-                    if raw is not None: return str(round(float(raw)*100,2))+"%"
+            url = (f"https://{base}.finance.yahoo.com/v11/finance/quoteSummary/"
+                   f"{sym}.NS?modules=defaultKeyStatistics%2CfinancialData%2C"
+                   f"summaryDetail%2CmajorHoldersBreakdown%2Cprice")
+            r = http_get(url, headers=YFH, timeout=8)
+            if not r.ok:
+                continue
+            payload = r.json().get("quoteSummary", {})
+            if payload.get("error") or not payload.get("result"):
+                continue
+            res = payload["result"][0]
+            fd = res.get("financialData", {})       or {}
+            sd = res.get("summaryDetail", {})       or {}
+            ks = res.get("defaultKeyStatistics", {}) or {}
+            mh = res.get("majorHoldersBreakdown", {}) or {}
+            pr = res.get("price", {})                or {}
+
+            def fv2(d, k):
+                v = d.get(k)
+                if isinstance(v, dict):
+                    return v.get("fmt", str(v.get("raw", "N/A"))) or "N/A"
+                return str(v) if v not in (None, "") else "N/A"
+
+            def pv(d, k):
+                v = d.get(k)
+                if isinstance(v, dict):
+                    raw = v.get("raw")
+                    if raw is not None:
+                        return str(round(float(raw) * 100, 2)) + "%"
                 return "N/A"
-            # Get live price for the header
+
             yf_price = None
             try:
-                yf_price = (sd.get("regularMarketPrice") or {}).get("raw") or                            (fd.get("currentPrice") or {}).get("raw")
-            except: pass
-            data={"success":True,"source":"Yahoo Finance",
-                "price": yf_price,
-                "mcap":fv2(sd,"marketCap"),"pe":fv2(sd,"trailingPE"),"fwd_pe":fv2(sd,"forwardPE"),
-                "peg":fv2(ks,"pegRatio"),"pb":fv2(ks,"priceToBook"),"eps":fv2(ks,"trailingEps"),
-                "book_value":fv2(ks,"bookValue"),"dividend":pv(sd,"dividendYield"),
-                "revenue":fv2(fd,"totalRevenue"),"rev_growth":pv(fd,"revenueGrowth"),
-                "earnings_growth":pv(fd,"earningsGrowth"),"profit_margin":pv(fd,"profitMargins"),
-                "operating_margin":pv(fd,"operatingMargins"),"roe":pv(fd,"returnOnEquity"),
-                "roce":"N/A","roa":pv(fd,"returnOnAssets"),"debt_equity":fv2(fd,"debtToEquity"),
-                "current_ratio":fv2(fd,"currentRatio"),"free_cashflow":fv2(fd,"freeCashflow"),
-                "cagr_5y":"N/A","sales_cagr":"N/A","profit_cagr":"N/A",
-                "promoter":pv(mh,"insidersPercentHeld"),"public":"N/A","fii":"N/A","dii":"N/A",
-                "insider_holding":pv(mh,"insidersPercentHeld"),
-                "institution_holding":pv(mh,"institutionsPercentHeld"),"short_ratio":fv2(ks,"shortRatio")}
-            cache_set(f"fund:{sym}", data, ttl=3600)
-            return jsonify(data)
-        except: continue
+                yf_price = ((pr.get("regularMarketPrice") or {}).get("raw")
+                            or (sd.get("regularMarketPrice") or {}).get("raw")
+                            or (fd.get("currentPrice") or {}).get("raw"))
+            except Exception:
+                pass
+            if not yf_price:
+                yf_price = _yahoo_live_price(sym)
 
-    return jsonify({"success":False,"error":f"Fundamental data unavailable for {sym}. Try again in 30 seconds."})
+            data = {
+                "success": True, "source": "Yahoo Finance", "partial": False,
+                "price": yf_price,
+                "mcap": fv2(sd, "marketCap"),
+                "pe": fv2(sd, "trailingPE"), "fwd_pe": fv2(sd, "forwardPE"),
+                "peg": fv2(ks, "pegRatio"), "pb": fv2(ks, "priceToBook"),
+                "eps": fv2(ks, "trailingEps"), "book_value": fv2(ks, "bookValue"),
+                "dividend": pv(sd, "dividendYield"),
+                "revenue": fv2(fd, "totalRevenue"),
+                "rev_growth": pv(fd, "revenueGrowth"),
+                "earnings_growth": pv(fd, "earningsGrowth"),
+                "profit_margin": pv(fd, "profitMargins"),
+                "operating_margin": pv(fd, "operatingMargins"),
+                "roe": pv(fd, "returnOnEquity"),
+                "roce": "N/A", "roa": pv(fd, "returnOnAssets"),
+                "debt_equity": fv2(fd, "debtToEquity"),
+                "current_ratio": fv2(fd, "currentRatio"),
+                "free_cashflow": fv2(fd, "freeCashflow"),
+                "cagr_5y": "N/A", "sales_cagr": "N/A", "profit_cagr": "N/A",
+                "promoter": pv(mh, "insidersPercentHeld"),
+                "public": "N/A", "fii": "N/A", "dii": "N/A",
+                "insider_holding": pv(mh, "insidersPercentHeld"),
+                "institution_holding": pv(mh, "institutionsPercentHeld"),
+                "short_ratio": fv2(ks, "shortRatio"),
+            }
+            # If literally everything is N/A (Yahoo answered but with empty modules),
+            # don't cache as success — fall through to v7 quote.
+            non_na = sum(1 for k, v in data.items()
+                         if k not in ("success", "source", "partial", "price")
+                         and v not in ("N/A", None, ""))
+            if non_na >= 3:
+                cache_set(f"fund:{sym}", data, ttl=3600)
+                return jsonify(data)
+        except Exception:
+            continue
+
+    # ---------- Yahoo v7 quote fallback (no crumb required) ----------
+    for base in ["query1", "query2"]:
+        for ticker in (f"{sym}.NS", sym, f"{sym}.BO"):
+            try:
+                url = f"https://{base}.finance.yahoo.com/v7/finance/quote?symbols={ticker}"
+                r = http_get(url, headers=YFH, timeout=6)
+                if not r.ok: continue
+                arr = (r.json().get("quoteResponse") or {}).get("result") or []
+                if not arr: continue
+                q = arr[0]
+
+                def gv(k):
+                    v = q.get(k)
+                    return str(v) if v not in (None, "") else "N/A"
+
+                def gp(k):
+                    v = q.get(k)
+                    try:
+                        return str(round(float(v) * 100, 2)) + "%" if v not in (None, "") else "N/A"
+                    except Exception:
+                        return "N/A"
+
+                payload = _empty_fund_payload(sym, source="Yahoo Finance (lite)",
+                    note="Detailed fundamentals temporarily unavailable; showing snapshot.")
+                payload.update({
+                    "partial": True,
+                    "price": q.get("regularMarketPrice"),
+                    "mcap":  gv("marketCap"),
+                    "pe":    gv("trailingPE"),
+                    "fwd_pe":gv("forwardPE"),
+                    "eps":   gv("epsTrailingTwelveMonths"),
+                    "book_value": gv("bookValue"),
+                    "pb":    gv("priceToBook"),
+                    "dividend": gp("dividendYield") if q.get("dividendYield") else "N/A",
+                })
+                cache_set(f"fund:{sym}", payload, ttl=1800)
+                return jsonify(payload)
+            except Exception:
+                continue
+
+    # ---------- Last resort: empty skeleton so the UI still renders ----------
+    fallback = _empty_fund_payload(sym, source="Unavailable",
+        note=f"Fundamental data sources didn't respond for {sym}. Showing live price only — try again in 30s.")
+    fallback["price"] = _yahoo_live_price(sym)
+    return jsonify(fallback)
 
 # ============================================================
 # NEWS - Google News RSS (always works)
@@ -1243,124 +1365,33 @@ def analyse_single(stock):
 
 @app.route("/api/watchlist")
 def watchlist():
-    # Return cached result immediately if available
-    cached = cache_get("watchlist")
-    if cached:
-        return jsonify(cached)
-
+    cached=cache_get("watchlist")
+    if cached: return jsonify(cached)
     live_watchlist = get_combined_watchlist()
-    if not live_watchlist:
-        empty = {"success":True,"stocks":[],"summary":{"total":0,"strong_buy":0,"buy":0,
-                 "hold":0,"sell":0,"strong_sell":0,"gainers":0,"losers":0}}
-        return jsonify(empty)
-
-    # Fast price-only fetch: one YF call per stock, 3s timeout, 10s total budget
-    def _fast_price(stock_item):
-        sym  = str(stock_item.get("symbol","")).upper().strip()
-        name = stock_item.get("name", sym)
-        ref  = float(stock_item.get("ref_price") or 0)
-        if not sym: return None
-        cp = cache_get(f"price:{sym}")
-        if cp:
-            p   = cp.get("price") or 0
-            pct = cp.get("pct") or 0
-            return {"symbol":sym,"name":cp.get("name",name),"price":p,"pct":pct,
-                    "signal":"—","bull_score":0,"ref_price":ref,
-                    "pnl_pct":round((p-ref)/ref*100,2) if ref>0 and p>0 else None}
-        tickers = ([sym] if sym.endswith((".NS",".BO")) else [sym+".NS", sym, sym+".BO"])
-        for ticker in tickers:
-            for base in ["query1","query2"]:
-                try:
-                    r = http_get(
-                        f"https://{base}.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d",
-                        headers=YFH, timeout=4)
-                    if r.ok:
-                        res = r.json().get("chart",{}).get("result")
-                        if res:
-                            meta = res[0]["meta"]
-                            p    = meta.get("regularMarketPrice",0)
-                            prev = meta.get("chartPreviousClose",0)
-                            if not p: continue
-                            pct  = round((p-prev)/prev*100,2) if prev else 0
-                            d    = {"symbol":sym,"name":meta.get("longName") or meta.get("shortName",name),
-                                    "price":round(p,2),"pct":pct,"signal":"—","bull_score":0,
-                                    "ref_price":ref,
-                                    "pnl_pct":round((p-ref)/ref*100,2) if ref>0 else None}
-                            cache_set(f"price:{sym}", {**d,"ticker":ticker}, ttl=60)
-                            return d
-                except Exception:
-                    continue
-        return {"symbol":sym,"name":name,"price":None,"pct":0,"signal":"—",
-                "bull_score":0,"ref_price":ref,"pnl_pct":None}
-
     results = []
     try:
-        with ThreadPoolExecutor(max_workers=12) as pool:
-            futures = {pool.submit(_fast_price, s): s for s in live_watchlist}
-            for fut in as_completed(futures, timeout=12):
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(analyse_single, s) for s in live_watchlist]
+            for f in as_completed(futures, timeout=30):
                 try:
-                    r = fut.result(timeout=4)
-                    if r: results.append(r)
+                    results.append(f.result(timeout=5))
                 except Exception:
                     pass
     except Exception:
-        pass
-
-    # Sort by signal then PnL
-    sig_ord = {"STRONG BUY":0,"BUY":1,"HOLD":2,"SELL":3,"STRONG SELL":4,"—":5,"N/A":5}
-    results.sort(key=lambda x:(sig_ord.get(x.get("signal","—"),5),-(x.get("pnl_pct") or 0)))
-
-    summary = {"total":len(results),
-               "strong_buy": sum(1 for r in results if r.get("signal")=="STRONG BUY"),
-               "buy":        sum(1 for r in results if r.get("signal")=="BUY"),
-               "hold":       sum(1 for r in results if r.get("signal")=="HOLD"),
-               "sell":       sum(1 for r in results if r.get("signal")=="SELL"),
-               "strong_sell":sum(1 for r in results if r.get("signal")=="STRONG SELL"),
-               "gainers":    sum(1 for r in results if (r.get("pnl_pct") or 0)>0),
-               "losers":     sum(1 for r in results if (r.get("pnl_pct") or 0)<0)}
-    result = {"success":True,"stocks":results,"summary":summary}
-    cache_set("watchlist", result, ttl=90)
+        pass  # TimeoutError — return partial results
+    signal_order={"STRONG BUY":0,"BUY":1,"HOLD":2,"SELL":3,"STRONG SELL":4,"N/A":5}
+    results.sort(key=lambda x:(signal_order.get(x["signal"],5),-(x["pnl_pct"] or 0)))
+    summary={"total":len(results),
+             "strong_buy": sum(1 for r in results if r["signal"]=="STRONG BUY"),
+             "buy":        sum(1 for r in results if r["signal"]=="BUY"),
+             "hold":       sum(1 for r in results if r["signal"]=="HOLD"),
+             "sell":       sum(1 for r in results if r["signal"]=="SELL"),
+             "strong_sell":sum(1 for r in results if r["signal"]=="STRONG SELL"),
+             "gainers":    sum(1 for r in results if (r["pnl_pct"] or 0)>0),
+             "losers":     sum(1 for r in results if (r["pnl_pct"] or 0)<0)}
+    result={"success":True,"stocks":results,"summary":summary}
+    cache_set("watchlist",result,ttl=120)
     return jsonify(result)
-
-
-@app.route("/api/watchlist/sync", methods=["POST"])
-def sync_watchlist():
-    """Frontend sends its localStorage watchlist; we return live data for all symbols."""
-    data   = freq.get_json(silent=True) or {}
-    syms   = [str(s).upper().strip() for s in data.get("symbols", []) if s]
-    syms   = syms[:50]  # safety limit
-    if not syms:
-        return jsonify({"success": True, "results": []})
-    results = []
-    def _fetch(sym):
-        try:
-            cached = cache_get(f"price:{sym}")
-            if cached:
-                return {"symbol": sym, "name": cached.get("name", sym),
-                        "price": cached.get("price"), "pct": cached.get("pct", 0),
-                        "signal": "—", "bull_score": 0}
-            for base in ["query1", "query2"]:
-                tickers = ([sym] if sym.endswith((".NS",".BO")) else [sym+".NS", sym, sym+".BO"])
-                for ticker in tickers:
-                    try:
-                        r = http_get(f"https://{base}.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d",
-                                     headers=YFH, timeout=5)
-                        if r.ok:
-                            meta = r.json()["chart"]["result"][0]["meta"]
-                            p = meta.get("regularMarketPrice", 0)
-                            prev = meta.get("chartPreviousClose", 0)
-                            return {"symbol": sym, "name": meta.get("longName") or meta.get("shortName", sym),
-                                    "price": round(p, 2), "pct": round((p-prev)/prev*100, 2) if prev else 0,
-                                    "signal": "—", "bull_score": 0}
-                    except Exception:
-                        continue
-        except Exception:
-            pass
-        return {"symbol": sym, "name": sym, "price": None, "pct": 0, "signal": "—", "bull_score": 0}
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        results = list(pool.map(_fetch, syms))
-    return jsonify({"success": True, "count": len(results), "results": results})
-
 
 @app.route("/api/watchlist/add", methods=["POST"])
 def add_to_watchlist():
@@ -1388,6 +1419,45 @@ def add_to_watchlist():
 
     clear_cache_key("watchlist")
     return jsonify({"success":True,"message":f"{symbol} added to watchlist"})
+
+@app.route("/api/watchlist/sync", methods=["POST"])
+def sync_watchlist():
+    """
+    Browser-side restore endpoint. The frontend caches the user's
+    additions in localStorage and POSTs them here on page load so that
+    server-side state survives Render restarts/redeploys (which wipe
+    the filesystem on the free tier).
+
+    Body: {"items": [{"symbol":"INFY","name":"Infosys","ref_price":1500}, ...]}
+    """
+    data = freq.get_json(silent=True) or {}
+    items = data.get("items") or []
+    if not isinstance(items, list):
+        return jsonify({"success": False, "error": "items must be a list"}), 400
+
+    added = 0
+    with _watchlist_lock:
+        existing = {str(x.get("symbol", "")).upper().strip() for x in WATCHLIST}
+        existing.update(str(x.get("symbol", "")).upper().strip() for x in USER_WATCHLIST)
+        for raw in items:
+            if not isinstance(raw, dict): continue
+            sym = str(raw.get("symbol", "")).upper().strip()
+            if not sym or sym in existing: continue
+            USER_WATCHLIST.append({
+                "name": str(raw.get("name", sym)).strip() or sym,
+                "symbol": sym,
+                "ref_price": float(raw.get("ref_price", 0) or 0),
+                "promoter": float(raw.get("promoter", 0) or 0),
+            })
+            existing.add(sym)
+            added += 1
+        if added:
+            _save_user_watchlist(USER_WATCHLIST)
+
+    if added:
+        clear_cache_key("watchlist")
+    return jsonify({"success": True, "restored": added,
+                    "total": len(USER_WATCHLIST), "path": WATCHLIST_FILE})
 
 @app.route("/api/watchlist/remove/<symbol>", methods=["DELETE"])
 def remove_from_watchlist(symbol):
@@ -2951,89 +3021,61 @@ def search_stocks():
 
     ip = (freq.headers.get("X-Forwarded-For") or freq.remote_addr or "").split(",")[0].strip()
 
-    # ── STEP 1: Instant local search (hardcoded list — always works, zero latency) ──
-    try:
-        local_results = _rank_search_results(raw_q, limit=limit)
-    except Exception:
-        local_results = []
+    # Use global Yahoo Finance search if available, else fall back to old system
+    if _SEARCH_OK:
+        try:
+            results = global_search(raw_q, limit=limit, enrich=enrich)
+        except Exception as e:
+            log_err(ip, "/api/search", 500, str(e))
+            results = []
+        log_search(ip, raw_q, len(results), [r.get("symbol","") for r in results])
+        if not results:
+            # suggest via shorter query
+            suggestions = []
+            try:
+                if len(raw_q) >= 3:
+                    suggestions = global_search(raw_q[:3], limit=4, enrich=False)
+            except Exception:
+                pass
+            return jsonify({
+                "success":     True,
+                "query":       raw_q,
+                "count":       0,
+                "results":     [],
+                "suggestions": [{"symbol": r["symbol"], "name": r.get("name","")} for r in suggestions],
+                "hint": "Try: NSE symbol (RELIANCE), US ticker (AAPL, TSLA, PLTR), or company name"
+            })
+        return jsonify({"success": True, "query": raw_q, "count": len(results), "results": results})
 
-    # ── STEP 2: Enrich with live prices if local results found ───────────────────
-    if local_results and enrich:
-        def _ep(item):
-            s = item.get("symbol","")
+    # Legacy fallback (original hardcoded search)
+    try:
+        results = _rank_search_results(raw_q, limit=limit)
+    except Exception as e:
+        return jsonify({"success": False, "query": raw_q, "count": 0, "results": [],
+                        "error": f"Search failed: {str(e)[:120]}"}), 200
+    if not results:
+        return jsonify({"success": True, "query": raw_q, "count": 0, "results": [],
+                        "message": "No exact match. Try NSE symbol or company name."})
+    if enrich:
+        def fetch_change(item):
+            s = item["symbol"]
             cached = cache_get(f"price:{s}")
             if cached:
                 item["price"] = cached.get("price"); item["change_pct"] = cached.get("pct"); return item
-            tickers = [s+".NS", s, s+".BO"]
-            for ticker in tickers:
-                try:
-                    r = http_get(
-                        f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d",
-                        headers=YFH, timeout=3)
-                    if r.ok:
-                        res = r.json().get("chart",{}).get("result")
-                        if res:
-                            meta = res[0]["meta"]
-                            p = meta.get("regularMarketPrice",0)
-                            prev = meta.get("chartPreviousClose",0)
-                            item["price"] = round(p,2) if p else None
-                            item["change_pct"] = round((p-prev)/prev*100,2) if prev and p else 0
-                            item["market"] = "NSE" if ticker.endswith(".NS") else "BSE" if ticker.endswith(".BO") else "US"
-                            break
-                except Exception:
-                    continue
+            try:
+                r = http_get(f"https://query1.finance.yahoo.com/v8/finance/chart/{s}.NS?interval=1d&range=2d",
+                             headers=YFH, timeout=4)
+                if r.ok:
+                    meta = r.json()["chart"]["result"][0]["meta"]
+                    p = meta.get("regularMarketPrice",0); prev = meta.get("chartPreviousClose",0)
+                    item["price"] = round(p,2) if p else None
+                    item["change_pct"] = round((p-prev)/prev*100,2) if prev else 0
+                else: item["price"] = None; item["change_pct"] = None
+            except: item["price"] = None; item["change_pct"] = None
             return item
         with ThreadPoolExecutor(max_workers=6) as pool:
-            local_results = list(pool.map(_ep, local_results[:8])) + local_results[8:]
-
-    if local_results:
-        log_search(ip, raw_q, len(local_results), [r.get("symbol","") for r in local_results])
-        return jsonify({"success":True,"query":raw_q,"count":len(local_results),"results":local_results})
-
-    # ── STEP 3: Try Yahoo Finance search (best effort, may fail on cloud IPs) ─────
-    yf_results = []
-    try:
-        import urllib.parse as _ul
-        for base in ["query1","query2"]:
-            try:
-                r = http_get(
-                    f"https://{base}.finance.yahoo.com/v1/finance/search"
-                    f"?q={_ul.quote(raw_q)}&quotesCount={limit}&newsCount=0&enableFuzzyQuery=true",
-                    headers=YFH, timeout=5)
-                if r.ok:
-                    quotes = r.json().get("quotes", [])
-                    for q in quotes:
-                        if q.get("quoteType") not in ("EQUITY","ETF","MUTUALFUND","INDEX"): continue
-                        sym  = q.get("symbol","")
-                        name = q.get("longname") or q.get("shortname") or sym
-                        exch = q.get("exchDisp","") or q.get("exchange","")
-                        mkt  = ("NSE" if sym.endswith(".NS") else "BSE" if sym.endswith(".BO")
-                                else "US" if any(x in exch.upper() for x in ["NYSE","NASDAQ","NMS","NYQ"]) else exch)
-                        yf_results.append({"symbol":sym,"name":name,"exchange":exch,"market":mkt,
-                                           "type":q.get("quoteType","EQUITY")})
-                    if yf_results: break
-            except Exception:
-                continue
-    except Exception:
-        pass
-
-    if yf_results:
-        log_search(ip, raw_q, len(yf_results), [r["symbol"] for r in yf_results])
-        return jsonify({"success":True,"query":raw_q,"count":len(yf_results),"results":yf_results})
-
-    # ── STEP 4: No results — return helpful message with suggestions ──────────────
-    suggestions = []
-    try:
-        shorter = _rank_search_results(raw_q[:3], limit=4)
-        suggestions = [{"symbol":r["symbol"],"name":r.get("name","")} for r in shorter]
-    except Exception:
-        pass
-    log_search(ip, raw_q, 0, [])
-    return jsonify({
-        "success":True, "query":raw_q, "count":0, "results":[],
-        "suggestions": suggestions,
-        "hint": f"'{raw_q}' not found. Try NSE symbol (e.g. RELIANCE, TCS, HDFCBANK) or US ticker (AAPL, TSLA, NVDA)"
-    })
+            results = list(pool.map(fetch_change, results[:8])) + results[8:]
+    return jsonify({"success": True, "query": raw_q, "count": len(results), "results": results})
 
 
 @app.route("/api/screener")
@@ -4336,8 +4378,6 @@ Rules:
         "resolved_by":  resolved.get("method"),
     })
 
-
-# ============================================================
 # STARTUP
 # ============================================================
 
@@ -4552,9 +4592,6 @@ def resolve_stock_symbol(symbol):
 # Wire up PDF/DOCX report download routes
 if _REPORT_OK:
     register_report_routes(app, build_stock_context)
-
-
-
 
 
 if __name__ == "__main__":
