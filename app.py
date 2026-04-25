@@ -960,6 +960,239 @@ def build_verdict_data(sym):
     cache_set(f"verdict:{sym}", data, ttl=300)
     return data
 
+# ============================================================
+# SOCIAL VIDEOS - YouTube (server-side) + IG/FB/X/TikTok deep-links
+# ============================================================
+# Free, no-API-key approach:
+#  1. Try a list of public Invidious instances (privacy proxies that
+#     return JSON for YouTube searches).
+#  2. Fall back to scraping YouTube's HTML search page.
+#  3. Always return deep-link URLs for Instagram, Facebook, X and
+#     TikTok so the frontend can render "Browse on X" buttons even
+#     when the YouTube fetch is empty.
+# ============================================================
+INVIDIOUS_INSTANCES = [
+    "https://invidious.fdn.fr",
+    "https://yewtu.be",
+    "https://invidious.privacydev.net",
+    "https://inv.nadeko.net",
+    "https://invidious.protokolla.fi",
+]
+
+def _yt_thumb(video_id):
+    return f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+
+def _format_duration_seconds(secs):
+    try:
+        s = int(secs)
+    except Exception:
+        return ""
+    if s <= 0: return ""
+    m, s = divmod(s, 60)
+    h, m = divmod(m, 60)
+    return (f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}")
+
+def _fetch_invidious(query, limit=12):
+    """Try multiple Invidious instances; return list of normalised videos."""
+    out = []
+    headers = {"User-Agent": UA, "Accept": "application/json"}
+    for inst in INVIDIOUS_INSTANCES:
+        try:
+            url = f"{inst}/api/v1/search?q={requests.utils.quote(query)}&type=video&sort_by=relevance"
+            r = http_get(url, headers=headers, timeout=8)
+            if not r.ok:
+                continue
+            arr = r.json() if r.text else []
+            if not isinstance(arr, list):
+                continue
+            for v in arr[:limit * 2]:
+                if v.get("type") and v.get("type") != "video":
+                    continue
+                vid = v.get("videoId")
+                if not vid: continue
+                length_s = int(v.get("lengthSeconds") or 0)
+                title = (v.get("title") or "").strip()
+                author = (v.get("author") or "").strip()
+                published = v.get("publishedText") or ""
+                views = v.get("viewCount") or 0
+                # thumbnail: prefer Invidious-supplied, fallback to ytimg
+                thumb = None
+                for t in (v.get("videoThumbnails") or []):
+                    if (t.get("quality") or "").lower() in ("medium", "high", "default"):
+                        thumb = t.get("url")
+                        if thumb: break
+                if not thumb:
+                    thumb = _yt_thumb(vid)
+                out.append({
+                    "video_id": vid,
+                    "title": title,
+                    "channel": author,
+                    "published": published,
+                    "views": int(views or 0),
+                    "duration_seconds": length_s,
+                    "duration": _format_duration_seconds(length_s),
+                    "is_short": 0 < length_s <= 60,
+                    "thumbnail": thumb,
+                    "url": f"https://www.youtube.com/watch?v={vid}",
+                    "shorts_url": f"https://www.youtube.com/shorts/{vid}",
+                    "source": "Invidious",
+                })
+                if len(out) >= limit:
+                    return out
+            if out:
+                return out
+        except Exception:
+            continue
+    return out
+
+def _fetch_youtube_scrape(query, limit=12):
+    """Last-resort: scrape YouTube's search page for ytInitialData."""
+    out = []
+    try:
+        url = f"https://www.youtube.com/results?search_query={requests.utils.quote(query)}"
+        r = http_get(url, headers={
+            "User-Agent": UA,
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept": "text/html,*/*",
+        }, timeout=10)
+        if not r.ok or len(r.text) < 5000:
+            return out
+        # The search results live inside `var ytInitialData = {...};`
+        m = re.search(r"var ytInitialData\s*=\s*({.+?});\s*</script>", r.text, re.DOTALL)
+        if not m:
+            m = re.search(r"ytInitialData\"\]\s*=\s*({.+?});", r.text, re.DOTALL)
+        if not m:
+            return out
+        data = json.loads(m.group(1))
+        # Walk the nested structure looking for videoRenderer entries
+        def walk(node):
+            if isinstance(node, dict):
+                if "videoRenderer" in node:
+                    yield node["videoRenderer"]
+                for v in node.values():
+                    yield from walk(v)
+            elif isinstance(node, list):
+                for v in node:
+                    yield from walk(v)
+        for vr in walk(data):
+            try:
+                vid = vr.get("videoId")
+                if not vid: continue
+                title = ""
+                t_runs = (vr.get("title") or {}).get("runs") or []
+                if t_runs: title = t_runs[0].get("text", "")
+                channel = ""
+                c_runs = ((vr.get("ownerText") or {}).get("runs") or
+                          (vr.get("longBylineText") or {}).get("runs") or [])
+                if c_runs: channel = c_runs[0].get("text", "")
+                published = ((vr.get("publishedTimeText") or {}).get("simpleText") or "")
+                views_text = ((vr.get("viewCountText") or {}).get("simpleText") or "")
+                views_num = int(re.sub(r"\D", "", views_text) or 0)
+                # duration
+                dur_text = (((vr.get("lengthText") or {}).get("simpleText")) or "")
+                length_s = 0
+                if dur_text:
+                    parts = [int(p) for p in dur_text.split(":") if p.isdigit()]
+                    if len(parts) == 3:   length_s = parts[0]*3600 + parts[1]*60 + parts[2]
+                    elif len(parts) == 2: length_s = parts[0]*60 + parts[1]
+                    elif len(parts) == 1: length_s = parts[0]
+                # thumbnail
+                thumbs = ((vr.get("thumbnail") or {}).get("thumbnails") or [])
+                thumb = thumbs[-1]["url"] if thumbs else _yt_thumb(vid)
+                out.append({
+                    "video_id": vid,
+                    "title": title.strip(),
+                    "channel": channel.strip(),
+                    "published": published,
+                    "views": views_num,
+                    "duration_seconds": length_s,
+                    "duration": dur_text or _format_duration_seconds(length_s),
+                    "is_short": 0 < length_s <= 60,
+                    "thumbnail": thumb,
+                    "url": f"https://www.youtube.com/watch?v={vid}",
+                    "shorts_url": f"https://www.youtube.com/shorts/{vid}",
+                    "source": "YouTube",
+                })
+                if len(out) >= limit:
+                    break
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out
+
+def _build_social_links(symbol, query):
+    """Deep-links into platforms that block server-side scraping."""
+    q  = requests.utils.quote(query)
+    sy = requests.utils.quote(symbol)
+    return [
+        {
+            "platform": "Instagram", "key": "instagram",
+            "tag": f"https://www.instagram.com/explore/tags/{sy.lower()}/",
+            "search": f"https://www.instagram.com/explore/search/keyword/?q={q}",
+            "reels": f"https://www.instagram.com/explore/tags/{sy.lower()}/?type=reels",
+            "note": "Reels & posts. Requires Instagram login.",
+        },
+        {
+            "platform": "Facebook", "key": "facebook",
+            "search": f"https://www.facebook.com/search/posts/?q={q}",
+            "reels":  f"https://www.facebook.com/reel/?q={q}",
+            "videos": f"https://www.facebook.com/search/videos/?q={q}",
+            "note": "Posts, reels & videos. Requires Facebook login.",
+        },
+        {
+            "platform": "X / Twitter", "key": "twitter",
+            "search":   f"https://twitter.com/search?q=%24{sy}%20OR%20{q}&src=typed_query&f=live",
+            "cashtag":  f"https://twitter.com/search?q=%24{sy}&src=typed_query&f=live",
+            "videos":   f"https://twitter.com/search?q={q}&src=typed_query&f=video",
+            "note": "Live cashtag stream. Free without login (basic).",
+        },
+        {
+            "platform": "TikTok", "key": "tiktok",
+            "search": f"https://www.tiktok.com/search?q={q}",
+            "tag":    f"https://www.tiktok.com/tag/{sy.lower()}",
+            "videos": f"https://www.tiktok.com/search/video?q={q}",
+            "note": "Search & hashtag pages. Browser-only viewing on free tier.",
+        },
+    ]
+
+@app.route("/api/social-videos/<symbol>")
+def social_videos(symbol):
+    sym = symbol.upper().strip()
+    refresh = str(freq.args.get("refresh", "")).lower() in ("1", "true", "yes")
+    cache_key = f"social:{sym}"
+    if not refresh:
+        cached = cache_get(cache_key)
+        if cached:
+            return jsonify(cached)
+
+    # Build a focused query — adding "stock" filters out unrelated music/people
+    base_q = f"{sym} stock NSE India"
+
+    videos = _fetch_invidious(base_q, limit=12)
+    if not videos:
+        videos = _fetch_youtube_scrape(base_q, limit=12)
+
+    # Split shorts vs regular for the UI
+    shorts  = [v for v in videos if v.get("is_short")]
+    regular = [v for v in videos if not v.get("is_short")]
+
+    payload = {
+        "success": True,
+        "symbol": sym,
+        "query": base_q,
+        "videos": regular[:8],
+        "shorts": shorts[:8],
+        "video_count": len(videos),
+        "platforms": _build_social_links(sym, base_q),
+        "fetched_at": datetime.datetime.utcnow().isoformat() + "Z",
+        "youtube_source": (videos[0].get("source") if videos else "none"),
+        "note": ("Instagram, Facebook, X and TikTok are link-outs because "
+                 "they require platform login or paid APIs to fetch programmatically."),
+    }
+    cache_set(cache_key, payload, ttl=1800)  # 30 min
+    return jsonify(payload)
+
 @app.route("/api/verdict/<symbol>")
 def verdict(symbol):
     sym = symbol.upper().strip()
