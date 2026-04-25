@@ -1243,83 +1243,85 @@ def analyse_single(stock):
 
 @app.route("/api/watchlist")
 def watchlist():
+    # Return cached result immediately if available
     cached = cache_get("watchlist")
-    if cached: return jsonify(cached)
+    if cached:
+        return jsonify(cached)
 
     live_watchlist = get_combined_watchlist()
     if not live_watchlist:
-        empty = {"success": True, "stocks": [], "summary": {"total": 0, "strong_buy": 0, "buy": 0, "hold": 0, "sell": 0, "strong_sell": 0, "gainers": 0, "losers": 0}}
+        empty = {"success":True,"stocks":[],"summary":{"total":0,"strong_buy":0,"buy":0,
+                 "hold":0,"sell":0,"strong_sell":0,"gainers":0,"losers":0}}
         return jsonify(empty)
 
-    # Fast path: just get prices (< 5s), skip full technical analysis
+    # Fast price-only fetch: one YF call per stock, 3s timeout, 10s total budget
     def _fast_price(stock_item):
-        sym  = str(stock_item.get("symbol", "")).upper().strip()
+        sym  = str(stock_item.get("symbol","")).upper().strip()
         name = stock_item.get("name", sym)
         ref  = float(stock_item.get("ref_price") or 0)
-        if not sym:
-            return None
-        # Check cache first
-        cached_p = cache_get(f"price:{sym}")
-        if cached_p:
-            p   = cached_p.get("price") or 0
-            pct = cached_p.get("pct") or 0
-            pl  = round((p - ref) / ref * 100, 2) if ref > 0 and p > 0 else None
-            return {"symbol": sym, "name": cached_p.get("name", name),
-                    "price": p, "pct": pct, "signal": "—", "bull_score": 0,
-                    "ref_price": ref, "pnl_pct": pl}
-        # Try NS, then no-suffix, then BO
+        if not sym: return None
+        cp = cache_get(f"price:{sym}")
+        if cp:
+            p   = cp.get("price") or 0
+            pct = cp.get("pct") or 0
+            return {"symbol":sym,"name":cp.get("name",name),"price":p,"pct":pct,
+                    "signal":"—","bull_score":0,"ref_price":ref,
+                    "pnl_pct":round((p-ref)/ref*100,2) if ref>0 and p>0 else None}
         tickers = ([sym] if sym.endswith((".NS",".BO")) else [sym+".NS", sym, sym+".BO"])
         for ticker in tickers:
-            for base in ["query1", "query2"]:
+            for base in ["query1","query2"]:
                 try:
                     r = http_get(
                         f"https://{base}.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d",
-                        headers=YFH, timeout=5)
+                        headers=YFH, timeout=4)
                     if r.ok:
-                        res = r.json().get("chart", {}).get("result")
+                        res = r.json().get("chart",{}).get("result")
                         if res:
                             meta = res[0]["meta"]
-                            p    = meta.get("regularMarketPrice", 0)
-                            prev = meta.get("chartPreviousClose", 0)
-                            if p:
-                                pct = round((p-prev)/prev*100, 2) if prev else 0
-                                pl  = round((p-ref)/ref*100, 2) if ref > 0 else None
-                                d   = {"symbol": sym, "name": meta.get("longName") or meta.get("shortName", name),
-                                       "price": round(p, 2), "pct": pct, "signal": "—", "bull_score": 0,
-                                       "ref_price": ref, "pnl_pct": pl}
-                                cache_set(f"price:{sym}", {**d, "ticker": ticker}, ttl=60)
-                                return d
+                            p    = meta.get("regularMarketPrice",0)
+                            prev = meta.get("chartPreviousClose",0)
+                            if not p: continue
+                            pct  = round((p-prev)/prev*100,2) if prev else 0
+                            d    = {"symbol":sym,"name":meta.get("longName") or meta.get("shortName",name),
+                                    "price":round(p,2),"pct":pct,"signal":"—","bull_score":0,
+                                    "ref_price":ref,
+                                    "pnl_pct":round((p-ref)/ref*100,2) if ref>0 else None}
+                            cache_set(f"price:{sym}", {**d,"ticker":ticker}, ttl=60)
+                            return d
                 except Exception:
                     continue
-        return {"symbol": sym, "name": name, "price": None, "pct": 0,
-                "signal": "—", "bull_score": 0, "ref_price": ref, "pnl_pct": None}
+        return {"symbol":sym,"name":name,"price":None,"pct":0,"signal":"—",
+                "bull_score":0,"ref_price":ref,"pnl_pct":None}
 
     results = []
     try:
-        with ThreadPoolExecutor(max_workers=10) as pool:
+        with ThreadPoolExecutor(max_workers=12) as pool:
             futures = {pool.submit(_fast_price, s): s for s in live_watchlist}
-            for f in as_completed(futures, timeout=25):
+            for fut in as_completed(futures, timeout=12):
                 try:
-                    r = f.result(timeout=6)
-                    if r:
-                        results.append(r)
+                    r = fut.result(timeout=4)
+                    if r: results.append(r)
                 except Exception:
                     pass
     except Exception:
         pass
-    signal_order={"STRONG BUY":0,"BUY":1,"HOLD":2,"SELL":3,"STRONG SELL":4,"N/A":5}
-    results.sort(key=lambda x:(signal_order.get(x["signal"],5),-(x["pnl_pct"] or 0)))
-    summary={"total":len(results),
-             "strong_buy": sum(1 for r in results if r["signal"]=="STRONG BUY"),
-             "buy":        sum(1 for r in results if r["signal"]=="BUY"),
-             "hold":       sum(1 for r in results if r["signal"]=="HOLD"),
-             "sell":       sum(1 for r in results if r["signal"]=="SELL"),
-             "strong_sell":sum(1 for r in results if r["signal"]=="STRONG SELL"),
-             "gainers":    sum(1 for r in results if (r["pnl_pct"] or 0)>0),
-             "losers":     sum(1 for r in results if (r["pnl_pct"] or 0)<0)}
-    result={"success":True,"stocks":results,"summary":summary}
-    cache_set("watchlist",result,ttl=120)
+
+    # Sort by signal then PnL
+    sig_ord = {"STRONG BUY":0,"BUY":1,"HOLD":2,"SELL":3,"STRONG SELL":4,"—":5,"N/A":5}
+    results.sort(key=lambda x:(sig_ord.get(x.get("signal","—"),5),-(x.get("pnl_pct") or 0)))
+
+    summary = {"total":len(results),
+               "strong_buy": sum(1 for r in results if r.get("signal")=="STRONG BUY"),
+               "buy":        sum(1 for r in results if r.get("signal")=="BUY"),
+               "hold":       sum(1 for r in results if r.get("signal")=="HOLD"),
+               "sell":       sum(1 for r in results if r.get("signal")=="SELL"),
+               "strong_sell":sum(1 for r in results if r.get("signal")=="STRONG SELL"),
+               "gainers":    sum(1 for r in results if (r.get("pnl_pct") or 0)>0),
+               "losers":     sum(1 for r in results if (r.get("pnl_pct") or 0)<0)}
+    result = {"success":True,"stocks":results,"summary":summary}
+    cache_set("watchlist", result, ttl=90)
     return jsonify(result)
+
 
 @app.route("/api/watchlist/sync", methods=["POST"])
 def sync_watchlist():
@@ -2949,83 +2951,89 @@ def search_stocks():
 
     ip = (freq.headers.get("X-Forwarded-For") or freq.remote_addr or "").split(",")[0].strip()
 
-    # Use global Yahoo Finance search if available, else fall back to old system
-    if _SEARCH_OK:
-        try:
-            results = global_search(raw_q, limit=limit, enrich=enrich)
-        except Exception as e:
-            log_err(ip, '/api/search', 500, str(e))
-            results = []
-        log_search(ip, raw_q, len(results), [r.get('symbol','') for r in results])
-        if not results:
-            # suggest via shorter query
-            suggestions = []
-            try:
-                if len(raw_q) >= 3:
-                    suggestions = global_search(raw_q[:3], limit=4, enrich=False)
-            except Exception:
-                pass
-            return jsonify({
-                "success":     True,
-                "query":       raw_q,
-                "count":       0,
-                "results":     [],
-                "suggestions": [{"symbol": r["symbol"], "name": r.get("name","")} for r in suggestions],
-                "hint": "Try: NSE symbol (RELIANCE), US ticker (AAPL, TSLA, PLTR), or company name"
-            })
-        return jsonify({"success": True, "query": raw_q, "count": len(results), "results": results})
-
-    # Fallback: direct Yahoo Finance search (works even without search_engine.py)
+    # ── STEP 1: Instant local search (hardcoded list — always works, zero latency) ──
     try:
-        import urllib.parse
-        yf_url = (f"https://query1.finance.yahoo.com/v1/finance/search"
-                  f"?q={urllib.parse.quote(raw_q)}&quotesCount={limit}&newsCount=0&enableFuzzyQuery=true")
-        yf_r = http_get(yf_url, headers=YFH, timeout=8)
-        if yf_r.ok:
-            quotes = yf_r.json().get("quotes", [])
-            results = []
-            for q in quotes:
-                if q.get("quoteType") not in ("EQUITY","ETF","MUTUALFUND","INDEX"): continue
-                sym  = q.get("symbol","")
-                name = q.get("longname") or q.get("shortname") or sym
-                exch = q.get("exchDisp","") or q.get("exchange","")
-                mkt  = "NSE" if sym.endswith(".NS") else "BSE" if sym.endswith(".BO") else "US" if any(x in exch.upper() for x in ["NYSE","NASDAQ","NMS","NYQ"]) else exch
-                results.append({"symbol":sym,"name":name,"exchange":exch,"market":mkt,"type":q.get("quoteType","EQUITY")})
-            if results:
-                log_search(ip, raw_q, len(results), [r["symbol"] for r in results])
-                return jsonify({"success":True,"query":raw_q,"count":len(results),"results":results})
+        local_results = _rank_search_results(raw_q, limit=limit)
     except Exception:
-        pass
+        local_results = []
 
-    # Last resort: old hardcoded search
-    try:
-        results = _rank_search_results(raw_q, limit=limit)
-    except Exception as e:
-        return jsonify({"success": False, "query": raw_q, "count": 0, "results": [],
-                        "error": f"Search failed: {str(e)[:120]}"}), 200
-    if not results:
-        return jsonify({"success": True, "query": raw_q, "count": 0, "results": [],
-                        "message": "No exact match. Try NSE/BSE symbol or US ticker (AAPL, TSLA, NVDA)."})
-    if enrich:
-        def fetch_change(item):
-            s = item["symbol"]
+    # ── STEP 2: Enrich with live prices if local results found ───────────────────
+    if local_results and enrich:
+        def _ep(item):
+            s = item.get("symbol","")
             cached = cache_get(f"price:{s}")
             if cached:
                 item["price"] = cached.get("price"); item["change_pct"] = cached.get("pct"); return item
-            try:
-                r = http_get(f"https://query1.finance.yahoo.com/v8/finance/chart/{s}.NS?interval=1d&range=2d",
-                             headers=YFH, timeout=4)
-                if r.ok:
-                    meta = r.json()["chart"]["result"][0]["meta"]
-                    p = meta.get("regularMarketPrice",0); prev = meta.get("chartPreviousClose",0)
-                    item["price"] = round(p,2) if p else None
-                    item["change_pct"] = round((p-prev)/prev*100,2) if prev else 0
-                else: item["price"] = None; item["change_pct"] = None
-            except: item["price"] = None; item["change_pct"] = None
+            tickers = [s+".NS", s, s+".BO"]
+            for ticker in tickers:
+                try:
+                    r = http_get(
+                        f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d",
+                        headers=YFH, timeout=3)
+                    if r.ok:
+                        res = r.json().get("chart",{}).get("result")
+                        if res:
+                            meta = res[0]["meta"]
+                            p = meta.get("regularMarketPrice",0)
+                            prev = meta.get("chartPreviousClose",0)
+                            item["price"] = round(p,2) if p else None
+                            item["change_pct"] = round((p-prev)/prev*100,2) if prev and p else 0
+                            item["market"] = "NSE" if ticker.endswith(".NS") else "BSE" if ticker.endswith(".BO") else "US"
+                            break
+                except Exception:
+                    continue
             return item
         with ThreadPoolExecutor(max_workers=6) as pool:
-            results = list(pool.map(fetch_change, results[:8])) + results[8:]
-    return jsonify({"success": True, "query": raw_q, "count": len(results), "results": results})
+            local_results = list(pool.map(_ep, local_results[:8])) + local_results[8:]
+
+    if local_results:
+        log_search(ip, raw_q, len(local_results), [r.get("symbol","") for r in local_results])
+        return jsonify({"success":True,"query":raw_q,"count":len(local_results),"results":local_results})
+
+    # ── STEP 3: Try Yahoo Finance search (best effort, may fail on cloud IPs) ─────
+    yf_results = []
+    try:
+        import urllib.parse as _ul
+        for base in ["query1","query2"]:
+            try:
+                r = http_get(
+                    f"https://{base}.finance.yahoo.com/v1/finance/search"
+                    f"?q={_ul.quote(raw_q)}&quotesCount={limit}&newsCount=0&enableFuzzyQuery=true",
+                    headers=YFH, timeout=5)
+                if r.ok:
+                    quotes = r.json().get("quotes", [])
+                    for q in quotes:
+                        if q.get("quoteType") not in ("EQUITY","ETF","MUTUALFUND","INDEX"): continue
+                        sym  = q.get("symbol","")
+                        name = q.get("longname") or q.get("shortname") or sym
+                        exch = q.get("exchDisp","") or q.get("exchange","")
+                        mkt  = ("NSE" if sym.endswith(".NS") else "BSE" if sym.endswith(".BO")
+                                else "US" if any(x in exch.upper() for x in ["NYSE","NASDAQ","NMS","NYQ"]) else exch)
+                        yf_results.append({"symbol":sym,"name":name,"exchange":exch,"market":mkt,
+                                           "type":q.get("quoteType","EQUITY")})
+                    if yf_results: break
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    if yf_results:
+        log_search(ip, raw_q, len(yf_results), [r["symbol"] for r in yf_results])
+        return jsonify({"success":True,"query":raw_q,"count":len(yf_results),"results":yf_results})
+
+    # ── STEP 4: No results — return helpful message with suggestions ──────────────
+    suggestions = []
+    try:
+        shorter = _rank_search_results(raw_q[:3], limit=4)
+        suggestions = [{"symbol":r["symbol"],"name":r.get("name","")} for r in shorter]
+    except Exception:
+        pass
+    log_search(ip, raw_q, 0, [])
+    return jsonify({
+        "success":True, "query":raw_q, "count":0, "results":[],
+        "suggestions": suggestions,
+        "hint": f"'{raw_q}' not found. Try NSE symbol (e.g. RELIANCE, TCS, HDFCBANK) or US ticker (AAPL, TSLA, NVDA)"
+    })
 
 
 @app.route("/api/screener")
