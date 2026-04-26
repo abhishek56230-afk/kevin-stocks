@@ -2580,4 +2580,249 @@ function renderOptionsIndicator(price, tech) {
   + '<tbody>'
   + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#34d399">CALL ITM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm-strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(52,211,153,.1);color:#34d399;border:1px solid rgba(52,211,153,.2);padding:2px 8px;border-radius:99px">IN THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">High confidence — costly but high win rate</td></tr>'
   + '<tr style="border-bottom:1px solid rgba(255,255,255,.04);background:rgba(16,185,129,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#10b981;font-weight:700">CALL ATM ★</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:800;color:#10b981">'+money(atm)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);padding:2px 8px;border-radius:99px">AT THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.6)">Best balance of cost vs probability — start here</td></tr>'
-  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#6ee7b7">CALL OTM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm+strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1);padding:2px 8px;border-radius:99px">OUT OF MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#6ee7b7">CALL OTM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm+strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1);padding:2px 8px;border-radius:99px">OUT OF MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">Cheap but needs big move — advanced only</td></tr>'
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.08)"><td colspan="4" style="padding:4px 14px;background:rgba(255,255,255,.02)"></td></tr>'
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#fca5a5">PUT ITM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm+strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(252,165,165,.1);color:#fca5a5;border:1px solid rgba(252,165,165,.2);padding:2px 8px;border-radius:99px">IN THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">High confidence bearish — costly but reliable</td></tr>'
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04);background:rgba(248,113,113,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#f87171;font-weight:700">PUT ATM ★</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:800;color:#f87171">'+money(atm)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.3);padding:2px 8px;border-radius:99px">AT THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.6)">Best bearish balance — most popular put entry</td></tr>'
+  + '<tr><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#fda4af">PUT OTM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm-strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1);padding:2px 8px;border-radius:99px">OUT OF MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">Speculative — needs sharp fall to work</td></tr>'
+  + '</tbody></table></div>'
+
+  // ══ RISK FOOTER ════════════════════════════════════════════════
+  + '<div style="border-radius:12px;padding:12px 16px;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.15);font-size:11px;line-height:1.7;color:rgba(251,191,36,.6)">'
+  + '<strong style="color:rgba(251,191,36,.9)">⚠ Risk Reminder:</strong> Suggested stop-loss: '+money((atr*0.8).toFixed(0))+' (0.8× ATR). Target: '+money((atr*1.5).toFixed(0))+' (1.5× ATR). Risk:Reward = 1:1.8. Never risk more than 1-2% of total capital per trade. Options can expire worthless — only trade with money you can afford to lose. This analysis is educational only.'
+  + '</div>';
+}
+
+
+/* ─── Event listeners ─── */
+qsa('.nav-btn').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
+qs('#refreshWatchlist').addEventListener('click', loadWatchlist);
+qs('#reloadPortfolio').addEventListener('click', loadPortfolio);
+qs('#addHoldingBtn').addEventListener('click', addHolding);
+qs('#runScreenerBtn').addEventListener('click', runScreener);
+qs('#resetScreenerBtn').addEventListener('click', () => {
+  qsa('#view-screener input').forEach(i => i.value = '');
+  qs('#screenerList').innerHTML = '<div style="padding:16px;color:var(--muted);font-size:13px">Set filters above and click Run Screener.</div>';
+});
+qs('#addAlertBtn').addEventListener('click', addAlert);
+qs('#refreshAlerts').addEventListener('click', loadAlerts);
+qs('#analyseBtn').addEventListener('click', () => {
+  const v = qs('#searchInput').value.trim();
+  if (v) analyseStock(v);
+});
+qs('#searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const v = qs('#searchInput').value.trim(); if (v) analyseStock(v); }
+});
+
+/* ─── Download Report ─── */
+function downloadReport(symbol, format) {
+  if (!symbol) return alert('Select a stock first.');
+  format = format || 'pdf';
+  var url = '/api/report/' + encodeURIComponent(symbol) + '?format=' + format;
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = symbol + '_report.' + format;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ document.body.removeChild(a); }, 500);
+}
+window.downloadReport = downloadReport;
+
+/* ─────────────────────────────────────────────────────────────
+   DASHBOARD — User Registration & Admin Table
+───────────────────────────────────────────────────────────── */
+async function registerUser() {
+  var name     = (document.getElementById('regName')    ||{}).value||'';
+  var email    = (document.getElementById('regEmail')   ||{}).value||'';
+  var phone    = (document.getElementById('regPhone')   ||{}).value||'';
+  var location = (document.getElementById('regLocation')||{}).value||'';
+  var msg      = document.getElementById('regMsg');
+  if (!name.trim()||!email.trim()) {
+    if(msg){msg.style.color='var(--red)';msg.textContent='Name and email are required.';}
+    return;
+  }
+  if(msg){msg.style.color='var(--muted)';msg.textContent='Registering…';}
+  try {
+    var r = await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,phone,location})});
+    var d = await r.json();
+    if(d.success){
+      if(msg){msg.style.color='var(--green)';msg.textContent='✓ Registered! Welcome, '+d.user.name+'.';}
+      ['regName','regEmail','regPhone','regLocation'].forEach(id=>{var el=document.getElementById(id);if(el)el.value='';});
+      loadDashboard();
+    } else {
+      if(msg){msg.style.color='var(--red)';msg.textContent='✗ '+(d.error||'Registration failed.');}
+    }
+  } catch(e){if(msg){msg.style.color='var(--red)';msg.textContent='✗ Server error.';}}
+}
+window.registerUser=registerUser;
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+async function loadDashboard(){
+  var tbody=document.getElementById('usersBody');
+  var countEl=document.getElementById('dashUserCount');
+  if(tbody)tbody.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--muted)"><div class="loader"></div></td></tr>';
+  try{
+    var d=await fetch('/api/users').then(r=>r.json());
+    if(countEl)countEl.textContent=(d.count||0)+' registered user'+(d.count===1?'':'s');
+    if(!tbody)return;
+    if(!d.users||!d.users.length){tbody.innerHTML='<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--muted)">No users registered yet.</td></tr>';return;}
+    tbody.innerHTML=d.users.map(u=>
+      '<tr style="border-bottom:1px solid var(--line)">'
+      +'<td style="padding:10px 12px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted)">'+esc(u.id||'—')+'</td>'
+      +'<td style="padding:10px 12px;font-weight:600">'+esc(u.name||'—')+'</td>'
+      +'<td style="padding:10px 12px;color:var(--brand);font-size:12px">'+esc(u.email||'—')+'</td>'
+      +'<td style="padding:10px 12px;font-size:12px">'+esc(u.phone||'—')+'</td>'
+      +'<td style="padding:10px 12px">'+esc(u.location||'—')+'</td>'
+      +'<td style="padding:10px 12px;font-size:11px;color:var(--muted)">'+esc(u.registered||'—')+'</td>'
+      +'<td style="padding:10px 12px"><button onclick="deleteUser(\''+u.id+'\')" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:var(--red);padding:4px 12px;border-radius:8px;font:600 11px/1 \'Space Grotesk\',sans-serif;cursor:pointer">Remove</button></td>'
+      +'</tr>'
+    ).join('');
+  }catch(e){if(tbody)tbody.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--red)">Failed to load users.</td></tr>';}
+}
+window.loadDashboard=loadDashboard;
+
+async function deleteUser(id){
+  if(!confirm('Remove this user?'))return;
+  try{var r=await fetch('/api/users/'+id,{method:'DELETE'});var d=await r.json();if(d.success)loadDashboard();else alert(d.error||'Could not remove.');}catch(e){alert('Server error.');}
+}
+window.deleteUser=deleteUser;
+
+/* ─────────────────────────────────────────────────────────────
+   OPTIONS — Standalone Nav View
+───────────────────────────────────────────────────────────── */
+async function loadOptionsSignal(){
+  var sym=((document.getElementById('optionsSearchInput')||{}).value||'').trim().toUpperCase();
+  if(!sym){alert('Enter a stock symbol first.');return;}
+  var dot=document.getElementById('optionsLiveDot');
+  var panel=document.getElementById('optionsResult');
+  if(!panel)return;
+  if(dot)dot.style.display='none';
+  panel.innerHTML='<div class="loader" style="padding:40px"></div>';
+  try{
+    var [priceRes,techRes]=await Promise.all([
+      fetch('/api/price/'+encodeURIComponent(sym)).then(r=>r.json()),
+      fetch('/api/technical/'+encodeURIComponent(sym)).then(r=>r.json())
+    ]);
+    if(!priceRes.success||!techRes.success){
+      panel.innerHTML='<div style="padding:32px;text-align:center;color:var(--red)">Could not fetch data for <strong>'+sym+'</strong>. Check the symbol.</div>';
+      return;
+    }
+    if(dot)dot.style.display='flex';
+    var p=priceRes.price||0,pct=priceRes.pct||0,t=techRes;
+    var rsi=t.rsi||50,atr=t.atr||0,adx=t.adx||0,macd=t.macd_hist||0;
+    var ma9=t.ma20||p,ma21=t.ma50||p,bbu=t.bb_upper||p,bbl=t.bb_lower||p,sar=t.sar||p;
+    var stoch=t.stoch_k||50,volR=t.vol_ratio||1;
+    var bbRange=bbu-bbl,bbPos=bbRange>0?Math.round((p-bbl)/bbRange*100):50;
+    var keltU=ma21+2*atr,keltL=ma21-2*atr,squeeze=(keltU-keltL)>0&&(bbu-bbl)<(keltU-keltL)*0.75;
+    var superTrend=p>sar?'BULLISH':'BEARISH',vwapBias=p>ma9?'ABOVE':'BELOW';
+    var callPts=0,putPts=0;
+    if(vwapBias==='ABOVE')callPts++;else putPts++;
+    if(p>ma9&&p>ma21)callPts+=2;else if(p<ma9&&p<ma21)putPts+=2;
+    if(macd>0)callPts++;else putPts++;
+    if(rsi>55&&rsi<70)callPts++;else if(rsi<45&&rsi>30)putPts++;
+    if(rsi>70)putPts++;if(rsi<30)callPts++;
+    if(superTrend==='BULLISH')callPts+=2;else putPts+=2;
+    if(adx>25){if(callPts>=putPts)callPts++;else putPts++;}
+    if(volR>1.5&&callPts>putPts)callPts++;if(volR>1.5&&putPts>callPts)putPts++;
+    if(squeeze){callPts=Math.max(0,callPts-1);putPts=Math.max(0,putPts-1);}
+    if(bbPos>80)putPts++;if(bbPos<20)callPts++;
+    var total=callPts+putPts||1,callScore=Math.round(callPts/total*100),putScore=100-callScore;
+    var bullish=callScore>=65,bearish=putScore>=65,sqOnly=squeeze&&!bullish&&!bearish;
+    var rec,recSub,recColor,recBg,recEmoji;
+    if(bullish){rec='BUY CALL';recSub='Bullish signals dominate';recColor='#10b981';recBg='rgba(16,185,129,.12)';recEmoji='🟢';}
+    else if(bearish){rec='BUY PUT';recSub='Bearish signals dominate';recColor='#f87171';recBg='rgba(248,113,113,.12)';recEmoji='🔴';}
+    else if(sqOnly){rec='STRADDLE';recSub='Squeeze — big move coming';recColor='#fbbf24';recBg='rgba(251,191,36,.12)';recEmoji='🟡';}
+    else{rec='WAIT';recSub='No clear edge — avoid options';recColor='#94a3b8';recBg='rgba(148,163,184,.1)';recEmoji='⚪';}
+    var money=function(n){return '₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});};
+    var upDown=pct>=0;
+    var signals=[
+      {name:'Trend (SuperTrend)',value:superTrend,color:superTrend==='BULLISH'?'#10b981':'#f87171'},
+      {name:'VWAP Bias',value:vwapBias+' VWAP',color:vwapBias==='ABOVE'?'#10b981':'#f87171'},
+      {name:'MACD Histogram',value:macd>0?'POSITIVE ('+macd.toFixed(2)+')':'NEGATIVE ('+macd.toFixed(2)+')',color:macd>0?'#10b981':'#f87171'},
+      {name:'RSI ('+rsi.toFixed(0)+')',value:rsi>70?'OVERBOUGHT ⚠':rsi<30?'OVERSOLD ✓':rsi>55?'BULLISH ZONE':'BEARISH ZONE',color:rsi>70?'#f87171':rsi<30?'#10b981':rsi>55?'#34d399':'#fb7185'},
+      {name:'EMA Stack',value:(p>ma9&&p>ma21)?'BULLISH':(p<ma9&&p<ma21)?'BEARISH':'MIXED',color:(p>ma9&&p>ma21)?'#10b981':(p<ma9&&p<ma21)?'#f87171':'#fbbf24'},
+      {name:'Bollinger Position',value:bbPos+'% — '+(bbPos>80?'Upper band':bbPos<20?'Lower band':'Mid range'),color:bbPos>80?'#f87171':bbPos<20?'#10b981':'#94a3b8'},
+      {name:'ADX Strength',value:adx.toFixed(0)+' — '+(adx>40?'Very Strong':adx>25?'Strong':adx>15?'Weak':'No Trend'),color:adx>25?'#38bdf8':'#94a3b8'},
+      {name:'Volume Ratio',value:volR.toFixed(1)+'x — '+(volR>1.5?'HIGH':volR>0.8?'Normal':'Low'),color:volR>1.5?'#38bdf8':'#94a3b8'},
+    ];
+    panel.innerHTML=
+      '<div style="background:'+recBg+';border:1px solid '+recColor+'40;border-radius:16px;padding:22px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">'
+      +'<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:'+recColor+';margin-bottom:6px">'+recEmoji+' Options Signal · '+sym+'</div>'
+      +'<div style="font-size:32px;font-weight:800;color:'+recColor+'">'+rec+'</div>'
+      +'<div style="font-size:13px;color:rgba(255,255,255,.5);margin-top:6px">'+recSub+'</div></div>'
+      +'<div style="text-align:right"><div style="font-size:22px;font-weight:700;font-family:\'DM Mono\',monospace">'+money(p)+'</div>'
+      +'<div style="font-size:13px;font-family:\'DM Mono\',monospace;color:'+(upDown?'#10b981':'#f87171')+'">'+(upDown?'+':'')+pct.toFixed(2)+'% today</div></div></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">'
+      +'<div style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:14px 16px">'
+      +'<div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">📈 Call Score</div>'
+      +'<div style="font-size:28px;font-weight:800;font-family:\'DM Mono\',monospace;color:#10b981">'+callScore+'%</div>'
+      +'<div style="height:5px;background:rgba(255,255,255,.07);border-radius:99px;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+callScore+'%;background:#10b981;border-radius:99px"></div></div></div>'
+      +'<div style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);border-radius:12px;padding:14px 16px">'
+      +'<div style="font-size:11px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">📉 Put Score</div>'
+      +'<div style="font-size:28px;font-weight:800;font-family:\'DM Mono\',monospace;color:#f87171">'+putScore+'%</div>'
+      +'<div style="height:5px;background:rgba(255,255,255,.07);border-radius:99px;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+putScore+'%;background:#f87171;border-radius:99px"></div></div></div></div>'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--brand);margin-bottom:12px">8 Live Indicator Signals</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">'
+      +signals.map(s=>'<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 14px">'
+        +'<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.65)">'+s.name+'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;font-weight:700;color:'+s.color+'">'+s.value+'</span>'
+        +'<span style="width:8px;height:8px;border-radius:50%;background:'+s.color+';flex-shrink:0"></span></div></div>').join('')
+      +'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="primary-btn" onclick="setView(\'home\');document.getElementById(\'searchInput\').value=\''+sym+'\';setTimeout(()=>analyseStock(\''+sym+'\'),150)">Full Analysis</button>'
+      +'<button class="ghost" onclick="downloadReport(\''+sym+'\',\'pdf\')">&#11015; PDF Report</button></div>'
+      +'<div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,.2)">⚠ Educational only. Not financial advice. Updated: '+new Date().toLocaleTimeString('en-IN')+'</div>';
+  }catch(e){if(panel)panel.innerHTML='<div style="padding:32px;text-align:center;color:var(--red)">Error: '+e.message+'</div>';}
+}
+window.loadOptionsSignal=loadOptionsSignal;
+
+document.addEventListener('DOMContentLoaded',function(){
+  var inp=document.getElementById('optionsSearchInput');
+  if(inp)inp.addEventListener('keydown',function(e){if(e.key==='Enter')loadOptionsSignal();});
+});
+
+/* ─── Trending stocks ─── */
+async function loadTrending() {
+  try {
+    const data = await api('/api/trending', null, 15000);
+    if (!data.stocks || !data.stocks.length) return;
+    const el = document.getElementById('trendingSection');
+    const grid = document.getElementById('trendingGrid');
+    if (!el || !grid) return;
+    el.style.display = 'block';
+    grid.innerHTML = data.stocks.map(function(s) {
+      var up  = (s.change_pct||0) >= 0;
+      var sym = (s.symbol||'').replace('.NS','').replace('.BO','');
+      var priceStr = s.price ? '₹' + Number(s.price).toLocaleString('en-IN',{maximumFractionDigits:2}) : '—';
+      return '<div class="stock-item" onclick="openStock(\'' + sym + '\')" style="cursor:pointer">'
+        + '<div class="stock-top"><div>'
+        + '<div class="stock-symbol">' + s.symbol + '</div>'
+        + '<div class="stock-name" style="font-size:11px;margin-top:2px">' + (s.name||'').slice(0,22) + '</div>'
+        + '</div><div class="badge ' + (up?'buy':'sell') + '">' + (up?'&#9650;':'&#9660;') + '</div></div>'
+        + '<div class="price" style="margin-top:8px;font-size:16px">' + priceStr + '</div>'
+        + '<div class="' + (up?'up':'down') + '" style="font-size:11px;font-family:\'DM Mono\',monospace;margin-top:3px">'
+        + (up?'+':'') + (s.change_pct||0).toFixed(2) + '%</div>'
+        + '</div>';
+    }).join('');
+  } catch(e) {}
+}
+window.loadTrending = loadTrending;
+
+var _wakeTimer = setTimeout(function(){
+  var wl = document.querySelector('#watchlist');
+  if (wl && wl.querySelector('.loader')) {
+    var b = document.getElementById('wakeupBanner');
+    if (b) b.style.display = 'block';
+  }
+}, 5000);
+loadTrending();
+loadWatchlist().then(function(){ clearTimeout(_wakeTimer); var b=document.getElementById('wakeupBanner'); if(b)b.style.display='none'; }).catch(function(){});
+loadMarketStatus();
+loadIndices();
+loadBtcPrice();
+setInterval(loadMarketStatus, 60000);
+setInterval(() => { loadIndices(); loadBtcPrice(); }, 90000);
+</script>
+</body>
+</html>
