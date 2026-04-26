@@ -1,9 +1,6 @@
-flask
-flask-cors
-requests
-gunicorn
-nsefin
-pandas
-duckduckgo-search
-reportlab
-python-docx
+flask>=2.3
+flask-cors>=4.0
+requests>=2.31
+gunicorn>=21.2
+groq>=0.9
+reportlab>=4.0
