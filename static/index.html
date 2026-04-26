@@ -1631,6 +1631,50 @@ function renderFundamental(f) {
   qs('.analysis-body').innerHTML = src + notice + '<div class="list">' + rows.map(r=>`<div class="list-item"><div class="split"><strong>${r[0]}</strong><span style="font-size:14px;font-weight:600;font-family:\"DM Mono\",monospace;color:${r[1]?'var(--text)':'var(--muted)'}">${r[1]||'—'}</span></div><small>${r[2]}</small></div>`).join('') + '</div>';
 }
 
+function _esc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _fmtViews(v){ v=Number(v||0); if(v>=1e7) return (v/1e7).toFixed(1)+'Cr'; if(v>=1e5) return (v/1e5).toFixed(1)+'L'; if(v>=1e3) return (v/1e3).toFixed(1)+'K'; return v||''; }
+function _videoCard(v, isShort){
+  var dur = v.duration ? '<span style="position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.78);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px">'+_esc(v.duration)+'</span>' : '';
+  var badge = isShort ? '<span style="position:absolute;left:6px;top:6px;background:rgba(248,113,113,.95);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px">SHORTS</span>' : '';
+  var url = isShort ? (v.shorts_url||v.url) : v.url;
+  return '<a href="'+_esc(url)+'" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;color:inherit;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;overflow:hidden">'
+    + '<div style="position:relative;aspect-ratio:'+(isShort?'9/16':'16/9')+';background:#000;overflow:hidden">'
+    +   '<img src="'+_esc(v.thumbnail)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">'
+    +   '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,transparent 60%,rgba(0,0,0,.55))"><span style="font-size:28px;opacity:.85">&#9654;</span></div>'
+    +   badge + dur
+    + '</div><div style="padding:8px 10px"><div style="font-size:12px;font-weight:600;line-height:1.35;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+_esc(v.title)+'</div>'
+    + '<div style="font-size:10px;color:var(--muted);margin-top:4px">'+_esc(v.channel||'YouTube')+(v.views?(' &middot; '+_fmtViews(v.views)+' views'):'')+(v.published?(' &middot; '+_esc(v.published)):'')+'</div></div></a>';
+}
+function _platformButton(p){
+  var ic = ({instagram:'IG', facebook:'FB', twitter:'X', tiktok:'TT'})[p.key] || '#';
+  var primary = p.search || p.tag || p.videos || p.reels || '#';
+  var extras = [];
+  if (p.reels)   extras.push({label:'Reels',   url:p.reels});
+  if (p.videos)  extras.push({label:'Videos',  url:p.videos});
+  if (p.tag)     extras.push({label:'Hashtag', url:p.tag});
+  if (p.cashtag) extras.push({label:'Cashtag', url:p.cashtag});
+  return '<div style="background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:12px">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:12px;font-weight:800;background:rgba(56,189,248,.12);color:var(--brand);padding:3px 8px;border-radius:6px">'+ic+'</span><strong style="font-size:13px">'+_esc(p.platform)+'</strong></div>'
+    + '<a href="'+_esc(primary)+'" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;padding:7px 10px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);border-radius:8px;font-size:12px;font-weight:600;color:var(--brand);text-decoration:none;margin-bottom:6px">Open Search &rarr;</a>'
+    + (extras.length ? '<div style="display:flex;gap:5px;flex-wrap:wrap">'+extras.map(function(e){return '<a href="'+_esc(e.url)+'" target="_blank" rel="noopener noreferrer" style="font-size:10px;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--text-2);text-decoration:none">'+_esc(e.label)+'</a>';}).join('')+'</div>' : '')
+    + (p.note ? '<small style="display:block;margin-top:6px;font-size:10px;color:var(--muted)">'+_esc(p.note)+'</small>' : '') + '</div>';
+}
+async function renderSocialSection(symbol){
+  var host = document.getElementById('socialBuzzSection');
+  if (!host) return;
+  try{
+    var d = await api('/api/social-videos/'+encodeURIComponent(symbol), null, 20000);
+    var vids=d.videos||[], shorts=d.shorts||[], platforms=d.platforms||[];
+    var html = '<div class="section-title" style="margin-top:16px">Social Buzz &amp; Videos</div>'
+      + '<div style="font-size:11px;color:var(--muted);margin:4px 0 12px">YouTube fetched live. Other platforms open in their own apps for login-required content.</div>';
+    if (vids.length){ html += '<div style="font-size:12px;font-weight:700;color:var(--text-2);margin:8px 0 6px">&#9654; YouTube videos</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:14px">'+vids.map(function(v){return _videoCard(v,false);}).join('')+'</div>'; }
+    if (shorts.length){ html += '<div style="font-size:12px;font-weight:700;color:var(--text-2);margin:8px 0 6px">&#9889; YouTube Shorts</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px">'+shorts.map(function(v){return _videoCard(v,true);}).join('')+'</div>'; }
+    if (!vids.length && !shorts.length){ html += '<div style="padding:10px;border:1px dashed var(--line);border-radius:10px;font-size:12px;color:var(--muted);margin-bottom:14px">No YouTube results right now &mdash; try the platform buttons below.</div>'; }
+    if (platforms.length){ html += '<div style="font-size:12px;font-weight:700;color:var(--text-2);margin:8px 0 6px">Browse on other platforms</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'+platforms.map(_platformButton).join('')+'</div>'; }
+    host.innerHTML = html;
+  } catch(e){ host.innerHTML = '<div style="padding:10px;border:1px dashed var(--line);border-radius:10px;font-size:12px;color:var(--muted);margin-top:16px">Could not load social videos: '+_esc(e.message)+'</div>'; }
+}
+
 function renderSentiment(s) {
   const overall = s.overall_bullish ?? s.avg_bull ?? 0;
   qs('.analysis-body').innerHTML = `
@@ -1648,7 +1692,9 @@ function renderSentiment(s) {
         </div>
         <small>Bull ${item.bull}% · Bear ${item.bear}%${item.detail?' · '+item.detail:''}</small>
       </div>`).join('')}
-    </div>`;
+    </div>
+    <div id="socialBuzzSection"><div class="loader" style="margin-top:14px"></div></div>`;
+  renderSocialSection(state.selectedSymbol);
 }
 
 function renderNews(n) {
