@@ -364,6 +364,8 @@
       <button class="nav-btn" data-view="portfolio">Portfolio</button>
       <button class="nav-btn" data-view="screener">Screener</button>
       <button class="nav-btn" data-view="alerts">Alerts</button>
+      <button class="nav-btn" data-view="options">⚡ Options</button>
+      <button class="nav-btn" data-view="dashboard">👤 Dashboard</button>
     </div>
   </nav>
 
@@ -821,6 +823,96 @@
     </div>
   </div>
 
+  <!-- ⚡ OPTIONS VIEW -->
+  <div id="view-options" class="view" style="display:none">
+    <div class="card panel" style="margin-bottom:16px">
+      <div class="panel-head">
+        <div>
+          <h2>⚡ Options — Real-Time Buy / Sell Signals</h2>
+          <div class="sub">Enter any NSE stock symbol to get live options signals powered by 8 technical indicators.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px">
+        <input class="input" id="optionsSearchInput" placeholder="e.g. RELIANCE, TCS, HDFC…" style="max-width:280px" />
+        <button class="primary-btn" onclick="loadOptionsSignal()">Get Signal</button>
+        <div id="optionsLiveDot" style="display:none;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.1em">
+          <span style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 1.5s ease-in-out infinite;display:inline-block"></span> Live
+        </div>
+      </div>
+      <div id="optionsResult">
+        <div style="text-align:center;padding:40px;color:var(--muted);font-size:14px">
+          <div style="font-size:32px;margin-bottom:12px">⚡</div>
+          <strong style="display:block;color:var(--text-2);font-size:16px;margin-bottom:6px">Enter a stock symbol above</strong>
+          Get real-time CALL / PUT / WAIT signals with 8-indicator scoring
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 👤 DASHBOARD VIEW -->
+  <div id="view-dashboard" class="view" style="display:none">
+    <!-- Registration card -->
+    <div class="card panel" style="margin-bottom:16px">
+      <div class="panel-head">
+        <div>
+          <h2>👤 User Registration</h2>
+          <div class="sub">Register as a user to receive AI-powered stock alerts and reports.</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px" id="regForm">
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Full Name *</div>
+          <input class="input" id="regName" placeholder="e.g. Rajesh Sharma" />
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Email Address *</div>
+          <input class="input" id="regEmail" type="email" placeholder="e.g. rajesh@gmail.com" />
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Phone</div>
+          <input class="input" id="regPhone" placeholder="e.g. 9876543210" type="tel" />
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Location / City</div>
+          <input class="input" id="regLocation" placeholder="e.g. Mumbai" />
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="primary-btn" onclick="registerUser()">Register Account</button>
+        <div id="regMsg" style="font-size:13px;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <!-- Users table card -->
+    <div class="card panel">
+      <div class="panel-head">
+        <div>
+          <h2>Registered Users</h2>
+          <div class="sub" id="dashUserCount">Loading…</div>
+        </div>
+        <button class="ghost" onclick="loadDashboard()">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px" id="usersTable">
+          <thead>
+            <tr style="border-bottom:1px solid var(--line)">
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">ID</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Name</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Email</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Phone</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Location</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Registered</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Action</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody">
+            <tr><td colspan="7" style="padding:32px;text-align:center;color:var(--muted)"><div class="loader"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /shell -->
 
 
@@ -1182,9 +1274,11 @@ function renderMarkdown(text) {
 function setView(view) {
   qsa('.view').forEach(v => v.style.display = 'none');
   const el = qs('#view-' + view);
+  if (!el) return;
   el.style.display = 'block';
   el.style.animation = 'none'; el.offsetHeight; el.style.animation = '';
   qsa('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  if (view === 'dashboard') { setTimeout(loadDashboard, 50); }
   if (view === 'portfolio') loadPortfolio();
   if (view === 'alerts')    loadAlerts();
 }
@@ -2486,81 +2580,4 @@ function renderOptionsIndicator(price, tech) {
   + '<tbody>'
   + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#34d399">CALL ITM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm-strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(52,211,153,.1);color:#34d399;border:1px solid rgba(52,211,153,.2);padding:2px 8px;border-radius:99px">IN THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">High confidence — costly but high win rate</td></tr>'
   + '<tr style="border-bottom:1px solid rgba(255,255,255,.04);background:rgba(16,185,129,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#10b981;font-weight:700">CALL ATM ★</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:800;color:#10b981">'+money(atm)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);padding:2px 8px;border-radius:99px">AT THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.6)">Best balance of cost vs probability — start here</td></tr>'
-  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#6ee7b7">CALL OTM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm+strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1);padding:2px 8px;border-radius:99px">OUT OF MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">Cheap but needs big move — advanced only</td></tr>'
-  + '<tr style="border-bottom:1px solid rgba(255,255,255,.08)"><td colspan="4" style="padding:4px 14px;background:rgba(255,255,255,.02)"></td></tr>'
-  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#fca5a5">PUT ITM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm+strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(252,165,165,.1);color:#fca5a5;border:1px solid rgba(252,165,165,.2);padding:2px 8px;border-radius:99px">IN THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">High confidence bearish — costly but reliable</td></tr>'
-  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04);background:rgba(248,113,113,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#f87171;font-weight:700">PUT ATM ★</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:800;color:#f87171">'+money(atm)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.3);padding:2px 8px;border-radius:99px">AT THE MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.6)">Best bearish balance — most popular put entry</td></tr>'
-  + '<tr><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#fda4af">PUT OTM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm-strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1);padding:2px 8px;border-radius:99px">OUT OF MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4)">Speculative — needs sharp fall to work</td></tr>'
-  + '</tbody></table></div>'
-
-  // ══ RISK FOOTER ════════════════════════════════════════════════
-  + '<div style="border-radius:12px;padding:12px 16px;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.15);font-size:11px;line-height:1.7;color:rgba(251,191,36,.6)">'
-  + '<strong style="color:rgba(251,191,36,.9)">⚠ Risk Reminder:</strong> Suggested stop-loss: '+money((atr*0.8).toFixed(0))+' (0.8× ATR). Target: '+money((atr*1.5).toFixed(0))+' (1.5× ATR). Risk:Reward = 1:1.8. Never risk more than 1-2% of total capital per trade. Options can expire worthless — only trade with money you can afford to lose. This analysis is educational only.'
-  + '</div>';
-}
-
-
-/* ─── Init ─── */
-
-/* ─── Download Report ─── */
-function downloadReport(symbol, format) {
-  if (!symbol) return alert('Select a stock first.');
-  format = format || 'pdf';
-  var url = '/api/report/' + encodeURIComponent(symbol) + '?format=' + format;
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = symbol + '_report.' + format;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(function(){ document.body.removeChild(a); }, 500);
-}
-window.downloadReport = downloadReport;
-
-/* ─── Trending stocks ─── */
-async function loadTrending() {
-  try {
-    const data = await api('/api/trending', null, 15000);
-    if (!data.stocks || !data.stocks.length) return;
-    const el = document.getElementById('trendingSection');
-    const grid = document.getElementById('trendingGrid');
-    if (!el || !grid) return;
-    el.style.display = 'block';
-    grid.innerHTML = data.stocks.map(function(s) {
-      var up  = (s.change_pct||0) >= 0;
-      var sym = (s.symbol||'').replace('.NS','').replace('.BO','');
-      var priceStr = s.price
-        ? (s.symbol.indexOf('.')===-1 && !s.symbol.endsWith('S') ? '$' : '\u20B9') + Number(s.price).toLocaleString('en-IN',{maximumFractionDigits:2})
-        : '—';
-      return '<div class="stock-item" onclick="openStock(\'' + sym + '\')" style="cursor:pointer">'
-        + '<div class="stock-top"><div>'
-        + '<div class="stock-symbol">' + s.symbol + '</div>'
-        + '<div class="stock-name" style="font-size:11px;margin-top:2px">' + (s.name||'').slice(0,22) + '</div>'
-        + '</div><div class="badge ' + (up?'buy':'sell') + '">' + (up?'&#9650;':'&#9660;') + '</div></div>'
-        + '<div class="price" style="margin-top:8px;font-size:16px">' + priceStr + '</div>'
-        + '<div class="' + (up?'up':'down') + '" style="font-size:11px;font-family:\"DM Mono\",monospace;margin-top:3px">'
-        + (up?'+':'') + (s.change_pct||0).toFixed(2) + '%</div>'
-        + '</div>';
-    }).join('');
-  } catch(e) {}
-}
-window.loadTrending = loadTrending;
-
-var _wakeTimer = setTimeout(function(){
-  var wl = document.querySelector('#watchlist');
-  if (wl && wl.querySelector('.loader')) {
-    var b = document.getElementById('wakeupBanner');
-    if (b) b.style.display = 'block';
-  }
-}, 5000);
-loadTrending();
-loadWatchlist().then(function(){ clearTimeout(_wakeTimer); var b=document.getElementById('wakeupBanner'); if(b)b.style.display='none'; }).catch(function(){});
-loadMarketStatus();
-loadIndices();
-loadBtcPrice();
-// Refresh market status and indices every minute
-setInterval(loadMarketStatus, 60000);
-setInterval(() => { loadIndices(); loadBtcPrice(); }, 90000);
-
-</script>
-</body>
-</html>
+  + '<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:9px 14px;font-family:DM Mono,monospace;color:#6ee7b7">CALL OTM</td><td style="padding:9px 14px;text-align:right;font-family:DM Mono,monospace;font-weight:700;color:rgba(255,255,255,.8)">'+money(atm+strikeStep)+'</td><td style="padding:9px 14px;font-size:10px"><span style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1);padding:2px 8px;border-radius:99px">OUT OF MONEY</span></td><td style="padding:9px 14px;font-size:11px;color:rgba(255,255,255,.4
