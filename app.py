@@ -4827,6 +4827,81 @@ if _REPORT_OK:
     register_report_routes(app, build_stock_context)
 
 
+# ============================================================
+# USER REGISTRATION & DASHBOARD
+# ============================================================
+_USERS_FILE = os.path.join(
+    os.environ.get("WATCHLIST_PATH", "").replace("user_watchlist.json", "") or
+    ("/var/data" if os.path.isdir("/var/data") else os.path.dirname(os.path.abspath(__file__))),
+    "registered_users.json"
+)
+_users_lock = threading.Lock()
+
+def _load_users():
+    try:
+        if os.path.exists(_USERS_FILE):
+            with open(_USERS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+    except Exception:
+        pass
+    return []
+
+def _save_users(users):
+    try:
+        tmp = _USERS_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(users, f, indent=2, ensure_ascii=False)
+        os.replace(tmp, _USERS_FILE)
+    except Exception as e:
+        print(f"[users] save failed: {e}")
+
+_REGISTERED_USERS = _load_users()
+
+@app.route("/api/register", methods=["POST"])
+def register_user():
+    data = freq.get_json(force=True, silent=True) or {}
+    name     = str(data.get("name", "")).strip()
+    email    = str(data.get("email", "")).strip().lower()
+    location = str(data.get("location", "")).strip()
+    phone    = str(data.get("phone", "")).strip()
+    if not name or not email:
+        return jsonify({"success": False, "error": "Name and email are required."}), 400
+    with _users_lock:
+        # Check duplicate email
+        for u in _REGISTERED_USERS:
+            if u.get("email", "").lower() == email:
+                return jsonify({"success": False, "error": "This email is already registered."}), 409
+        user = {
+            "id":         str(uuid.uuid4())[:8],
+            "name":       name,
+            "email":      email,
+            "location":   location,
+            "phone":      phone,
+            "registered": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        }
+        _REGISTERED_USERS.append(user)
+        _save_users(_REGISTERED_USERS)
+    return jsonify({"success": True, "user": user})
+
+@app.route("/api/users")
+def get_users():
+    with _users_lock:
+        users = list(_REGISTERED_USERS)
+    return jsonify({"success": True, "count": len(users), "users": users})
+
+@app.route("/api/users/<user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    with _users_lock:
+        before = len(_REGISTERED_USERS)
+        _REGISTERED_USERS[:] = [u for u in _REGISTERED_USERS if u.get("id") != user_id]
+        if len(_REGISTERED_USERS) == before:
+            return jsonify({"success": False, "error": "User not found."}), 404
+        _save_users(_REGISTERED_USERS)
+    return jsonify({"success": True})
+
+
 if __name__ == "__main__":
     os.makedirs("static", exist_ok=True)
     port = int(os.environ.get("PORT", 5000))
