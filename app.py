@@ -4830,6 +4830,17 @@ if _REPORT_OK:
 # ============================================================
 # USER REGISTRATION & DASHBOARD
 # ============================================================
+# ── Admin auth (set ADMIN_TOKEN env var on Render) ──
+from functools import wraps as _wraps
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+
+def require_admin(f):
+    @_wraps(f)
+    def _wrap(*a, **kw):
+        if not ADMIN_TOKEN or freq.headers.get("X-Admin-Token") != ADMIN_TOKEN:
+            return jsonify({"success": False, "error": "forbidden"}), 403
+        return f(*a, **kw)
+    return _wrap
 _USERS_FILE = os.path.join(
     os.environ.get("WATCHLIST_PATH", "").replace("user_watchlist.json", "") or
     ("/var/data" if os.path.isdir("/var/data") else os.path.dirname(os.path.abspath(__file__))),
@@ -4886,12 +4897,14 @@ def register_user():
     return jsonify({"success": True, "user": user})
 
 @app.route("/api/users")
+@require_admin
 def get_users():
     with _users_lock:
         users = list(_REGISTERED_USERS)
     return jsonify({"success": True, "count": len(users), "users": users})
 
 @app.route("/api/users/<user_id>", methods=["DELETE"])
+@require_admin
 def delete_user(user_id):
     with _users_lock:
         before = len(_REGISTERED_USERS)
