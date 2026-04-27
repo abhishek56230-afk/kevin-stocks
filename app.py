@@ -22,7 +22,7 @@ from flask_cors import CORS
 import requests, re, os, time, json, threading, datetime, difflib, uuid
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
-from functools import lru_cache
+from functools import lru_cache, wraps
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -50,6 +50,20 @@ except ImportError:
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 app.register_blueprint(agent_bp)
+
+# ── Admin auth decorator ──────────────────────────────────────
+_ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "").strip()
+
+def require_admin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not _ADMIN_TOKEN:
+            return jsonify({"success": False, "error": "Admin not configured."}), 403
+        token = freq.headers.get("X-Admin-Token", "").strip()
+        if token != _ADMIN_TOKEN:
+            return jsonify({"success": False, "error": "Unauthorized."}), 401
+        return f(*args, **kwargs)
+    return decorated
 CORS(app)
 
 if _LOGGER_OK:
@@ -4830,17 +4844,6 @@ if _REPORT_OK:
 # ============================================================
 # USER REGISTRATION & DASHBOARD
 # ============================================================
-# ── Admin auth (set ADMIN_TOKEN env var on Render) ──
-from functools import wraps as _wraps
-ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
-
-def require_admin(f):
-    @_wraps(f)
-    def _wrap(*a, **kw):
-        if not ADMIN_TOKEN or freq.headers.get("X-Admin-Token") != ADMIN_TOKEN:
-            return jsonify({"success": False, "error": "forbidden"}), 403
-        return f(*a, **kw)
-    return _wrap
 _USERS_FILE = os.path.join(
     os.environ.get("WATCHLIST_PATH", "").replace("user_watchlist.json", "") or
     ("/var/data" if os.path.isdir("/var/data") else os.path.dirname(os.path.abspath(__file__))),
@@ -4915,10 +4918,10 @@ def delete_user(user_id):
     return jsonify({"success": True})
 
 
+
 if __name__ == "__main__":
     os.makedirs("static", exist_ok=True)
     port = int(os.environ.get("PORT", 5000))
     print(f"\n  Kevin Kataria Stock Intelligence - Production")
     print(f"  Open: http://localhost:{port}")
-    print(f"  Test: http://localhost:{port}/api/test\n")
-    app.run(debug=False, host="0.0.0.0", port=port, threaded=True)
+    app.run(host="0.0.0.0", port=port, debug=False)
