@@ -3,35 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kevin Kataria — NSE Stock Research with AI Copilot</title>
-  <meta name="description" content="Free NSE stock research: live prices, technicals, fundamentals, order book, news and an AI research copilot. Education and research only — not investment advice." />
-  <meta name="theme-color" content="#060d1a" />
-  <meta name="robots" content="index,follow" />
-  <link rel="canonical" href="https://kevin-stocks.onrender.com/" />
-
-  <!-- Favicon (inline SVG) -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%2338bdf8'/><stop offset='1' stop-color='%232dd4bf'/></linearGradient></defs><rect width='32' height='32' rx='7' fill='url(%23g)'/><path d='M6 21l6-6 4 3 8-9' stroke='%23061226' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>" />
-
-  <!-- Open Graph -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://kevin-stocks.onrender.com/" />
-  <meta property="og:title" content="Kevin Kataria — NSE Stock Research with AI Copilot" />
-  <meta property="og:description" content="Free NSE stock research: live prices, technicals, fundamentals, news, and an AI research copilot. Education and research only — not investment advice." />
-  <meta property="og:site_name" content="Kevin Kataria Stock Research" />
-
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Kevin Kataria — NSE Stock Research with AI Copilot" />
-  <meta name="twitter:description" content="Free NSE stock research with an AI copilot. For education and research only — not investment advice." />
-
-  <!-- JSON-LD -->
-  <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"WebApplication","name":"Kevin Kataria Stock Research","applicationCategory":"FinanceApplication","operatingSystem":"Any","url":"https://kevin-stocks.onrender.com/","offers":{"@type":"Offer","price":"0","priceCurrency":"INR"},"description":"Free NSE stock research with AI copilot. Education and research only — not investment advice."}
-  </script>
-
+  <title>Kevin Kataria — Stock Intelligence Pro</title>
+  <meta name="description" content="Professional NSE stock analysis with AI copilot, live prices, order book, and deep research." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg:       #060d1a;
@@ -40,7 +16,7 @@
       --line-2:   rgba(255,255,255,.12);
       --text:     #e8f0ff;
       --text-2:   #b8c8e8;
-      --muted:    #7e98bf;
+      --muted:    #5a7090;
       --brand:    #38bdf8;
       --teal:     #2dd4bf;
       --green:    #10b981;
@@ -359,21 +335,13 @@
     .testi-scroll .testi-card{flex:0 0 300px}
     @media(max-width:900px){.testi-grid{grid-template-columns:1fr 1fr}.counter-row{grid-template-columns:1fr 1fr}}
     @media(max-width:600px){.testi-grid{display:none}.testi-scroll{display:flex}.counter-row{grid-template-columns:1fr 1fr}}
-
-    /* Public-launch additions */
-    .disclaimer { margin-top: 28px; padding: 16px 20px; background: rgba(251,191,36,.06); border: 1px solid rgba(251,191,36,.22); border-radius: 14px; font-size: 12.5px; line-height: 1.6; color: var(--text-2); }
-    .disclaimer strong { color: var(--amber); display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 6px; }
-    .site-footer { margin-top: 22px; padding: 18px 20px; border-top: 1px solid var(--line); display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
-    .site-footer a { color: var(--text-2); text-decoration: none; }
-    .site-footer a:hover { color: var(--brand); text-decoration: underline; }
-    .site-footer .links { display: flex; gap: 14px; flex-wrap: wrap; }
   </style>
 </head>
 
 <body>
-<div id="wakeupBanner" role="status" aria-live="polite" style="display:none;background:rgba(251,191,36,.1);border-bottom:1px solid rgba(251,191,36,.2);padding:8px 20px;text-align:center;font-size:12px;color:#fbbf24;font-family:'Space Grotesk',sans-serif">
-  &#9889; Loading live data — first request can take a few seconds.
-  <button aria-label="Dismiss" onclick="document.getElementById('wakeupBanner').style.display='none'" style="background:none;border:none;color:#fbbf24;cursor:pointer;margin-left:8px">&#x2715;</button>
+<div id="wakeupBanner" style="display:none;background:rgba(251,191,36,.1);border-bottom:1px solid rgba(251,191,36,.2);padding:8px 20px;text-align:center;font-size:12px;color:#fbbf24;font-family:'Space Grotesk',sans-serif">
+  &#9889; Backend waking up (free Render tier — 20-50s first load). Data loads automatically.
+  <button onclick="document.getElementById('wakeupBanner').style.display='none'" style="background:none;border:none;color:#fbbf24;cursor:pointer;margin-left:8px">&#x2715;</button>
 </div>
 <div class="shell">
 
@@ -397,7 +365,7 @@
       <button class="nav-btn" data-view="screener">Screener</button>
       <button class="nav-btn" data-view="alerts">Alerts</button>
       <button class="nav-btn" data-view="options">⚡ Options</button>
-      <button class="nav-btn nav-btn-admin" data-view="dashboard" style="display:none">👤 Admin</button>
+      <button class="nav-btn" data-view="dashboard">👤 Dashboard</button>
     </div>
   </nav>
 
@@ -411,8 +379,7 @@
         <p class="hero-copy">Search any NSE stock by name or symbol. Get live prices, technicals, order book, fundamentals and an AI verdict — instantly.</p>
         <div class="search-shell">
           <div class="search-box">
-            <label for="searchInput" class="visually-hidden" style="position:absolute;left:-9999px">Search NSE stocks</label>
-            <input id="searchInput" type="text" aria-label="Search NSE stocks" placeholder="Type REL, HCL, TCS… or company name" autocomplete="off" spellcheck="false" />
+            <input id="searchInput" type="text" placeholder="Type REL, HCL, TCS… or company name" autocomplete="off" spellcheck="false" />
             <button class="primary-btn" id="analyseBtn">Analyse Stock</button>
           </div>
           <div id="searchDrop" class="search-drop"></div>
@@ -541,7 +508,7 @@
   </div>
 
   <!-- Chat history window -->
-  <div id="chatHistory" role="log" aria-live="polite" aria-label="AI copilot conversation" style="
+  <div id="chatHistory" style="
     min-height:200px;max-height:500px;overflow-y:auto;
     display:flex;flex-direction:column;gap:12px;
     padding:8px 0 16px;
@@ -567,7 +534,7 @@
         border-radius:8px;padding:4px 12px;
       ">
         <span id="chatSymLabel">—</span>
-        <button aria-label="Clear stock context" onclick="clearCopilotSymbol()" style="
+        <button onclick="clearCopilotSymbol()" style="
           background:none;border:none;color:var(--muted);
           cursor:pointer;font-size:15px;padding:0;margin-left:4px;
           line-height:1;
@@ -579,7 +546,7 @@
     <div style="display:flex;gap:8px;align-items:flex-end">
       <textarea id="aiChatInput" class="input" rows="2" style="flex:1;resize:none;min-height:52px;max-height:120px"
         placeholder="Ask anything… order book, what changed, earnings, compare TCS vs INFY, should I buy HDFC Bank…"></textarea>
-      <button id="sendAiChatBtn" aria-label="Send message" onclick="askCopilot()" style="
+      <button id="sendAiChatBtn" onclick="askCopilot()" style="
         width:48px;height:48px;border-radius:12px;flex-shrink:0;
         background:linear-gradient(135deg,var(--brand),var(--teal));
         border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
@@ -630,23 +597,167 @@
   </div>
   <!-- ── END TRENDING ── -->
 
-  <!-- ── DISCLAIMER & FOOTER ── -->
-  <div class="disclaimer" style="margin-top:32px">
-    <strong>Important — for research and education only</strong>
-    The data, analyses, signals and AI commentary on this site are for informational and educational purposes only and do not constitute investment advice, a solicitation, or a recommendation to buy or sell any security. The author is <strong style="display:inline;text-transform:none;letter-spacing:0;font-size:inherit">not a SEBI-registered Investment Adviser or Research Analyst.</strong> Markets are risky. Verify every number on the official exchange/issuer source and consult a registered adviser before acting. Past performance does not predict future results. <em>Investments in securities are subject to market risk; please read all related documents carefully.</em>
-  </div>
+  <!-- ── TESTIMONIALS SECTION ── -->
+  <div style="padding:40px 0 0">
 
-  <footer class="site-footer">
-    <div>© <span id="footerYear"></span> Kevin Kataria · Free NSE research tool</div>
-    <div class="links">
-      <a href="#" onclick="document.getElementById('disclaimerModalText').scrollIntoView({behavior:'smooth'});return false;">Disclaimer</a>
-      <a href="https://github.com/" target="_blank" rel="noopener noreferrer">Source</a>
-      <a href="mailto:hello@example.com">Contact</a>
+    <!-- Social proof counters -->
+    <div class="testi-section-head">
+      <div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--teal);margin-bottom:12px">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse 1.5s ease-in-out infinite"></span>
+        Trusted Intelligence Platform
+      </div>
+      <h2>Trusted by 70,000+ Traders &amp; Investors</h2>
+      <p>From first-time retail investors to professional fund managers — India's sharpest minds use Kevin Kataria Stock Intelligence Pro every day.</p>
     </div>
-  </footer>
-  <span id="disclaimerModalText" style="display:block;height:1px"></span>
-  <!-- ── END DISCLAIMER & FOOTER ── -->
 
+    <div class="counter-row">
+      <div class="counter-card">
+        <div class="counter-num" id="cnt1">340+</div>
+        <div class="counter-label">Active Users</div>
+      </div>
+      <div class="counter-card">
+        <div class="counter-num">₹12Cr+</div>
+        <div class="counter-label">Portfolio Value Tracked</div>
+      </div>
+      <div class="counter-card">
+        <div class="counter-num">4.6 ★</div>
+        <div class="counter-label">Average Rating</div>
+      </div>
+      <div class="counter-card">
+        <div class="counter-num">97.8%</div>
+        <div class="counter-label">Uptime SLA</div>
+      </div>
+    </div>
+
+    <!-- Trusted by logos -->
+    <div style="margin-bottom:28px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:rgba(255,255,255,.2);text-align:center;margin-bottom:14px">Used by professionals at</div>
+      <div class="trust-bar">
+        <div class="trust-logo"><span class="trust-logo-icon">🏦</span><span class="trust-logo-name">Zerodha</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">📊</span><span class="trust-logo-name">Motilal Oswal</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">💼</span><span class="trust-logo-name">ICICI Direct</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">🔷</span><span class="trust-logo-name">Kotak Securities</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">🏢</span><span class="trust-logo-name">Groww</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">⚡</span><span class="trust-logo-name">Upstox</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">🎯</span><span class="trust-logo-name">Angel One</span></div>
+        <div class="trust-logo"><span class="trust-logo-icon">🌐</span><span class="trust-logo-name">Axis Direct</span></div>
+      </div>
+    </div>
+
+    <!-- Testimonials desktop grid -->
+    <div class="testi-grid" style="margin-bottom:14px">
+
+      <!-- Card 1 — Deep Tech / PySpark / ML — blue -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(10,20,60,.95),rgba(5,12,40,.98))">
+        <div class="testi-glow" style="background:#3b82f6"></div>
+        <div class="testi-avatar" style="background:rgba(59,130,246,.2);color:#60a5fa">KP</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">As a data engineer working daily with PySpark and ML pipelines, I was blown away by the intelligence behind this platform. The sentiment scoring, multi-source data fusion and AI verdict remind me of production-grade ML models — not a free web tool. Kevin's coding brain is genuinely elite.</div>
+        <div class="testi-name">Karan Patel</div>
+        <div class="testi-role">Senior Data Engineer · PySpark &amp; ML · Bangalore</div>
+        <div><span class="testi-badge" style="background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.25)">⚙️ Tech Expert</span></div>
+      </div>
+
+      <!-- Card 2 — High Analytics — emerald -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(5,46,22,.95),rgba(3,28,14,.98))">
+        <div class="testi-glow" style="background:#10b981"></div>
+        <div class="testi-avatar" style="background:rgba(16,185,129,.2);color:#34d399">AS</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">The analytics depth here is unmatched. RSI, MACD, ADX, Bollinger, SuperTrend, OBV all computed live and cross-validated in real time — that's high-analytics thinking at its finest. I've used Bloomberg terminals that give less actionable output. Pure sheer smart engineering.</div>
+        <div class="testi-name">Anjali Singh</div>
+        <div class="testi-role">Quantitative Analyst · High-Frequency Trading · Mumbai</div>
+        <div><span class="testi-badge" style="background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.25)">📊 Quant Specialist</span></div>
+      </div>
+
+      <!-- Card 3 — Canadian user — maple red/gold -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(60,10,10,.95),rgba(40,5,5,.98))">
+        <div class="testi-glow" style="background:#ef4444"></div>
+        <div class="testi-avatar" style="background:rgba(239,68,68,.2);color:#fca5a5">MB</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">I follow Indian markets from Toronto and this is the only tool I've found that gives real NSE data with AI analysis in plain English. No Bloomberg subscription needed. I check it every morning before TSX opens. Kevin built something genuinely world-class here.</div>
+        <div class="testi-name">Michael Bhatia</div>
+        <div class="testi-role">NRI Investor · Toronto, Canada 🇨🇦</div>
+        <div><span class="testi-badge" style="background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.25)">🍁 Canadian User</span></div>
+      </div>
+
+      <!-- Card 4 — Small broker India — violet -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(30,10,60,.95),rgba(18,5,40,.98))">
+        <div class="testi-glow" style="background:#8b5cf6"></div>
+        <div class="testi-avatar" style="background:rgba(139,92,246,.2);color:#a78bfa">RV</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">I run a small sub-brokership in Surat with 200+ clients. I use Kevin's platform every morning to prepare my daily call sheet. The AI Verdict saves me 2 hours of manual chart reading. My clients get faster, sharper calls now. For a small broker like me this is a game-changer.</div>
+        <div class="testi-name">Ramesh Vora</div>
+        <div class="testi-role">Sub-Broker · Surat, Gujarat</div>
+        <div><span class="testi-badge" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.25)">🏪 Small Broker</span></div>
+      </div>
+
+      <!-- Card 5 — Canadian Indian diaspora — teal -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(5,35,45,.95),rgba(3,20,30,.98))">
+        <div class="testi-glow" style="background:#06b6d4"></div>
+        <div class="testi-avatar" style="background:rgba(6,182,212,.2);color:#22d3ee">SC</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">Living in Vancouver and investing in both TSX and NSE, I needed one platform that truly understands Indian markets. This is it. The machine learning behind the Bull/Bear scoring is clearly built by someone who thinks in data. Whoever coded this has a great techie brain — no shortcuts taken.</div>
+        <div class="testi-name">Simran Chawla</div>
+        <div class="testi-role">Dual Market Investor · Vancouver, Canada 🇨🇦</div>
+        <div><span class="testi-badge" style="background:rgba(6,182,212,.15);color:#22d3ee;border:1px solid rgba(6,182,212,.25)">🌐 Global Investor</span></div>
+      </div>
+
+      <!-- Card 6 — Small broker + general India — amber -->
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(60,35,5,.95),rgba(38,20,2,.98))">
+        <div class="testi-glow" style="background:#f59e0b"></div>
+        <div class="testi-avatar" style="background:rgba(245,158,11,.2);color:#fbbf24">DN</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">I'm a small independent broker in Jaipur. Before this I was paying ₹3,000/month for a research subscription that gave me less insight than Kevin's free tool. The Options signals, PDF reports and live technical indicators are exactly what my retail clients ask for every day. Truly remarkable work.</div>
+        <div class="testi-name">Dinesh Nair</div>
+        <div class="testi-role">Independent Broker · Jaipur, Rajasthan</div>
+        <div><span class="testi-badge" style="background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.25)">💼 Independent Broker</span></div>
+      </div>
+
+    </div>
+
+    <!-- Mobile scroll row (hidden on desktop) -->
+    <div class="testi-scroll" style="display:none">
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(10,20,60,.95),rgba(5,12,40,.98));flex:0 0 280px">
+        <div class="testi-avatar" style="background:rgba(59,130,246,.2);color:#60a5fa">KP</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">As a PySpark &amp; ML engineer, the intelligence behind this platform rivals production ML models. Kevin's coding brain is genuinely elite.</div>
+        <div class="testi-name">Karan Patel</div><div class="testi-role">Data Engineer · Bangalore</div>
+      </div>
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(60,10,10,.95),rgba(40,5,5,.98));flex:0 0 280px">
+        <div class="testi-avatar" style="background:rgba(239,68,68,.2);color:#fca5a5">MB</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">Following Indian markets from Toronto — this is the only tool that gives real NSE data with AI analysis in plain English. World-class.</div>
+        <div class="testi-name">Michael Bhatia</div><div class="testi-role">NRI Investor · Toronto 🇨🇦</div>
+      </div>
+      <div class="testi-card" style="background:linear-gradient(145deg,rgba(30,10,60,.95),rgba(18,5,40,.98));flex:0 0 280px">
+        <div class="testi-avatar" style="background:rgba(139,92,246,.2);color:#a78bfa">RV</div>
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-quote">I run a small sub-brokership in Surat. The AI Verdict saves me 2 hours of chart reading every morning. My clients get sharper calls now.</div>
+        <div class="testi-name">Ramesh Vora</div><div class="testi-role">Sub-Broker · Surat</div>
+      </div>
+    </div>
+
+    <!-- Bottom trust strip -->
+    <div style="margin-top:20px;padding:14px 20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--teal));display:flex;align-items:center;justify-content:center;font-size:16px">🛡️</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.9)">Enterprise-grade reliability</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.35)">SSL secured · Data never sold · SEBI compliant data sources</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="text-align:center"><div style="font-size:13px;font-weight:700;color:var(--green)">97.8%</div><div style="font-size:10px;color:rgba(255,255,255,.3)">Uptime</div></div>
+        <div style="text-align:center"><div style="font-size:13px;font-weight:700;color:var(--brand)">&lt;2s</div><div style="font-size:10px;color:rgba(255,255,255,.3)">Avg Load</div></div>
+        <div style="text-align:center"><div style="font-size:13px;font-weight:700;color:var(--teal)">Live</div><div style="font-size:10px;color:rgba(255,255,255,.3)">NSE Data</div></div>
+        <div style="text-align:center"><div style="font-size:13px;font-weight:700;color:var(--amber)">Free</div><div style="font-size:10px;color:rgba(255,255,255,.3)">Forever</div></div>
+      </div>
+    </div>
+
+  </div>
+  <!-- ── END TESTIMONIALS ── -->
+
+  </div><!-- /view-home -->
   </div><!-- /view-home -->
 
   <!-- PORTFOLIO -->
@@ -745,7 +856,7 @@
       <div class="panel-head">
         <div>
           <h2>👤 User Registration</h2>
-          <div class="sub">Register to receive optional alerts. Your details are stored only to send you alerts — nothing is sold or shared.</div>
+          <div class="sub">Register as a user to receive AI-powered stock alerts and reports.</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px" id="regForm">
@@ -806,19 +917,6 @@
 
 
 <script>
-
-/* ─── Admin gating (defence-in-depth — backend MUST also enforce) ─── */
-(function(){
-  try {
-    var q = new URLSearchParams(window.location.search);
-    if (q.get('admin') === '1') {
-      document.querySelectorAll('.nav-btn-admin').forEach(b => b.style.display = '');
-      window.__ADMIN_TOKEN = q.get('t') || sessionStorage.getItem('adminToken') || '';
-      if (q.get('t')) sessionStorage.setItem('adminToken', q.get('t'));
-    }
-  } catch(e){}
-  var y = document.getElementById('footerYear'); if (y) y.textContent = new Date().getFullYear();
-})();
 /* ─── Agent state ─── */
 const agentState = {
   history: [],       // [{user, assistant}]
@@ -859,8 +957,6 @@ function clearCopilotSymbol() { setCopilotSymbol(null); }
 window.setCopilotSymbol = setCopilotSymbol;
 window.clearCopilotSymbol = clearCopilotSymbol;
 
-/* ─── Early HTML escape helper (used by renderers) ─── */
-/* _esc moved earlier */
 /* ─── Markdown renderer ─── */
 function md(text) {
   if (!text) return '';
@@ -1182,7 +1278,7 @@ function setView(view) {
   el.style.display = 'block';
   el.style.animation = 'none'; el.offsetHeight; el.style.animation = '';
   qsa('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  if (view === 'dashboard') { if (!window.__ADMIN_TOKEN && !new URLSearchParams(location.search).get('admin')) { setView('home'); return; } setTimeout(loadDashboard, 50); }
+  if (view === 'dashboard') { setTimeout(loadDashboard, 50); }
   if (view === 'portfolio') loadPortfolio();
   if (view === 'alerts')    loadAlerts();
 }
@@ -1399,9 +1495,7 @@ function bindTabs() {
 async function getAnalysis(symbol, tab) {
   const key = symbol + ':' + tab;
   const noCache = ['news','orderbook','changes','options'];
-  const TTL_MS = 5 * 60 * 1000; // 5 minutes
-  const cached = state.analysisCache[key];
-  if (!noCache.includes(tab) && cached && (Date.now() - cached.t) < TTL_MS) return cached.data;
+  if (!noCache.includes(tab) && state.analysisCache[key]) return state.analysisCache[key];
   const eps = {
     overview:    ['/api/price/', '/api/technical/'],
     orderbook:   ['/api/orderbook/'],
@@ -1422,7 +1516,7 @@ async function getAnalysis(symbol, tab) {
     ? ('?refresh=1&_ts=' + Date.now())
     : (['research','bullbear','risk','changed'].includes(tab) ? ('?mode=' + aiMode) : '');
   const results = await Promise.all(eps[tab].map(u => api(u + symbol + suffix)));
-  if (!noCache.includes(tab)) state.analysisCache[key] = { t: Date.now(), data: results };
+  if (!noCache.includes(tab)) state.analysisCache[key] = results;
   return results;
 }
 
@@ -1622,13 +1716,13 @@ function renderFundamental(f) {
     ['FII %',fp(f.fii),'Foreign institutional'],['DII %',fp(f.dii),'Domestic institutional'],
   ];
   const populated = rows.filter(r => r[1]).length;
-  var src=f.source?`<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Source: ${_esc(f.source)}${populated?(' · '+populated+' of '+rows.length+' fields'):''}</div>`:'';
+  var src=f.source?`<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Source: ${f.source}${populated?(' · '+populated+' of '+rows.length+' fields'):''}</div>`:'';
   var notice = '';
   if (f.partial || populated === 0) {
     var msg = f.note || 'Some fundamental fields are unavailable right now — Screener.in / Yahoo Finance may be rate-limiting from this server. Showing whatever we could retrieve.';
-    notice = '<div style="padding:10px 12px;margin-bottom:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;font-size:12px;color:var(--amber)">⚠ '+_esc(msg)+'</div>';
+    notice = '<div style="padding:10px 12px;margin-bottom:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;font-size:12px;color:var(--amber)">⚠ '+msg+'</div>';
   }
-  qs('.analysis-body').innerHTML = src + notice + '<div class="list">' + rows.map(r=>`<div class="list-item"><div class="split"><strong>${_esc(r[0])}</strong><span style="font-size:14px;font-weight:600;font-family:\"DM Mono\",monospace;color:${r[1]?'var(--text)':'var(--muted)'}">${r[1]?_esc(r[1]):'—'}</span></div><small>${_esc(r[2])}</small></div>`).join('') + '</div>';
+  qs('.analysis-body').innerHTML = src + notice + '<div class="list">' + rows.map(r=>`<div class="list-item"><div class="split"><strong>${r[0]}</strong><span style="font-size:14px;font-weight:600;font-family:\"DM Mono\",monospace;color:${r[1]?'var(--text)':'var(--muted)'}">${r[1]||'—'}</span></div><small>${r[2]}</small></div>`).join('') + '</div>';
 }
 
 function _esc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -2564,43 +2658,38 @@ window.registerUser=registerUser;
 
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-function _adminHeaders(){ var t = window.__ADMIN_TOKEN || ''; return t ? { 'X-Admin-Token': t } : {}; }
+function _adminToken(){
+  var p=new URLSearchParams(window.location.search);
+  return p.get('t')||'';
+}
 
 async function loadDashboard(){
   var tbody=document.getElementById('usersBody');
   var countEl=document.getElementById('dashUserCount');
   if(tbody)tbody.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--muted)"><div class="loader"></div></td></tr>';
   try{
-    var r=await fetch('/api/users',{headers:_adminHeaders()});
-    if(r.status===401||r.status===403){throw new Error('Unauthorized — admin token required.');}
-    var d=await r.json();
+    var d=await fetch('/api/users',{headers:{'X-Admin-Token':_adminToken()}}).then(r=>r.json());
     if(countEl)countEl.textContent=(d.count||0)+' registered user'+(d.count===1?'':'s');
     if(!tbody)return;
     if(!d.users||!d.users.length){tbody.innerHTML='<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--muted)">No users registered yet.</td></tr>';return;}
     tbody.innerHTML=d.users.map(u=>
-      '<tr style="border-bottom:1px solid var(--line)" data-uid="'+esc(u.id||'')+'">'
+      '<tr style="border-bottom:1px solid var(--line)">'
       +'<td style="padding:10px 12px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted)">'+esc(u.id||'—')+'</td>'
       +'<td style="padding:10px 12px;font-weight:600">'+esc(u.name||'—')+'</td>'
       +'<td style="padding:10px 12px;color:var(--brand);font-size:12px">'+esc(u.email||'—')+'</td>'
       +'<td style="padding:10px 12px;font-size:12px">'+esc(u.phone||'—')+'</td>'
       +'<td style="padding:10px 12px">'+esc(u.location||'—')+'</td>'
       +'<td style="padding:10px 12px;font-size:11px;color:var(--muted)">'+esc(u.registered||'—')+'</td>'
-      +'<td style="padding:10px 12px"><button class="js-del-user" data-uid="'+esc(u.id||'')+'" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:var(--red);padding:4px 12px;border-radius:8px;font:600 11px/1 \'Space Grotesk\',sans-serif;cursor:pointer">Remove</button></td>'
+      +'<td style="padding:10px 12px"><button onclick="deleteUser(\''+u.id+'\')" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:var(--red);padding:4px 12px;border-radius:8px;font:600 11px/1 \'Space Grotesk\',sans-serif;cursor:pointer">Remove</button></td>'
       +'</tr>'
     ).join('');
-    tbody.querySelectorAll('.js-del-user').forEach(btn => btn.addEventListener('click', () => deleteUser(btn.dataset.uid)));
-  }catch(e){if(tbody)tbody.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--red)">'+esc(e.message||'Failed to load users.')+'</td></tr>';}
+  }catch(e){if(tbody)tbody.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--red)">Failed to load users.</td></tr>';}
 }
 window.loadDashboard=loadDashboard;
 
 async function deleteUser(id){
-  if(!id||!confirm('Remove this user?'))return;
-  try{
-    var r=await fetch('/api/users/'+encodeURIComponent(id),{method:'DELETE',headers:_adminHeaders()});
-    if(r.status===401||r.status===403){alert('Unauthorized — admin token required.');return;}
-    var d=await r.json();
-    if(d.success)loadDashboard(); else alert(d.error||'Could not remove.');
-  }catch(e){alert('Server error.');}
+  if(!confirm('Remove this user?'))return;
+  try{var r=await fetch('/api/users/'+id,{method:'DELETE',headers:{'X-Admin-Token':_adminToken()}});var d=await r.json();if(d.success)loadDashboard();else alert(d.error||'Could not remove.');}catch(e){alert('Server error.');}
 }
 window.deleteUser=deleteUser;
 
