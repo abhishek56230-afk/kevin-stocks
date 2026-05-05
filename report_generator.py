@@ -45,7 +45,7 @@ C_LINE     = colors.HexColor("#1a2840")
 C_WHITE    = colors.white
 C_BLACK    = colors.black
 
-WATERMARK_TEXT = "Kevin Kataria AI Assistant"
+WATERMARK_TEXT = "Marvin / Kevin"
 
 
 # ════════════════════════════════════════════════════════════════
@@ -88,7 +88,7 @@ class WatermarkCanvas(rl_canvas.Canvas):
         w, h = A4
         self.setFont("Helvetica", 7)
         self.setFillColorRGB(0.35, 0.44, 0.56)
-        footer = f"Kevin Kataria AI Assistant · Stock Intelligence Pro · Generated {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} · Educational use only — not financial advice"
+        footer = f"Marvin / Kevin · Stock Intelligence Pro · Generated {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} · Educational use only — not financial advice"
         self.drawCentredString(w / 2, 22, footer)
         self.restoreState()
 
@@ -223,6 +223,142 @@ def build_pdf(sym, ctx):
     ]))
     story.append(sub_tbl)
     story.append(Spacer(1, 14))
+
+    # ══════════════════════════════════════════════════════════════
+    # ── KEVIN AI — PRINCIPAL FIRST (verdict before everything) ───
+    # ══════════════════════════════════════════════════════════════
+    kevin = ctx.get("kevin_ai", {})
+    kv    = kevin.get("kevin_verdict", {})
+    hs    = kevin.get("health_score", {})
+    rm    = kevin.get("risk", {})
+    st    = kevin.get("strategy", {})
+
+    # Only render this block when we have at least a verdict or health score
+    if kv or hs or rm or st:
+        story.append(Paragraph("Kevin AI — 7-Engine Analysis", H2))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE))
+        story.append(Spacer(1, 6))
+
+        # ── 1. THE VERDICT (principal — most important thing first) ──
+        verdict_val  = kv.get("verdict", tech_data.get("signal", "HOLD")).upper()
+        confidence   = kv.get("confidence", "")
+        best_for     = kv.get("best_for", "")
+        v_color      = C_GREEN if "BUY" in verdict_val else C_RED if "SELL" in verdict_val else C_AMBER
+
+        verdict_row = Table(
+            [[
+                Paragraph(
+                    f"<font color='#{'10b981' if 'BUY' in verdict_val else 'f87171' if 'SELL' in verdict_val else 'fbbf24'}' size='20'><b>{verdict_val}</b></font>",
+                    ParagraphStyle("VC", parent=BODY, alignment=TA_CENTER)
+                ),
+                Paragraph(
+                    f"<b>Confidence</b><br/><font size='14'>{confidence or '—'}</font>",
+                    ParagraphStyle("VCC", parent=BODY, alignment=TA_CENTER)
+                ),
+                Paragraph(
+                    f"<b>Best For</b><br/>{best_for or '—'}",
+                    ParagraphStyle("VCB", parent=BODY, alignment=TA_CENTER)
+                ),
+            ]],
+            colWidths=[5.67*cm, 5.67*cm, 5.67*cm],
+        )
+        verdict_row.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (0,0), C_PANEL),
+            ("BACKGROUND",    (1,0), (1,0), C_BG),
+            ("BACKGROUND",    (2,0), (2,0), C_BG),
+            ("GRID",          (0,0), (-1,-1), 0.4, C_LINE),
+            ("TOPPADDING",    (0,0), (-1,-1), 12),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 12),
+            ("LEFTPADDING",   (0,0), (-1,-1), 8),
+            ("RIGHTPADDING",  (0,0), (-1,-1), 8),
+            ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ]))
+        story.append(verdict_row)
+        story.append(Spacer(1, 8))
+
+        # ── 2. WHY — summary bullets (plain english) ──────────────
+        bullets = kv.get("summary", kv.get("reasoning", []))
+        if isinstance(bullets, str):
+            bullets = [l.strip("•- ").strip() for l in bullets.split("\n") if l.strip()]
+        if bullets:
+            story.append(Paragraph("<b>Why Kevin says so:</b>", BODY))
+            for b in bullets[:5]:
+                if b:
+                    story.append(Paragraph(f"• {b}", BODY))
+            story.append(Spacer(1, 8))
+
+        # ── 3. THE 7 ENGINES — simple one-line each ───────────────
+        story.append(Paragraph("<b>The 7 Engines at a Glance</b>", H3))
+
+        def _grade_color(g):
+            return {"A":"#10b981","B":"#38bdf8","C":"#fbbf24","D":"#f97316","F":"#f87171"}.get(str(g).upper(),"#e8f0ff")
+
+        def _risk_color(lvl):
+            return {"LOW":"#10b981","MEDIUM":"#fbbf24","HIGH":"#f87171"}.get(str(lvl).upper(),"#e8f0ff")
+
+        hs_score = hs.get("score","—")
+        hs_grade = hs.get("grade","—")
+        rm_level = rm.get("level","—")
+        rm_score = rm.get("score","—")
+        rm_down  = rm.get("downside_probability","—")
+
+        entry    = _safe(st.get("entry"), "money")   if st else "—"
+        stop     = _safe(st.get("stop"),  "money")   if st else "—"
+        tgt1     = _safe(st.get("target1"),"money")  if st else "—"
+        tgt2     = _safe(st.get("target2"),"money")  if st else "—"
+        rr       = st.get("risk_reward","—")         if st else "—"
+
+        eng_rows = [
+            ["Engine", "What It Checks", "Your Reading", "Plain Meaning"],
+            ["1 · Financial Health",
+             "Revenue, margins, debt, ROE, ROCE",
+             f"Score {hs_score}/100  Grade {hs_grade}",
+             "Above 60 = healthy. Below 40 = caution."],
+            ["2 · Buy/Sell Signal",
+             "Trend, MA50/200, RSI, MACD, S&R",
+             sig,
+             "BUY = uptrend momentum. SELL = downtrend."],
+            ["3 · Sentiment",
+             "News, Reddit, Moneycontrol, ET",
+             f"Bull {sent_data.get('overall_bullish', sent_data.get('avg_bull','—'))}%",
+             "Above 55% = positive crowd mood."],
+            ["4 · Macro Risk",
+             "Rates, inflation, sector risks",
+             "See Macro section",
+             "Check if economy helps or hurts stock."],
+            ["5 · Risk Meter",
+             "ATR, beta, debt, 52-wk position",
+             f"{rm_level}  (score {rm_score}/100)",
+             "HIGH = smaller position size."],
+            ["6 · Trade Setup",
+             "Entry, stop-loss, targets, R:R",
+             f"Entry {entry}  Stop {stop}",
+             f"T1 {tgt1}  T2 {tgt2}  R:R {rr}"],
+            ["7 · Kevin AI Verdict",
+             "Groq Llama reads all 6 engines",
+             verdict_val,
+             f"Confidence {confidence or '—'}. Act when >65%."],
+        ]
+        et = Table(eng_rows, colWidths=[3.5*cm, 4.5*cm, 4.0*cm, 5.0*cm])
+        et_style = [
+            ("BACKGROUND",    (0,0), (-1,0), C_PANEL),
+            ("TEXTCOLOR",     (0,0), (-1,0), C_BRAND),
+            ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
+            ("FONTNAME",      (0,1), (0,-1), "Helvetica-Bold"),
+            ("TEXTCOLOR",     (0,1), (0,-1), C_AMBER),
+            ("FONTSIZE",      (0,0), (-1,-1), 8),
+            ("GRID",          (0,0), (-1,-1), 0.4, C_LINE),
+            ("TOPPADDING",    (0,0), (-1,-1), 5),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+            ("LEFTPADDING",   (0,0), (-1,-1), 7),
+            ("RIGHTPADDING",  (0,0), (-1,-1), 7),
+            ("TEXTCOLOR",     (1,1), (-1,-1), C_TEXT),
+            ("ROWBACKGROUNDS",(0,1), (-1,-1), [C_BG, C_PANEL]),
+            ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ]
+        et.setStyle(TableStyle(et_style))
+        story.append(et)
+        story.append(Spacer(1, 14))
 
     # ── AI Verdict ──────────────────────────────────────────────
     verdict_text = ctx.get("verdict_text") or ctx.get("ai_verdict") or ""

@@ -4132,27 +4132,52 @@ def build_stock_context(sym):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    def _kevin_ai():
+        """Pull the 7-engine Kevin AI analysis for the report (uses cache when available)."""
+        try:
+            cached = cache_get(f"full:{sym}")
+            if cached:
+                return cached
+            # Build inline without an HTTP round-trip
+            t = _route_json(f"/api/technical/{sym}", technical, sym) or {}
+            f = _route_json(f"/api/fundamental/{sym}", fundamental, sym) or {}
+            health   = _compute_financial_health_score(f, t)
+            risk     = _compute_risk_meter(t, f)
+            strategy = _build_trading_strategy(t)
+            return {
+                "success": True,
+                "health_score": health,
+                "risk": risk,
+                "strategy": strategy,
+                # kevin_verdict comes from groq — skip in sync context build to stay fast
+                "kevin_verdict": cache_get(f"full:{sym}_verdict") or {},
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    with ThreadPoolExecutor(max_workers=7) as pool:
         futures = {
-            "price": pool.submit(_price),
-            "technical": pool.submit(_tech),
-            "fundamental": pool.submit(_fund),
-            "news": pool.submit(_news),
-            "sentiment": pool.submit(_sent),
-            "verdict": pool.submit(_verdict),
+            "price":    pool.submit(_price),
+            "technical":pool.submit(_tech),
+            "fundamental":pool.submit(_fund),
+            "news":     pool.submit(_news),
+            "sentiment":pool.submit(_sent),
+            "verdict":  pool.submit(_verdict),
+            "kevin_ai": pool.submit(_kevin_ai),
         }
         data = {k: f.result(timeout=30) for k, f in futures.items()}
 
     context = {
         "success": True,
         "symbol": sym,
-        "price": data.get("price", {}),
-        "technical": data.get("technical", {}),
+        "price":       data.get("price", {}),
+        "technical":   data.get("technical", {}),
         "fundamental": data.get("fundamental", {}),
-        "news": data.get("news", {}),
-        "sentiment": data.get("sentiment", {}),
-        "verdict": data.get("verdict", {}),
-        "data_used": ["price", "technicals", "fundamentals", "news", "sentiment", "verdict"],
+        "news":        data.get("news", {}),
+        "sentiment":   data.get("sentiment", {}),
+        "verdict":     data.get("verdict", {}),
+        "kevin_ai":    data.get("kevin_ai", {}),
+        "data_used": ["price", "technicals", "fundamentals", "news", "sentiment", "verdict", "kevin_ai"],
     }
     cache_set(cache_key, context, ttl=120)
     return context

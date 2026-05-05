@@ -4,4 +4,4 @@ __pycache__/
 .env
 .claude/
 *.pptx
-index.html
+/index.html
