@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: kevin-kataria-stocks
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --preload app:app
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      # Where the user-added watchlist JSON is stored. If you mount a
+      # Render persistent disk at /var/data the file survives restarts.
+      # On the free tier (no disk) the in-browser localStorage backup
+      # in index.html re-syncs to the server on every page load.
+      - key: WATCHLIST_PATH
+        value: /var/data/user_watchlist.json
+    # Uncomment on a Starter plan or higher for true server-side
+    # persistence. Free-tier ignores `disk:` so the localStorage sync
+    # is the fallback there.
+    # disk:
+    #   name: stocks-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
