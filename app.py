@@ -3856,25 +3856,78 @@ def save_json(path, data):
 
 @app.route("/api/portfolio", methods=["GET"])
 def get_portfolio():
-    holdings=load_json(PORTFOLIO_FILE)
+    holdings = load_json(PORTFOLIO_FILE)
+
     def fetch_price_h(h):
-        try:
-            r=requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{h['symbol']}.NS?interval=1d&range=2d",headers=YFH,timeout=8)
-            live=r.json()["chart"]["result"][0]["meta"]["regularMarketPrice"]
-            qty=h.get("qty",0); buy=h.get("buy_price",0)
-            invested=qty*buy; current=qty*live; pnl=current-invested
-            return {**h,"live_price":round(live,2),"invested":round(invested,2),
-                    "current":round(current,2),"pnl":round(pnl,2),"pnl_pct":round((pnl/invested)*100,2) if invested else 0}
-        except:
-            return {**h,"live_price":None,"invested":h.get("qty",0)*h.get("buy_price",0),"current":None,"pnl":None,"pnl_pct":None}
+        sym  = h.get("symbol","").upper().strip()
+        qty  = float(h.get("qty", 0))
+        buy  = float(h.get("buy_price", 0))
+        invested = round(qty * buy, 2)
+
+        # Use the robust helper that tries .NS, bare, .BO across query1+query2
+        live = _yahoo_live_price(sym)
+
+        # Also grab today's change % from the chart meta
+        day_change_pct = None
+        if live:
+            try:
+                for base in ("query1", "query2"):
+                    for ticker in (f"{sym}.NS", sym, f"{sym}.BO"):
+                        try:
+                            r = http_get(
+                                f"https://{base}.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d",
+                                headers=YFH, timeout=5)
+                            if r.ok:
+                                meta = (r.json().get("chart",{}).get("result") or [{}])[0].get("meta",{})
+                                prev = meta.get("chartPreviousClose") or meta.get("previousClose")
+                                cur  = meta.get("regularMarketPrice")
+                                if prev and cur and prev > 0:
+                                    day_change_pct = round(((cur - prev) / prev) * 100, 2)
+                                break
+                        except Exception:
+                            continue
+                    if day_change_pct is not None:
+                        break
+            except Exception:
+                pass
+
+        if live:
+            current = round(qty * live, 2)
+            pnl     = round(current - invested, 2)
+            pnl_pct = round((pnl / invested) * 100, 2) if invested else 0
+            return {**h,
+                    "live_price":   round(live, 2),
+                    "invested":     invested,
+                    "current":      current,
+                    "pnl":          pnl,
+                    "pnl_pct":      pnl_pct,
+                    "day_change_pct": day_change_pct,
+                    "price_ok":     True}
+        else:
+            return {**h,
+                    "live_price":   None,
+                    "invested":     invested,
+                    "current":      0,
+                    "pnl":          -invested,
+                    "pnl_pct":      -100,
+                    "day_change_pct": None,
+                    "price_ok":     False}
+
     with ThreadPoolExecutor(max_workers=8) as pool:
-        enriched=list(pool.map(fetch_price_h,holdings))
-    ti=sum(h.get("invested",0) for h in enriched)
-    tc=sum(h.get("current",0) or 0 for h in enriched)
-    tp=tc-ti
-    return jsonify({"success":True,"holdings":enriched,"total_invested":round(ti,2),
-                    "total_current":round(tc,2),"total_pnl":round(tp,2),
-                    "total_pnl_pct":round((tp/ti)*100,2) if ti else 0})
+        enriched = list(pool.map(fetch_price_h, holdings))
+
+    ti = sum(h.get("invested", 0) or 0 for h in enriched)
+    tc = sum(h.get("current",  0) or 0 for h in enriched)
+    tp = round(tc - ti, 2)
+    return jsonify({
+        "success":         True,
+        "holdings":        enriched,
+        "total_invested":  round(ti, 2),
+        "total_current":   round(tc, 2),
+        "total_pnl":       tp,
+        "total_pnl_pct":   round((tp / ti) * 100, 2) if ti else 0,
+        "fetched_at":      datetime.datetime.utcnow().isoformat() + "Z",
+    })
 
 @app.route("/api/portfolio/add", methods=["POST"])
 def add_holding():

@@ -267,6 +267,32 @@
 
     /* Portfolio */
     .portfolio-form { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 8px; margin-bottom: 18px; align-items: end; }
+    /* Portfolio KPI strip */
+    .pf-kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
+    .pf-kpi { background: rgba(255,255,255,.025); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+    .pf-kpi-label { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .09em; margin-bottom: 5px; }
+    .pf-kpi-val { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; letter-spacing: -.02em; }
+    .pf-kpi-sub { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); margin-top: 3px; }
+    /* Portfolio table */
+    .pf-table-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+    .pf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .pf-table th { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); padding: 10px 12px; background: rgba(255,255,255,.025); border-bottom: 1px solid var(--line); white-space: nowrap; text-align: right; }
+    .pf-table th:first-child, .pf-table th:nth-child(2) { text-align: left; }
+    .pf-table td { padding: 12px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; font-family: 'DM Mono', monospace; font-size: 12px; white-space: nowrap; text-align: right; }
+    .pf-table td:first-child, .pf-table td:nth-child(2) { text-align: left; font-family: 'Space Grotesk', sans-serif; }
+    .pf-table tbody tr:last-child td { border-bottom: none; }
+    .pf-table tbody tr:hover { background: rgba(56,189,248,.04); cursor: pointer; }
+    .pf-sym { font-weight: 700; font-size: 13px; color: var(--text); display: block; }
+    .pf-name { font-size: 11px; color: var(--muted); display: block; margin-top: 2px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+    .pf-bar-wrap { width: 80px; height: 4px; background: rgba(255,255,255,.08); border-radius: 999px; margin-left: auto; margin-top: 4px; }
+    .pf-bar-fill { height: 100%; border-radius: 999px; background: var(--brand); transition: width .4s; }
+    .pf-warn { font-size: 10px; color: var(--amber); background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.25); border-radius: 6px; padding: 2px 7px; display: inline-block; }
+    .pf-refresh-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 0 14px; font-size: 11px; color: var(--muted); }
+    .pf-countdown { display: inline-flex; align-items: center; gap: 5px; }
+    .pf-countdown-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: pulse 1.5s ease-in-out infinite; }
+    .pf-tfoot td { font-weight: 700; background: rgba(56,189,248,.04); border-top: 2px solid var(--line-2) !important; border-bottom: none !important; }
+    @media (max-width: 900px) { .pf-kpi-strip { grid-template-columns: repeat(3,1fr); } }
+    @media (max-width: 600px) { .pf-kpi-strip { grid-template-columns: 1fr 1fr; } }
     .filter-bar { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; margin-bottom: 16px; align-items: end; }
 
     /* Screener */
@@ -781,18 +807,59 @@
   <div id="view-portfolio" class="view" style="display:none">
     <div class="card panel">
       <div class="panel-head">
-        <div><h2>Portfolio</h2><div class="sub">Track your holdings and P&amp;L in real time.</div></div>
-        <button class="ghost" id="reloadPortfolio">↺ Refresh</button>
+        <div><h2>Portfolio</h2><div class="sub">Live prices, P&amp;L and allocation — auto-refreshes every 60 s.</div></div>
+        <button class="ghost" id="reloadPortfolio">↺ Refresh now</button>
       </div>
+
+      <!-- Add holding form -->
       <div class="portfolio-form">
-        <input class="input" id="pfSymbol"  placeholder="Symbol" />
-        <input class="input" id="pfName"    placeholder="Company name" />
+        <input class="input" id="pfSymbol"  placeholder="Symbol (e.g. RELIANCE)" style="text-transform:uppercase" />
+        <input class="input" id="pfName"    placeholder="Company name (optional)" />
         <input class="input" id="pfQty"     placeholder="Qty"       type="number" min="0" step="0.01" />
-        <input class="input" id="pfPrice"   placeholder="Buy price"  type="number" min="0" step="0.01" />
-        <button class="primary-btn" id="addHoldingBtn">Add</button>
+        <input class="input" id="pfPrice"   placeholder="Buy price ₹" type="number" min="0" step="0.01" />
+        <button class="primary-btn" id="addHoldingBtn">＋ Add</button>
       </div>
-      <div id="portfolioSummary" class="summary-grid"></div>
-      <div id="portfolioList" class="stack"><div class="loader"></div></div>
+
+      <!-- KPI summary strip -->
+      <div class="pf-kpi-strip" id="pfKpiStrip">
+        <div class="pf-kpi"><div class="pf-kpi-label">Total Invested</div><div class="pf-kpi-val" id="pfTotalInvested">—</div></div>
+        <div class="pf-kpi"><div class="pf-kpi-label">Current Value</div><div class="pf-kpi-val" id="pfTotalCurrent">—</div></div>
+        <div class="pf-kpi"><div class="pf-kpi-label">Total P&amp;L</div><div class="pf-kpi-val" id="pfTotalPnl">—</div><div class="pf-kpi-sub" id="pfTotalPnlPct">—</div></div>
+        <div class="pf-kpi"><div class="pf-kpi-label">Day Change</div><div class="pf-kpi-val" id="pfDayChange">—</div></div>
+        <div class="pf-kpi"><div class="pf-kpi-label">Holdings</div><div class="pf-kpi-val" id="pfHoldingCount">—</div><div class="pf-kpi-sub" id="pfFetchedAt">—</div></div>
+      </div>
+
+      <!-- Refresh countdown bar -->
+      <div class="pf-refresh-bar">
+        <span class="pf-countdown"><span class="pf-countdown-dot"></span> Next refresh in <span id="pfCountdown">60</span>s</span>
+        <span id="pfPriceWarning" style="display:none" class="pf-warn">⚠ Some prices unavailable</span>
+      </div>
+
+      <!-- Holdings table -->
+      <div class="pf-table-wrap">
+        <table class="pf-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Name</th>
+              <th>Qty</th>
+              <th>Buy ₹</th>
+              <th>Live ₹</th>
+              <th>Invested</th>
+              <th>Curr. Value</th>
+              <th>P&amp;L ₹</th>
+              <th>P&amp;L %</th>
+              <th>1D %</th>
+              <th>Alloc.</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="pfTableBody">
+            <tr><td colspan="12" class="loader" style="text-align:center;padding:32px">Loading…</td></tr>
+          </tbody>
+          <tfoot id="pfTableFoot" class="pf-tfoot"></tfoot>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -1292,6 +1359,8 @@ function setView(view) {
   qsa('.view').forEach(v => v.style.display = 'none');
   const el = qs('#view-' + view);
   if (!el) return;
+  // Stop portfolio countdown when leaving
+  if (view !== 'portfolio') { clearInterval(_pfCountdown); }
   el.style.display = 'block';
   el.style.animation = 'none'; el.offsetHeight; el.style.animation = '';
   qsa('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
@@ -1989,48 +2058,154 @@ async function sendVerdictToMobile() {
 }
 
 /* ─── Portfolio ─── */
+let _pfTimer = null, _pfCountdown = null;
+
+function _pfStartCountdown() {
+  clearInterval(_pfCountdown);
+  let sec = 60;
+  const el = qs('#pfCountdown');
+  if (el) el.textContent = sec;
+  _pfCountdown = setInterval(() => {
+    sec--;
+    if (el) el.textContent = sec;
+    if (sec <= 0) { clearInterval(_pfCountdown); loadPortfolio(); }
+  }, 1000);
+}
+
 async function loadPortfolio() {
-  const list = qs('#portfolioList'), summary = qs('#portfolioSummary');
-  list.innerHTML = '<div class="loader"></div>';
+  clearInterval(_pfCountdown);
+  const tbody  = qs('#pfTableBody');
+  const tfoot  = qs('#pfTableFoot');
+
+  // Show inline loading skeleton
+  tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--muted)"><div class="loader" style="display:inline-block;width:20px;height:20px;border-width:2px;margin:0 auto 8px"></div><br>Fetching live prices…</td></tr>';
+
   try {
-    const data = await api('/api/portfolio');
-    const s = data.summary || {};
-    summary.innerHTML = `
-      <div class="mini"><div class="label">Invested</div><div class="value">${money(s.invested||data.total_invested||0)}</div></div>
-      <div class="mini"><div class="label">Current</div><div class="value">${money(s.current||data.total_current||0)}</div></div>
-      <div class="mini"><div class="label">P&amp;L</div><div class="value ${(s.pnl||0)>=0?'up':'down'}">${money(s.pnl||data.total_pnl||0)}</div></div>
-      <div class="mini"><div class="label">Return</div><div class="value ${(s.pnl_pct||0)>=0?'up':'down'}">${pct(s.pnl_pct||data.total_pnl_pct||0)}</div></div>`;
-    list.innerHTML = (data.holdings||[]).map(h => `
-      <div class="list-item">
-        <div class="split">
-          <div><strong>${h.symbol}</strong><small>${h.name||''}</small></div>
-          <div style="text-align:right">
-            <strong class="${(h.pnl||0)>=0?'up':'down'}" style="font-family:\"DM Mono\",monospace">${money(h.pnl||0)}</strong>
-            <small class="${(h.pnl_pct||0)>=0?'up':'down'}">${pct(h.pnl_pct||0)}</small>
-          </div>
-        </div>
-        <div class="split" style="margin-top:8px">
-          <small>Qty ${h.qty} · Buy ${money(h.buy_price)} · Live ${money(h.live_price)}</small>
-          <button class="ghost danger" onclick="removeHolding('${h.symbol}')">Remove</button>
-        </div>
-      </div>`).join('') || '<div class="analysis-empty"><strong>No holdings yet</strong>Add one above.</div>';
-  } catch(e) { list.innerHTML = '<div class="analysis-empty">' + e.message + '</div>'; }
+    const data = await api('/api/portfolio', {}, 40000);
+    const holdings = data.holdings || [];
+    const ti = data.total_invested || 0;
+    const tc = data.total_current  || 0;
+    const tp = data.total_pnl      || 0;
+    const tpp= data.total_pnl_pct  || 0;
+
+    // Update KPI strip
+    const totPnlCls = tp >= 0 ? 'var(--green)' : 'var(--red)';
+    qs('#pfTotalInvested').textContent = money(ti);
+    qs('#pfTotalCurrent').style.color  = tc >= ti ? 'var(--green)' : 'var(--red)';
+    qs('#pfTotalCurrent').textContent  = money(tc);
+    qs('#pfTotalPnl').style.color      = totPnlCls;
+    qs('#pfTotalPnl').textContent      = (tp >= 0 ? '+' : '') + money(tp).replace('₹','') + ' ₹';
+    qs('#pfTotalPnlPct').style.color   = totPnlCls;
+    qs('#pfTotalPnlPct').textContent   = pct(tpp);
+    qs('#pfHoldingCount').textContent  = holdings.length + ' stocks';
+
+    // Day change aggregate
+    const dayChangeable = holdings.filter(h => h.day_change_pct != null);
+    if (dayChangeable.length) {
+      const avgDay = dayChangeable.reduce((s,h) => s + h.day_change_pct, 0) / dayChangeable.length;
+      const dc = qs('#pfDayChange');
+      dc.textContent = pct(avgDay) + ' avg';
+      dc.style.color = avgDay >= 0 ? 'var(--green)' : 'var(--red)';
+    } else {
+      qs('#pfDayChange').textContent = '—';
+    }
+
+    // Fetched-at timestamp
+    if (data.fetched_at) {
+      const d = new Date(data.fetched_at);
+      qs('#pfFetchedAt').textContent = 'at ' + d.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+    }
+
+    // Price warning
+    const hasWarn = holdings.some(h => h.price_ok === false);
+    qs('#pfPriceWarning').style.display = hasWarn ? '' : 'none';
+
+    if (!holdings.length) {
+      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--muted)">No holdings yet — add one above.</td></tr>';
+      tfoot.innerHTML = '';
+      _pfStartCountdown();
+      return;
+    }
+
+    // Build table rows
+    tbody.innerHTML = holdings.map(h => {
+      const pnlCls  = (h.pnl || 0)  >= 0 ? 'var(--green)' : 'var(--red)';
+      const pctCls  = (h.pnl_pct||0)>= 0 ? 'var(--green)' : 'var(--red)';
+      const dyCls   = (h.day_change_pct||0) >= 0 ? 'var(--green)' : 'var(--red)';
+      const allocPct = ti > 0 ? Math.min(100, Math.round((h.invested / ti) * 100)) : 0;
+
+      // Live price cell — amber if price unavailable
+      const livePriceCell = h.price_ok === false
+        ? `<td><span class="pf-warn">—</span></td>`
+        : `<td style="color:var(--text)">${money(h.live_price)}</td>`;
+
+      const dayCell = h.day_change_pct != null
+        ? `<td style="color:${dyCls}">${pct(h.day_change_pct)}</td>`
+        : `<td style="color:var(--muted)">—</td>`;
+
+      return `<tr onclick="setView('home');openStock('${h.symbol}')" title="Click to analyse ${h.symbol}">
+        <td><span class="pf-sym">${h.symbol}</span></td>
+        <td><span class="pf-name">${h.name || '—'}</span></td>
+        <td>${h.qty}</td>
+        <td>${money(h.buy_price)}</td>
+        ${livePriceCell}
+        <td>${money(h.invested)}</td>
+        <td style="color:${h.price_ok===false?'var(--muted)':(tc>=ti?'var(--green)':'var(--red)')}">${h.price_ok===false ? '—' : money(h.current)}</td>
+        <td style="color:${pnlCls};font-weight:600">${h.price_ok===false ? '—' : (h.pnl>=0?'+':'')+money(h.pnl).replace('₹','')+'&thinsp;₹'}</td>
+        <td style="color:${pctCls};font-weight:600">${h.price_ok===false ? '—' : pct(h.pnl_pct)}</td>
+        ${dayCell}
+        <td style="min-width:90px">
+          <div style="font-size:10px;color:var(--muted);text-align:right;margin-bottom:3px">${allocPct}%</div>
+          <div class="pf-bar-wrap"><div class="pf-bar-fill" style="width:${allocPct}%"></div></div>
+        </td>
+        <td><button class="ghost danger" style="font-size:11px;padding:4px 10px" onclick="event.stopPropagation();removeHolding('${h.symbol}')">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    // Footer totals
+    tfoot.innerHTML = `<tr class="pf-tfoot">
+      <td colspan="5" style="text-align:left;font-family:'Space Grotesk',sans-serif;color:var(--muted);font-size:11px">TOTALS</td>
+      <td>${money(ti)}</td>
+      <td style="color:${tc>=ti?'var(--green)':'var(--red)'}">${money(tc)}</td>
+      <td style="color:${tp>=0?'var(--green)':'var(--red)'}">${tp>=0?'+':''}${money(tp).replace('₹','')} ₹</td>
+      <td style="color:${tpp>=0?'var(--green)':'var(--red)'}">${pct(tpp)}</td>
+      <td colspan="3"></td>
+    </tr>`;
+
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--red)">Error: ${e.message}<br><small style="color:var(--muted)">Check your connection and try refreshing.</small></td></tr>`;
+    tfoot.innerHTML = '';
+  }
+
+  _pfStartCountdown();
 }
 
 async function addHolding() {
-  const payload = { symbol: qs('#pfSymbol').value.trim().toUpperCase(), name: qs('#pfName').value.trim(), qty: Number(qs('#pfQty').value), buy_price: Number(qs('#pfPrice').value) };
-  if (!payload.symbol || !payload.qty || !payload.buy_price) return alert('Enter symbol, qty and buy price.');
+  const sym   = (qs('#pfSymbol').value || '').trim().toUpperCase();
+  const name  = (qs('#pfName').value   || '').trim();
+  const qty   = Number(qs('#pfQty').value);
+  const buy   = Number(qs('#pfPrice').value);
+  if (!sym || !qty || !buy) return alert('Please enter symbol, quantity and buy price.');
+  const btn = qs('#addHoldingBtn');
+  btn.disabled = true; btn.textContent = 'Adding…';
   try {
-    await api('/api/portfolio/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    ['#pfSymbol','#pfName','#pfQty','#pfPrice'].forEach(id => qs(id).value = '');
+    await api('/api/portfolio/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol: sym, name, qty, buy_price: buy })
+    });
+    ['#pfSymbol','#pfName','#pfQty','#pfPrice'].forEach(id => { qs(id).value = ''; });
     loadPortfolio();
-  } catch(e) { alert(e.message); }
+  } catch(e) { alert('Could not add holding: ' + e.message); }
+  btn.disabled = false; btn.textContent = '＋ Add';
 }
 
 async function removeHolding(symbol) {
-  if (!confirm('Remove ' + symbol + ' from portfolio?')) return;
-  await api('/api/portfolio/remove/' + symbol, { method:'DELETE' });
-  loadPortfolio();
+  if (!confirm('Remove ' + symbol + ' from your portfolio?')) return;
+  try {
+    await api('/api/portfolio/remove/' + symbol, { method: 'DELETE' });
+    loadPortfolio();
+  } catch(e) { alert('Remove failed: ' + e.message); }
 }
 
 /* ─── Screener ─── */
@@ -2668,25 +2843,7 @@ function renderOptionsIndicator(price, tech) {
 }
 
 
-/* ─── Event listeners ─── */
-qsa('.nav-btn').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
-qs('#refreshWatchlist').addEventListener('click', loadWatchlist);
-qs('#reloadPortfolio').addEventListener('click', loadPortfolio);
-qs('#addHoldingBtn').addEventListener('click', addHolding);
-qs('#runScreenerBtn').addEventListener('click', runScreener);
-qs('#resetScreenerBtn').addEventListener('click', () => {
-  qsa('#view-screener input').forEach(i => i.value = '');
-  qs('#screenerList').innerHTML = '<div style="padding:16px;color:var(--muted);font-size:13px">Set filters above and click Run Screener.</div>';
-});
-qs('#addAlertBtn').addEventListener('click', addAlert);
-qs('#refreshAlerts').addEventListener('click', loadAlerts);
-qs('#analyseBtn').addEventListener('click', () => {
-  const v = qs('#searchInput').value.trim();
-  if (v) analyseStock(v);
-});
-qs('#searchInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { const v = qs('#searchInput').value.trim(); if (v) analyseStock(v); }
-});
+/* duplicate event-listener block removed */
 
 /* ─── Download Report ─── */
 function downloadReport(symbol, format) {
