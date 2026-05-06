@@ -1048,7 +1048,7 @@
 
       <!-- Add holding form -->
       <div class="portfolio-form">
-        <input class="input" id="pfSymbol"  placeholder="Symbol (e.g. RELIANCE)" style="text-transform:uppercase" />
+        <input class="input" id="pfSymbol"  placeholder="Symbol (e.g. ADANIPOWER)" style="text-transform:uppercase" oninput="pfSymbolInput()" />
         <input class="input" id="pfName"    placeholder="Company name (optional)" />
         <input class="input" id="pfQty"     placeholder="Qty"       type="number" min="0" step="0.01" />
         <input class="input" id="pfPrice"   placeholder="Buy price ₹" type="number" min="0" step="0.01" />
@@ -2292,8 +2292,29 @@ async function sendVerdictToMobile() {
   } catch(e) { alert(e.message || 'Could not prepare the verdict.'); }
 }
 
-/* ─── Portfolio ─── */
-let _pfTimer = null, _pfCountdown = null;
+/* ─── Portfolio — localStorage-backed, server for live prices only ─── */
+const _PF_KEY = 'kk_portfolio_v2';
+let _pfCountdown = null;
+
+function _pfStore()     { try { return JSON.parse(localStorage.getItem(_PF_KEY)||'[]'); } catch { return []; } }
+function _pfWrite(arr)  { localStorage.setItem(_PF_KEY, JSON.stringify(arr)); }
+function _pfCleanSym(s) { return (s||'').toUpperCase().replace(/\s+/g,'').trim(); }
+
+/* Auto-fill company name when user types a symbol */
+let _pfLookupTimer = null;
+function pfSymbolInput() {
+  clearTimeout(_pfLookupTimer);
+  const sym = _pfCleanSym(qs('#pfSymbol').value);
+  if (sym.length < 2) return;
+  _pfLookupTimer = setTimeout(async () => {
+    if (qs('#pfName').value.trim()) return;
+    try {
+      const d = await api('/api/search?q='+encodeURIComponent(sym)+'&limit=1&enrich=0',{},6000);
+      const first = (d.results||[])[0];
+      if (first && first.name) qs('#pfName').value = first.name;
+    } catch {}
+  }, 600);
+}
 
 function _pfStartCountdown() {
   clearInterval(_pfCountdown);
@@ -2309,138 +2330,141 @@ function _pfStartCountdown() {
 
 async function loadPortfolio() {
   clearInterval(_pfCountdown);
-  const tbody  = qs('#pfTableBody');
-  const tfoot  = qs('#pfTableFoot');
+  const tbody = qs('#pfTableBody');
+  const tfoot = qs('#pfTableFoot');
+  const stored = _pfStore();
 
-  // Show inline loading skeleton
-  tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--muted)"><div class="loader" style="display:inline-block;width:20px;height:20px;border-width:2px;margin:0 auto 8px"></div><br>Fetching live prices…</td></tr>';
+  if (!stored.length) {
+    ['pfTotalInvested','pfTotalCurrent','pfTotalPnl','pfHoldingCount','pfDayChange'].forEach(id => {
+      const el = qs('#'+id); if (el) { el.textContent = id==='pfHoldingCount'?'0 stocks':'—'; el.style.color=''; }
+    });
+    qs('#pfTotalPnlPct').textContent = '—'; qs('#pfPriceWarning').style.display='none';
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--muted)">No holdings yet — add one above.</td></tr>';
+    tfoot.innerHTML = ''; _pfStartCountdown(); return;
+  }
+
+  tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--muted)"><span class="loader-dots">Fetching live prices</span></td></tr>';
 
   try {
-    const data = await api('/api/portfolio', {}, 40000);
+    const data = await api('/api/portfolio/prices', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(stored)
+    }, 45000);
+
     const holdings = data.holdings || [];
-    const ti = data.total_invested || 0;
-    const tc = data.total_current  || 0;
-    const tp = data.total_pnl      || 0;
-    const tpp= data.total_pnl_pct  || 0;
+    const ti = data.total_invested||0, tc = data.total_current||0;
+    const tp = data.total_pnl||0,      tpp = data.total_pnl_pct||0;
+    const totCls = tp>=0 ? 'var(--green)' : 'var(--red)';
 
-    // Update KPI strip
-    const totPnlCls = tp >= 0 ? 'var(--green)' : 'var(--red)';
-    qs('#pfTotalInvested').textContent = money(ti);
-    qs('#pfTotalCurrent').style.color  = tc >= ti ? 'var(--green)' : 'var(--red)';
-    qs('#pfTotalCurrent').textContent  = money(tc);
-    qs('#pfTotalPnl').style.color      = totPnlCls;
-    qs('#pfTotalPnl').textContent      = (tp >= 0 ? '+' : '') + money(tp).replace('₹','') + ' ₹';
-    qs('#pfTotalPnlPct').style.color   = totPnlCls;
-    qs('#pfTotalPnlPct').textContent   = pct(tpp);
-    qs('#pfHoldingCount').textContent  = holdings.length + ' stocks';
+    qs('#pfTotalInvested').textContent = money(ti); qs('#pfTotalInvested').style.color='';
+    qs('#pfTotalCurrent').textContent  = money(tc); qs('#pfTotalCurrent').style.color = tc>=ti?'var(--green)':'var(--red)';
+    qs('#pfTotalPnl').textContent      = (tp>=0?'+':'')+money(tp).replace('₹','')+' ₹'; qs('#pfTotalPnl').style.color=totCls;
+    qs('#pfTotalPnlPct').textContent   = pct(tpp); qs('#pfTotalPnlPct').style.color=totCls;
+    qs('#pfHoldingCount').textContent  = holdings.length+' stock'+(holdings.length!==1?'s':'');
 
-    // Day change aggregate
-    const dayChangeable = holdings.filter(h => h.day_change_pct != null);
-    if (dayChangeable.length) {
-      const avgDay = dayChangeable.reduce((s,h) => s + h.day_change_pct, 0) / dayChangeable.length;
-      const dc = qs('#pfDayChange');
-      dc.textContent = pct(avgDay) + ' avg';
-      dc.style.color = avgDay >= 0 ? 'var(--green)' : 'var(--red)';
-    } else {
-      qs('#pfDayChange').textContent = '—';
-    }
+    const dayOk = holdings.filter(h=>h.day_change_pct!=null);
+    if (dayOk.length) {
+      const avg = dayOk.reduce((s,h)=>s+h.day_change_pct,0)/dayOk.length;
+      qs('#pfDayChange').textContent=pct(avg)+' avg'; qs('#pfDayChange').style.color=avg>=0?'var(--green)':'var(--red)';
+    } else { qs('#pfDayChange').textContent='—'; qs('#pfDayChange').style.color=''; }
 
-    // Fetched-at timestamp
     if (data.fetched_at) {
-      const d = new Date(data.fetched_at);
-      qs('#pfFetchedAt').textContent = 'at ' + d.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+      const d=new Date(data.fetched_at);
+      qs('#pfFetchedAt').textContent='at '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     }
+    qs('#pfPriceWarning').style.display = holdings.some(h=>h.price_ok===false)?'':'none';
 
-    // Price warning
-    const hasWarn = holdings.some(h => h.price_ok === false);
-    qs('#pfPriceWarning').style.display = hasWarn ? '' : 'none';
-
-    if (!holdings.length) {
-      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--muted)">No holdings yet — add one above.</td></tr>';
-      tfoot.innerHTML = '';
-      _pfStartCountdown();
-      return;
-    }
-
-    // Build table rows
     tbody.innerHTML = holdings.map(h => {
-      const pnlCls  = (h.pnl || 0)  >= 0 ? 'var(--green)' : 'var(--red)';
-      const pctCls  = (h.pnl_pct||0)>= 0 ? 'var(--green)' : 'var(--red)';
-      const dyCls   = (h.day_change_pct||0) >= 0 ? 'var(--green)' : 'var(--red)';
-      const allocPct = ti > 0 ? Math.min(100, Math.round((h.invested / ti) * 100)) : 0;
-
-      // Live price cell — amber if price unavailable
-      const livePriceCell = h.price_ok === false
-        ? `<td><span class="pf-warn">—</span></td>`
-        : `<td style="color:var(--text)">${money(h.live_price)}</td>`;
-
-      const dayCell = h.day_change_pct != null
-        ? `<td style="color:${dyCls}">${pct(h.day_change_pct)}</td>`
-        : `<td style="color:var(--muted)">—</td>`;
-
-      return `<tr onclick="setView('home');openStock('${h.symbol}')" title="Click to analyse ${h.symbol}">
-        <td><span class="pf-sym">${h.symbol}</span></td>
-        <td><span class="pf-name">${h.name || '—'}</span></td>
-        <td>${h.qty}</td>
-        <td>${money(h.buy_price)}</td>
-        ${livePriceCell}
+      const pnlCls=(h.pnl||0)>=0?'var(--green)':'var(--red)';
+      const pctCls=(h.pnl_pct||0)>=0?'var(--green)':'var(--red)';
+      const dyCls=(h.day_change_pct||0)>=0?'var(--green)':'var(--red)';
+      const alloc=ti>0?Math.min(100,Math.round((h.invested/ti)*100)):0;
+      const liveCell=h.price_ok===false
+        ?`<td><span class="pf-warn">no price</span></td>`
+        :`<td style="color:var(--text);font-weight:600">${money(h.live_price)}</td>`;
+      const dayCell=h.day_change_pct!=null
+        ?`<td style="color:${dyCls}">${pct(h.day_change_pct)}</td>`
+        :`<td style="color:var(--muted)">—</td>`;
+      const sym=h.symbol||'';
+      return `<tr onclick="setView('home');openStock('${sym}')" title="Analyse ${sym}">
+        <td><span class="pf-sym">${sym}</span></td>
+        <td><span class="pf-name">${h.name||'—'}</span></td>
+        <td>${h.qty}</td><td>${money(h.buy_price)}</td>
+        ${liveCell}
         <td>${money(h.invested)}</td>
-        <td style="color:${h.price_ok===false?'var(--muted)':(tc>=ti?'var(--green)':'var(--red)')}">${h.price_ok===false ? '—' : money(h.current)}</td>
-        <td style="color:${pnlCls};font-weight:600">${h.price_ok===false ? '—' : (h.pnl>=0?'+':'')+money(h.pnl).replace('₹','')+'&thinsp;₹'}</td>
-        <td style="color:${pctCls};font-weight:600">${h.price_ok===false ? '—' : pct(h.pnl_pct)}</td>
+        <td style="color:${h.price_ok===false?'var(--muted)':''}">${h.price_ok===false?'—':money(h.current)}</td>
+        <td style="color:${pnlCls};font-weight:600">${h.price_ok===false?'—':(h.pnl>=0?'+':'')+money(h.pnl).replace('₹','')+'&thinsp;₹'}</td>
+        <td style="color:${pctCls};font-weight:600">${h.price_ok===false?'—':pct(h.pnl_pct)}</td>
         ${dayCell}
-        <td style="min-width:90px">
-          <div style="font-size:10px;color:var(--muted);text-align:right;margin-bottom:3px">${allocPct}%</div>
-          <div class="pf-bar-wrap"><div class="pf-bar-fill" style="width:${allocPct}%"></div></div>
+        <td style="min-width:80px">
+          <div style="font-size:10px;color:var(--muted);text-align:right;margin-bottom:3px">${alloc}%</div>
+          <div class="pf-bar-wrap"><div class="pf-bar-fill" style="width:${alloc}%"></div></div>
         </td>
-        <td><button class="ghost danger" style="font-size:11px;padding:4px 10px" onclick="event.stopPropagation();removeHolding('${h.symbol}')">✕</button></td>
+        <td><button class="ghost danger" style="font-size:11px;padding:4px 10px" onclick="event.stopPropagation();removeHolding('${sym}')">✕</button></td>
       </tr>`;
     }).join('');
 
-    // Footer totals
-    tfoot.innerHTML = `<tr class="pf-tfoot">
+    tfoot.innerHTML=`<tr class="pf-tfoot">
       <td colspan="5" style="text-align:left;font-family:'Space Grotesk',sans-serif;color:var(--muted);font-size:11px">TOTALS</td>
       <td>${money(ti)}</td>
       <td style="color:${tc>=ti?'var(--green)':'var(--red)'}">${money(tc)}</td>
       <td style="color:${tp>=0?'var(--green)':'var(--red)'}">${tp>=0?'+':''}${money(tp).replace('₹','')} ₹</td>
       <td style="color:${tpp>=0?'var(--green)':'var(--red)'}">${pct(tpp)}</td>
-      <td colspan="3"></td>
-    </tr>`;
+      <td colspan="3"></td></tr>`;
 
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--red)">Error: ${e.message}<br><small style="color:var(--muted)">Check your connection and try refreshing.</small></td></tr>`;
-    tfoot.innerHTML = '';
+    /* Show holdings from localStorage even when prices fail */
+    tbody.innerHTML = stored.map(h=>`<tr>
+      <td><span class="pf-sym">${h.symbol}</span></td>
+      <td><span class="pf-name">${h.name||'—'}</span></td>
+      <td>${h.qty}</td><td>${money(h.buy_price)}</td>
+      <td><span class="pf-warn">offline</span></td>
+      <td>${money(h.qty*h.buy_price)}</td>
+      <td colspan="5" style="color:var(--muted);font-size:11px">prices unavailable — retry</td>
+      <td><button class="ghost danger" style="font-size:11px;padding:4px 10px" onclick="event.stopPropagation();removeHolding('${h.symbol}')">✕</button></td>
+    </tr>`).join('');
+    tfoot.innerHTML='';
   }
-
   _pfStartCountdown();
 }
 
 async function addHolding() {
-  const sym   = (qs('#pfSymbol').value || '').trim().toUpperCase();
-  const name  = (qs('#pfName').value   || '').trim();
-  const qty   = Number(qs('#pfQty').value);
-  const buy   = Number(qs('#pfPrice').value);
-  if (!sym || !qty || !buy) return alert('Please enter symbol, quantity and buy price.');
+  const sym = _pfCleanSym(qs('#pfSymbol').value);
+  let   name = (qs('#pfName').value || '').trim();
+  const qty  = Number(qs('#pfQty').value);
+  const buy  = Number(qs('#pfPrice').value);
+
+  if (!sym)  return alert('Please enter a stock symbol e.g. ADANIPOWER, RELIANCE, TCS');
+  if (!qty)  return alert('Please enter the quantity you bought.');
+  if (!buy)  return alert('Please enter your buy price.');
+
   const btn = qs('#addHoldingBtn');
-  btn.disabled = true; btn.textContent = 'Adding…';
-  try {
-    await api('/api/portfolio/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ symbol: sym, name, qty, buy_price: buy })
-    });
-    ['#pfSymbol','#pfName','#pfQty','#pfPrice'].forEach(id => { qs(id).value = ''; });
-    loadPortfolio();
-  } catch(e) { alert('Could not add holding: ' + e.message); }
+  btn.disabled = true; btn.textContent = 'Looking up…';
+
+  /* Auto-fetch company name if blank */
+  if (!name) {
+    try {
+      const d = await api('/api/search?q='+encodeURIComponent(sym)+'&limit=1&enrich=0',{},6000);
+      const first = (d.results||[])[0];
+      name = (first && first.name) ? first.name : sym;
+    } catch { name = sym; }
+  }
+
+  /* Save to localStorage — persists across Render restarts */
+  const holdings = _pfStore();
+  const idx = holdings.findIndex(h => h.symbol === sym);
+  if (idx >= 0) holdings[idx] = {symbol:sym,name,qty,buy_price:buy};
+  else          holdings.push({symbol:sym,name,qty,buy_price:buy});
+  _pfWrite(holdings);
+
+  ['#pfSymbol','#pfName','#pfQty','#pfPrice'].forEach(id => { qs(id).value=''; });
   btn.disabled = false; btn.textContent = '＋ Add';
+  loadPortfolio();
 }
 
-async function removeHolding(symbol) {
+function removeHolding(symbol) {
   if (!confirm('Remove ' + symbol + ' from your portfolio?')) return;
-  try {
-    await api('/api/portfolio/remove/' + symbol, { method: 'DELETE' });
-    loadPortfolio();
-  } catch(e) { alert('Remove failed: ' + e.message); }
+  _pfWrite(_pfStore().filter(h => h.symbol !== symbol.toUpperCase()));
+  loadPortfolio();
 }
 
 /* ─── Screener ─── */

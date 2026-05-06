@@ -3954,6 +3954,71 @@ def remove_holding(symbol):
     save_json(PORTFOLIO_FILE,holdings)
     return jsonify({"success":True})
 
+@app.route("/api/portfolio/prices", methods=["POST"])
+def portfolio_prices():
+    """Accept holdings from client (localStorage) and return enriched with live prices.
+    This endpoint is storage-agnostic — the client owns the data."""
+    try:
+        holdings = freq.get_json() or []
+        if not isinstance(holdings, list):
+            return jsonify({"success": False, "error": "Expected array of holdings"})
+        if not holdings:
+            return jsonify({"success": True, "holdings": [], "total_invested": 0,
+                            "total_current": 0, "total_pnl": 0, "total_pnl_pct": 0,
+                            "fetched_at": datetime.datetime.utcnow().isoformat() + "Z"})
+
+        def _enrich(h):
+            sym      = str(h.get("symbol","")).upper().strip().replace(" ","")
+            qty      = float(h.get("qty", 0) or 0)
+            buy      = float(h.get("buy_price", 0) or 0)
+            invested = round(qty * buy, 2)
+            live     = _yahoo_live_price(sym)
+            day_pct  = None
+            if live:
+                try:
+                    for base in ("query1","query2"):
+                        for ticker in (f"{sym}.NS", sym, f"{sym}.BO"):
+                            try:
+                                r = http_get(
+                                    f"https://{base}.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d",
+                                    headers=YFH, timeout=5)
+                                if r.ok:
+                                    meta = (r.json().get("chart",{}).get("result") or [{}])[0].get("meta",{})
+                                    prev = meta.get("chartPreviousClose") or meta.get("previousClose")
+                                    cur  = meta.get("regularMarketPrice")
+                                    if prev and cur and prev > 0:
+                                        day_pct = round(((cur-prev)/prev)*100, 2)
+                                    break
+                            except Exception:
+                                continue
+                        if day_pct is not None:
+                            break
+                except Exception:
+                    pass
+            if live:
+                current = round(qty * live, 2)
+                pnl     = round(current - invested, 2)
+                return {**h, "symbol": sym, "live_price": round(live,2), "invested": invested,
+                        "current": current, "pnl": pnl,
+                        "pnl_pct": round((pnl/invested)*100,2) if invested else 0,
+                        "day_change_pct": day_pct, "price_ok": True}
+            return {**h, "symbol": sym, "live_price": None, "invested": invested,
+                    "current": 0, "pnl": -invested, "pnl_pct": -100,
+                    "day_change_pct": None, "price_ok": False}
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            enriched = list(pool.map(_enrich, holdings))
+        ti = sum(h.get("invested",0) or 0 for h in enriched)
+        tc = sum(h.get("current", 0) or 0 for h in enriched)
+        tp = round(tc - ti, 2)
+        return jsonify({"success": True, "holdings": enriched,
+                        "total_invested": round(ti,2), "total_current": round(tc,2),
+                        "total_pnl": tp,
+                        "total_pnl_pct": round((tp/ti)*100,2) if ti else 0,
+                        "fetched_at": datetime.datetime.utcnow().isoformat()+"Z"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route("/api/alerts", methods=["GET"])
 def get_alerts():
     alerts=load_json(ALERTS_FILE)
