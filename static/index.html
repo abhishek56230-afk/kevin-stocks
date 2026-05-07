@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kevin Kataria — Stock Intelligence Pro</title>
   <meta name="description" content="Professional NSE stock analysis with AI copilot, live prices, order book, and deep research." />
+
+  <!-- Favicon — inline SVG chart icon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23040b16'/><polyline points='4,22 10,14 16,18 22,8 28,12' stroke='%2338bdf8' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='28' cy='12' r='2.5' fill='%232dd4bf'/></svg>" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23040b16'/><polyline points='4,22 10,14 16,18 22,8 28,12' stroke='%2338bdf8' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='28' cy='12' r='2.5' fill='%232dd4bf'/></svg>" />
+
+  <!-- Open Graph / Social sharing -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Kevin Kataria — Stock Intelligence Pro" />
+  <meta property="og:description" content="AI-powered NSE stock research. Live prices, 7-engine AI analysis, order book, portfolio tracking — free." />
+  <meta property="og:image" content="https://kevin-stocks.onrender.com/static/og-preview.png" />
+  <meta property="og:url" content="https://kevin-stocks.onrender.com/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Kevin Kataria — Stock Intelligence Pro" />
+  <meta name="twitter:description" content="AI-powered NSE stock research. Live prices, 7-engine AI analysis, order book, portfolio tracking — free." />
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -616,6 +631,179 @@
     .view[style*="none"] { content-visibility: hidden; }
     #chatHistory::-webkit-scrollbar { width:4px; }
     #chatHistory::-webkit-scrollbar-thumb { background:rgba(56,189,248,.22); border-radius:99px; }
+
+    /* ══════════════════════════════════════
+       MOBILE RESPONSIVE — full overhaul
+    ══════════════════════════════════════ */
+    @media (max-width: 700px) {
+      .shell { padding: 10px 12px 90px; }
+
+      /* Nav: stack brand + buttons vertically */
+      .nav { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px; top: 4px; }
+      .brand-title { font-size: 13px; }
+      .brand-sub { display: none; }
+      .nav-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 100%; }
+      .nav-btn { padding: 7px 4px; font-size: 11px; text-align: center; border-radius: 10px; }
+
+      /* Hero: single column */
+      .hero { grid-template-columns: 1fr; gap: 10px; }
+      .hero-main { padding: 18px 16px; }
+      .hero-title { font-size: 22px; margin-bottom: 8px; }
+      .hero-copy { font-size: 12px; margin-bottom: 14px; }
+      .search-box { flex-direction: column; gap: 8px; padding: 10px; }
+      .search-box input { font-size: 14px; padding: 4px 0; }
+      .primary-btn { width: 100%; text-align: center; padding: 13px; }
+
+      /* Market tiles: 2 columns */
+      .tile-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .tile { padding: 10px 12px; }
+      .tile-val { font-size: 13px; }
+
+      /* Main grid: single column */
+      .main-grid { grid-template-columns: 1fr; gap: 10px; }
+
+      /* Analysis card */
+      .analysis-head { padding: 14px 14px 0; flex-direction: column; gap: 8px; }
+      .analysis-title { font-size: 18px; }
+      .action-stack { justify-content: flex-start; }
+      .action-btn { padding: 6px 10px; font-size: 11px; }
+      .analysis-tabs-wrap { padding: 8px 14px 0; }
+      .tab-group-label { display: none; }
+      .tab { font-size: 10px; padding: 5px 8px; }
+      .analysis-body { padding: 14px 14px 20px; }
+
+      /* Grids */
+      .kpi-grid, .grid-2, .grid-3, .summary-grid, .ob-grid { grid-template-columns: 1fr 1fr; }
+      .scr-grid { grid-template-columns: 1fr; }
+      .opt-grid { grid-template-columns: 1fr 1fr; }
+      .testi-grid { grid-template-columns: 1fr; }
+      .counter-row { grid-template-columns: 1fr 1fr; }
+
+      /* Portfolio form */
+      .portfolio-form { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .portfolio-form button { grid-column: span 2; }
+      .pf-kpi-strip { grid-template-columns: 1fr 1fr; }
+      .pf-table-wrap { font-size: 11px; }
+      .pf-table td, .pf-table th { padding: 8px 8px; }
+
+      /* Filter bar */
+      .filter-bar { grid-template-columns: 1fr 1fr; }
+
+      /* Screener */
+      .scr-table-head, .scr-table-row { grid-template-columns: 90px 70px 55px 55px 55px 55px 70px 70px; font-size: 11px; }
+
+      /* Chat */
+      .chat-row { flex-direction: column; }
+      .send-btn { width: 100%; height: 42px; border-radius: 10px; }
+
+      /* Misc */
+      .panel { padding: 14px 14px; }
+      .panel-head h2 { font-size: 14px; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-title { font-size: 20px; }
+      .kpi-grid, .grid-2, .grid-3, .summary-grid { grid-template-columns: 1fr; }
+      .tile-grid { grid-template-columns: 1fr 1fr; }
+      .nav-actions { grid-template-columns: repeat(2, 1fr); }
+      .pf-kpi-strip { grid-template-columns: 1fr; }
+    }
+
+    /* ══════════════════════════════════════
+       TAB VISUAL HIERARCHY
+    ══════════════════════════════════════ */
+    /* Primary nav tabs — bigger, more prominent */
+    .nav-btn[data-view="home"] { color: var(--text-2); }
+    .nav-btn[data-view="portfolio"] { color: var(--text-2); }
+
+    /* Make active nav tab more prominent */
+    .nav-btn.active {
+      color: var(--brand);
+      background: rgba(56,189,248,.13);
+      border-color: rgba(56,189,248,.35);
+      box-shadow: 0 0 16px rgba(56,189,248,.12), inset 0 1px 0 rgba(255,255,255,.08);
+      font-size: 12.5px;
+    }
+
+    /* Tab row: primary tabs larger */
+    .tab.tab-primary { font-size: 12px; padding: 7px 14px; font-weight: 700; }
+    .tab.tab-primary.active {
+      background: rgba(56,189,248,.18);
+      border-color: rgba(56,189,248,.4);
+      box-shadow: 0 0 20px rgba(56,189,248,.15);
+    }
+
+    /* ══════════════════════════════════════
+       SKELETON LOADER — shimmer effect
+    ══════════════════════════════════════ */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg,
+        rgba(255,255,255,.04) 25%,
+        rgba(255,255,255,.09) 50%,
+        rgba(255,255,255,.04) 75%
+      );
+      background-size: 600px 100%;
+      animation: shimmer 1.5s infinite linear;
+      border-radius: 8px;
+    }
+    .skeleton-line  { height: 14px; margin-bottom: 10px; border-radius: 6px; }
+    .skeleton-line.sm { height: 10px; width: 60%; }
+    .skeleton-line.lg { height: 22px; width: 40%; }
+    .skeleton-block { height: 80px; border-radius: var(--radius); margin-bottom: 10px; }
+    .skeleton-wrap { padding: 22px; display: flex; flex-direction: column; gap: 6px; }
+    .skeleton-row  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+    .skeleton-kpi  { height: 72px; border-radius: var(--radius); }
+
+    /* ══════════════════════════════════════
+       PORTFOLIO EMPTY STATE
+    ══════════════════════════════════════ */
+    .pf-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 52px 24px; text-align: center; gap: 12px;
+    }
+    .pf-empty-icon {
+      width: 64px; height: 64px; border-radius: 20px;
+      background: linear-gradient(135deg, rgba(56,189,248,.1), rgba(45,212,191,.08));
+      border: 1px solid rgba(56,189,248,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; margin-bottom: 4px;
+    }
+    .pf-empty h3 { font-size: 16px; font-weight: 700; color: var(--text-2); }
+    .pf-empty p  { font-size: 13px; color: var(--muted); max-width: 320px; line-height: 1.65; }
+
+    /* ══════════════════════════════════════
+       AI CONFIDENCE METER
+    ══════════════════════════════════════ */
+    .confidence-wrap {
+      margin-top: 14px; padding: 14px 16px;
+      background: rgba(255,255,255,.026);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+    .confidence-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--muted); margin-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .confidence-score { font-size: 18px; font-weight: 800; font-family: 'DM Mono', monospace; }
+    .confidence-bar-bg {
+      height: 7px; background: rgba(255,255,255,.07);
+      border-radius: 99px; overflow: hidden; margin-top: 6px;
+    }
+    .confidence-bar-fill {
+      height: 100%; border-radius: 99px;
+      transition: width .8s var(--ease);
+    }
+    .conf-high .confidence-bar-fill  { background: linear-gradient(90deg, var(--green), #34d399); }
+    .conf-mid  .confidence-bar-fill  { background: linear-gradient(90deg, var(--amber), #fcd34d); }
+    .conf-low  .confidence-bar-fill  { background: linear-gradient(90deg, var(--red), #fca5a5); }
+    .conf-high .confidence-score { color: var(--green); }
+    .conf-mid  .confidence-score { color: var(--amber); }
+    .conf-low  .confidence-score { color: var(--red); }
   </style>
 </head>
 
@@ -1774,7 +1962,7 @@ async function openStock(symbol) {
       <div>
         <div class="eyebrow">Selected stock</div>
         <h3 class="analysis-title">${state.selectedSymbol}</h3>
-        <div class="analysis-sub">Loading overview, technicals, order book, fundamentals, sentiment, news and AI verdict.</div>
+        <div class="analysis-sub" id="analysisSubtitle">Loading overview, technicals, order book, fundamentals, sentiment, news and AI verdict.</div>
       </div>
       <div class="action-stack">
         <button class="action-btn" onclick="addCurrentToWatchlist()">+ Add to Watchlist</button>
@@ -1855,7 +2043,20 @@ async function getAnalysis(symbol, tab) {
 
 async function renderTab(tab) {
   const body = qs('.analysis-body');
-  body.innerHTML = '<div class="loader"></div>';
+  body.innerHTML = `
+    <div class="skeleton-wrap">
+      <div class="skeleton-row">
+        <div class="skeleton skeleton-kpi"></div>
+        <div class="skeleton skeleton-kpi"></div>
+        <div class="skeleton skeleton-kpi"></div>
+      </div>
+      <div class="skeleton skeleton-line lg"></div>
+      <div class="skeleton skeleton-line"></div>
+      <div class="skeleton skeleton-line sm"></div>
+      <div class="skeleton skeleton-block" style="height:120px;margin-top:8px"></div>
+      <div class="skeleton skeleton-line" style="margin-top:10px"></div>
+      <div class="skeleton skeleton-line sm"></div>
+    </div>`;
   try {
     const symbol = state.selectedSymbol;
     const data   = await getAnalysis(symbol, tab);
@@ -2184,6 +2385,22 @@ function renderVerdict(v) {
   var vCls  = clsFor(v.verdict)==='buy'?'up':clsFor(v.verdict)==='sell'?'down':'';
   var vIcon = clsFor(v.verdict)==='buy'?'&#9650;':clsFor(v.verdict)==='sell'?'&#9660;':'&#9654;';
   var riskColor = (v.risk||'').toLowerCase()==='low'?'var(--green)':(v.risk||'').toLowerCase()==='high'?'var(--red)':'var(--amber)';
+
+  // ── Confidence meter ──
+  var rawConf = (v.confidence||'').toString().replace('%','').trim();
+  var confNum = parseInt(rawConf, 10);
+  if (isNaN(confNum)) {
+    var cl = rawConf.toLowerCase();
+    confNum = cl==='high'?82 : cl==='medium'||cl==='moderate'?58 : cl==='low'?32 : 50;
+  }
+  confNum = Math.max(0, Math.min(100, confNum));
+  var confTier = confNum >= 70 ? 'conf-high' : confNum >= 45 ? 'conf-mid' : 'conf-low';
+  var confLabel = confNum >= 70 ? 'High Confidence' : confNum >= 45 ? 'Moderate Confidence' : 'Low Confidence';
+  var confMeterHtml = '<div class="confidence-wrap '+confTier+'">'
+    + '<div class="confidence-label"><span>AI Confidence</span><span class="confidence-score">'+confNum+'%</span></div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+confLabel+'</div>'
+    + '<div class="confidence-bar-bg"><div class="confidence-bar-fill" style="width:'+confNum+'%"></div></div>'
+    + '</div>';
   var lines = (v.reasoning||[]).filter(function(l){return l&&l.trim().length>5;});
   function iconFor(line) {
     var l = line.toLowerCase();
@@ -2219,10 +2436,11 @@ function renderVerdict(v) {
     + '<div class="section-title">AI Verdict</div>'
     + '<div class="metric-value '+vCls+'" style="font-size:28px;margin:6px 0">'+(v.verdict||v.signal||'HOLD')+'</div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
-    + '<span style="font-size:12px;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid var(--line)">Confidence '+(v.confidence||'N/A')+'</span>'
     + '<span style="font-size:12px;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:'+riskColor+'">Risk '+(v.risk||'N/A')+'</span>'
     + '<span style="font-size:12px;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid var(--line)">Best for '+(v.best_for||'N/A')+'</span>'
-    + '</div></div>'
+    + '</div>'
+    + confMeterHtml
+    + '</div>'
     + '<div class="metric"><div class="section-title">AI Price Targets</div><div class="list">'
     + '<div class="list-item"><div class="split"><strong>3M Target</strong><small class="up" style="font-size:14px;font-weight:700;font-family:\"DM Mono\",monospace">'+(v.target_3m?money(v.target_3m):'—')+'</small></div><small style="color:var(--muted)">Short-term price goal</small></div>'
     + '<div class="list-item"><div class="split"><strong>12M Target</strong><small class="up" style="font-size:14px;font-weight:700;font-family:\"DM Mono\",monospace">'+(v.target_12m?money(v.target_12m):'—')+'</small></div><small style="color:var(--muted)">Long-term price goal</small></div>'
@@ -2339,7 +2557,14 @@ async function loadPortfolio() {
       const el = qs('#'+id); if (el) { el.textContent = id==='pfHoldingCount'?'0 stocks':'—'; el.style.color=''; }
     });
     qs('#pfTotalPnlPct').textContent = '—'; qs('#pfPriceWarning').style.display='none';
-    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--muted)">No holdings yet — add one above.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="12" style="padding:0;border:none">
+      <div class="pf-empty">
+        <div class="pf-empty-icon">📊</div>
+        <h3>No holdings yet</h3>
+        <p>Add your first stock above — enter the NSE symbol, company name, quantity and buy price to start tracking your portfolio live.</p>
+        <button class="primary-btn" style="margin-top:4px;font-size:12px;padding:10px 22px" onclick="document.getElementById('pfSymbol').focus()">＋ Add First Holding</button>
+      </div>
+    </td></tr>`;
     tfoot.innerHTML = ''; _pfStartCountdown(); return;
   }
 
@@ -3637,5 +3862,32 @@ function renderKevinAI(d) {
 }
 
 </script>
+
+<!-- ── Legal Disclaimer Footer ── -->
+<footer id="site-footer" style="
+  position:relative; z-index:1;
+  max-width:1300px; margin:0 auto 0;
+  padding:20px 20px 32px;
+  border-top:1px solid rgba(255,255,255,.06);
+  display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:16px;
+">
+  <div style="flex:1;min-width:260px;max-width:640px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(56,189,248,.6);margin-bottom:8px">⚠️ Important Disclaimer</div>
+    <p style="font-size:11.5px;line-height:1.75;color:rgba(255,255,255,.32)">
+      This platform is for <strong style="color:rgba(255,255,255,.5)">informational and educational purposes only</strong>.
+      Nothing on this site constitutes financial advice, investment advice, trading advice, or any other sort of advice.
+      AI-generated analysis is based on publicly available data and should not be relied upon for making investment decisions.
+      Always consult a qualified financial advisor before investing. Past performance does not guarantee future results.
+      Stock markets are subject to market risks — read all scheme-related documents carefully.
+    </p>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:rgba(255,255,255,.22);text-align:right;flex-shrink:0">
+    <span style="font-weight:700;color:rgba(255,255,255,.35);font-size:12px">Kevin Kataria — Stock Intelligence Pro</span>
+    <span>Data: NSE · Yahoo Finance · Google News</span>
+    <span>AI: Groq Llama 3.3-70B</span>
+    <span style="margin-top:4px">© 2025 · Not SEBI registered · Not financial advice</span>
+  </div>
+</footer>
+
 </body>
 </html>
